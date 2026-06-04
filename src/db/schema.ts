@@ -1,0 +1,308 @@
+import {
+  pgTable,
+  pgEnum,
+  uuid,
+  varchar,
+  text,
+  boolean,
+  integer,
+  timestamp,
+  unique,
+  index,
+  decimal,
+} from "drizzle-orm/pg-core";
+
+// ─── Enums ────────────────────────────────────────────────────────────────────
+
+export const matchStatusEnum = pgEnum("match_status", [
+  "upcoming",
+  "live",
+  "completed",
+]);
+
+export const matchStageEnum = pgEnum("match_stage", [
+  "friendly",
+  "group",
+  "round_of_32",
+  "round_of_16",
+  "quarter_final",
+  "semi_final",
+  "third_place",
+  "final",
+]);
+
+export const visibilityEnum = pgEnum("visibility", [
+  "public",
+  "friends",
+  "stealth",
+]);
+
+export const connectionStatusEnum = pgEnum("connection_status", [
+  "pending",
+  "accepted",
+]);
+
+export const liveReportStatusEnum = pgEnum("live_report_status", [
+  "buzzing",
+  "getting_busy",
+  "packed",
+  "queue_outside",
+  "entry_fee",
+  "good_screens",
+  "quiet_now",
+]);
+
+// ─── Teams ────────────────────────────────────────────────────────────────────
+
+export const teams = pgTable("teams", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  countryCode: varchar("country_code", { length: 3 }).notNull().unique(),
+  flagEmoji: varchar("flag_emoji", { length: 10 }).notNull(),
+  group: varchar("group", { length: 1 }),
+  confederation: varchar("confederation", { length: 10 }).notNull(),
+  isEliminated: boolean("is_eliminated").notNull().default(false),
+});
+
+// ─── Students ─────────────────────────────────────────────────────────────────
+
+export const students = pgTable("students", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  email: varchar("email", { length: 255 }).notNull().unique(),
+  nationality: varchar("nationality", { length: 100 }),
+  teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
+  isHonoraryFan: boolean("is_honorary_fan").notNull().default(false),
+  visibility: visibilityEnum("visibility").notNull().default("public"),
+  tokenBalance: integer("token_balance").notNull().default(100),
+  flagged: boolean("flagged").notNull().default(false),
+  lastSeenAt: timestamp("last_seen_at"),
+  pushSubscription: text("push_subscription"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ─── Connections ──────────────────────────────────────────────────────────────
+
+export const connections = pgTable(
+  "connections",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    requesterId: uuid("requester_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    requesteeId: uuid("requestee_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    status: connectionStatusEnum("status").notNull().default("pending"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.requesterId, t.requesteeId),
+    index("connections_requester_idx").on(t.requesterId),
+    index("connections_requestee_idx").on(t.requesteeId),
+  ]
+);
+
+// ─── Friend Groups ────────────────────────────────────────────────────────────
+
+export const friendGroups = pgTable("friend_groups", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 100 }).notNull(),
+  inviteCode: varchar("invite_code", { length: 8 }).notNull().unique(),
+  createdBy: uuid("created_by")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const groupMembers = pgTable(
+  "group_members",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    groupId: uuid("group_id")
+      .notNull()
+      .references(() => friendGroups.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    joinedAt: timestamp("joined_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.groupId, t.studentId)]
+);
+
+// ─── Venues ───────────────────────────────────────────────────────────────────
+
+export const venues = pgTable("venues", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  name: varchar("name", { length: 200 }).notNull(),
+  area: varchar("area", { length: 100 }),
+  address: varchar("address", { length: 300 }),
+  mapsUrl: varchar("maps_url", { length: 500 }),
+  lat: decimal("lat", { precision: 9, scale: 6 }),
+  lng: decimal("lng", { precision: 9, scale: 6 }),
+  isCustom: boolean("is_custom").notNull().default(false),
+  addedBy: uuid("added_by").references(() => students.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ─── Matches ──────────────────────────────────────────────────────────────────
+
+export const matches = pgTable("matches", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  externalId: integer("external_id").unique(),
+  team1Id: uuid("team1_id").references(() => teams.id, { onDelete: "set null" }),
+  team2Id: uuid("team2_id").references(() => teams.id, { onDelete: "set null" }),
+  matchDatetime: timestamp("match_datetime", { withTimezone: true }).notNull(),
+  venue: varchar("venue", { length: 150 }),
+  city: varchar("city", { length: 100 }),
+  stage: matchStageEnum("stage").notNull().default("group"),
+  groupName: varchar("group_name", { length: 1 }),
+  team1Score: integer("team1_score"),
+  team2Score: integer("team2_score"),
+  status: matchStatusEnum("status").notNull().default("upcoming"),
+  team1Placeholder: varchar("team1_placeholder", { length: 60 }),
+  team2Placeholder: varchar("team2_placeholder", { length: 60 }),
+});
+
+// ─── Predictions ──────────────────────────────────────────────────────────────
+
+export const predictions = pgTable(
+  "predictions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    predictedScore1: integer("predicted_score1").notNull(),
+    predictedScore2: integer("predicted_score2").notNull(),
+    tokensEarned: integer("tokens_earned"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.studentId, t.matchId),
+    index("predictions_match_idx").on(t.matchId),
+    index("predictions_student_idx").on(t.studentId),
+  ]
+);
+
+// ─── Token Bets ───────────────────────────────────────────────────────────────
+
+export const bets = pgTable(
+  "bets",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    student1Id: uuid("student1_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    student2Id: uuid("student2_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    stakeTokens: integer("stake_tokens").notNull().default(10),
+    winnerId: uuid("winner_id").references(() => students.id),
+    settled: boolean("settled").notNull().default(false),
+  },
+  (t) => [
+    unique().on(t.matchId, t.student1Id, t.student2Id),
+    index("bets_match_idx").on(t.matchId),
+  ]
+);
+
+// ─── Match Reactions ──────────────────────────────────────────────────────────
+
+export const matchReactions = pgTable(
+  "match_reactions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    emoji: varchar("emoji", { length: 10 }).notNull(),
+    matchMinute: integer("match_minute"),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [index("match_reactions_match_idx").on(t.matchId, t.createdAt)]
+);
+
+// ─── Post-Match Vibes ─────────────────────────────────────────────────────────
+
+export const matchVibes = pgTable(
+  "match_vibes",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    vibe: varchar("vibe", { length: 20 }).notNull(),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.studentId, t.matchId)]
+);
+
+// ─── Watch Invites ────────────────────────────────────────────────────────────
+
+export const watchInvites = pgTable(
+  "watch_invites",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inviterId: uuid("inviter_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id")
+      .notNull()
+      .references(() => matches.id, { onDelete: "cascade" }),
+    venueId: uuid("venue_id").references(() => venues.id, { onDelete: "set null" }),
+    locationName: varchar("location_name", { length: 200 }),
+    locationUrl: varchar("location_url", { length: 500 }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.inviterId, t.matchId)]
+);
+
+// ─── Live Reports ─────────────────────────────────────────────────────────────
+
+export const liveReports = pgTable("live_reports", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  venueId: uuid("venue_id")
+    .references(() => venues.id, { onDelete: "set null" }),
+  venueName: varchar("venue_name", { length: 200 }),
+  matchId: uuid("match_id")
+    .references(() => matches.id, { onDelete: "set null" }),
+  status: liveReportStatusEnum("status").notNull(),
+  comment: text("comment"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+});
+
+// ─── Inferred Types ───────────────────────────────────────────────────────────
+
+export type Team = typeof teams.$inferSelect;
+export type Student = typeof students.$inferSelect;
+export type Match = typeof matches.$inferSelect;
+export type Prediction = typeof predictions.$inferSelect;
+export type Bet = typeof bets.$inferSelect;
+export type MatchReaction = typeof matchReactions.$inferSelect;
+export type MatchVibe = typeof matchVibes.$inferSelect;
+export type WatchInvite = typeof watchInvites.$inferSelect;
+export type FriendGroup = typeof friendGroups.$inferSelect;
+export type GroupMember = typeof groupMembers.$inferSelect;
+export type Venue = typeof venues.$inferSelect;
+export type LiveReport = typeof liveReports.$inferSelect;
+export type LiveReportStatus = (typeof liveReportStatusEnum.enumValues)[number];
+
+export type MatchStatus = (typeof matchStatusEnum.enumValues)[number];
+export type MatchStage = (typeof matchStageEnum.enumValues)[number];
+export type Visibility = (typeof visibilityEnum.enumValues)[number];
