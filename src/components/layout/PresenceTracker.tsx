@@ -8,9 +8,10 @@ export default function PresenceTracker() {
   const { data: session } = useSession();
 
   useEffect(() => {
-    if (!session?.user) return;
+    // Guard on user.id — session.user alone can be a truthy empty object before id is populated
+    if (!session?.user?.id) return;
     fetch("/api/presence", { method: "POST" }).catch(() => {});
-  }, [session]);
+  }, [session?.user?.id]);
 
   return null;
 }

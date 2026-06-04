@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { MapPin, Plus, X, Search, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin, Plus, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "next-auth/react";
@@ -33,13 +33,13 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
   const [isCustom, setIsCustom] = useState(false);
   const [loading, setLoading] = useState(false);
   const [myLocation, setMyLocation] = useState<string | null>(null);
-  const [groupBy, setGroupBy] = useState<Record<string, string[]>>({});
 
   const fetchLocations = async () => {
     const res = await fetch(`/api/watch-together?matchId=${matchId}`);
     const data = await res.json();
     setLocations(data.locations ?? []);
-    if (session) {
+    // Guard on user.id — session.user alone can be a truthy empty object before id is populated
+    if (session?.user?.id) {
       const mine = (data.locations ?? []).find((l: WatchLocation) =>
         l.people.includes(session.user.name)
       );
@@ -62,7 +62,6 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
       )
     : venues;
 
-  // Group venues by area
   const byArea = filteredVenues.reduce<Record<string, Venue[]>>((acc, v) => {
     const area = v.area ?? "Other";
     if (!acc[area]) acc[area] = [];
@@ -106,12 +105,12 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
           <MapPin className="h-4 w-4 text-green-600" />
           Watching together
         </h3>
-        {session && !myLocation && !showing && (
+        {session?.user?.id && !myLocation && !showing && (
           <Button size="sm" variant="outline" onClick={() => setShowing(true)} className="h-7 text-xs gap-1">
             <Plus className="h-3 w-3" /> Add location
           </Button>
         )}
-        {session && myLocation && (
+        {session?.user?.id && myLocation && (
           <button onClick={handleRemove} className="text-xs text-gray-400 hover:text-red-500 flex items-center gap-1">
             <X className="h-3 w-3" /> Remove mine
           </button>
@@ -123,18 +122,16 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
         <div className="space-y-3 rounded-lg bg-gray-50 p-3">
           {!isCustom ? (
             <>
-              {/* Search bar */}
               <div className="relative">
                 <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" />
                 <Input
                   value={search}
                   onChange={(e) => { setSearch(e.target.value); setSelectedVenue(null); }}
-                  placeholder="Search bars & pubs…"
+                  placeholder="Search bars & pubs\u2026"
                   className="h-8 text-sm pl-8"
                 />
               </div>
 
-              {/* Selected venue pill */}
               {selectedVenue && (
                 <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
                   <MapPin className="h-3.5 w-3.5 text-green-600 shrink-0" />
@@ -148,7 +145,6 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
                 </div>
               )}
 
-              {/* Venue list grouped by area */}
               {!selectedVenue && (
                 <div className="max-h-52 overflow-y-auto space-y-2 -mx-1 px-1">
                   {Object.entries(byArea).map(([area, areaVenues]) => (
@@ -181,10 +177,9 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
               </div>
             </>
           ) : (
-            /* Custom location fallback */
             <>
               <button onClick={() => setIsCustom(false)} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
-                ← Back to list
+                \u2190 Back to list
               </button>
               <Input
                 value={customName}
@@ -208,7 +203,7 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
               disabled={(!selectedVenue && !customName.trim()) || loading}
               onClick={handlePost}
             >
-              {loading ? "Saving..." : "I'm watching here ✓"}
+              {loading ? "Saving..." : "I'm watching here \u2713"}
             </Button>
             <Button size="sm" variant="outline" onClick={() => { setShowing(false); setSelectedVenue(null); setSearch(""); setIsCustom(false); }}>
               Cancel
@@ -219,7 +214,7 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
 
       {/* Who's watching where */}
       {locations.length === 0 ? (
-        <p className="text-xs text-gray-400 text-center py-2">Nobody's posted a watch location yet</p>
+        <p className="text-xs text-gray-400 text-center py-2">Nobody&apos;s posted a watch location yet</p>
       ) : (
         <div className="space-y-2">
           {locations.map((loc) => (
