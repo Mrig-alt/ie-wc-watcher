@@ -10,12 +10,13 @@ export default function Header() {
   const [liveTokens, setLiveTokens] = useState<number | null>(null);
 
   const fetchTokens = useCallback(() => {
-    if (!session?.user) { setLiveTokens(null); return; }
+    // Gate on user.id — session.user alone can be a truthy empty object before id is populated
+    if (!session?.user?.id) { setLiveTokens(null); return; }
     fetch("/api/students/me")
       .then((r) => r.ok ? r.json() : null)
       .then((d) => { if (d?.tokenBalance != null) setLiveTokens(d.tokenBalance); })
       .catch(() => {});
-  }, [session?.user]);
+  }, [session?.user?.id]);
 
   useEffect(() => { fetchTokens(); }, [fetchTokens]);
 
