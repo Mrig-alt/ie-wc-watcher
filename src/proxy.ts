@@ -21,5 +21,6 @@ export default auth((req) => {
 });
 
 export const config = {
-  matcher: ["/admin/:path*"],
+  // Added /join so logged-in users are redirected away from the login page
+  matcher: ["/admin/:path*", "/join"],
 };

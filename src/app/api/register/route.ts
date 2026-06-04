@@ -28,7 +28,6 @@ export async function GET() {
   return NextResponse.json({
     teams: allTeams,
     count: studentCount,
-    // Tell the client whether PIN enforcement is active
     pinRequired: !!process.env.JOIN_PIN,
   });
 }
@@ -46,8 +45,10 @@ export async function POST(req: Request) {
 
   const { name, email, nationality, teamId, isHonoraryFan, visibility, pin } = parsed.data;
 
+  // PIN check: if JOIN_PIN is set, the supplied pin MUST match regardless of whether
+  // the client sent a pin field. Omitting pin is not a bypass.
   const joinPin = process.env.JOIN_PIN;
-  if (joinPin && pin && pin !== joinPin) {
+  if (joinPin && pin !== joinPin) {
     return NextResponse.json({ error: "Incorrect class PIN" }, { status: 403 });
   }
 

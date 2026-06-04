@@ -8,7 +8,7 @@ import { STAKE_TOKENS } from "@/lib/tokens";
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = predictionSchema.safeParse(body);
@@ -48,7 +48,7 @@ export async function POST(req: Request) {
 
 export async function GET(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const { searchParams } = new URL(req.url);
   const matchId = searchParams.get("matchId");

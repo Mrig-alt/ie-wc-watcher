@@ -7,7 +7,7 @@ import { connectionSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
   const body = await req.json();
   const parsed = connectionSchema.safeParse(body);
@@ -20,7 +20,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cannot connect to yourself" }, { status: 400 });
   }
 
-  // Check if already exists
   const existing = await db
     .select({ id: connections.id, status: connections.status })
     .from(connections)
@@ -33,7 +32,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ connection: existing[0] });
   }
 
-  // Check if reverse exists (auto-accept mutual)
   const reverse = await db
     .select({ id: connections.id })
     .from(connections)
@@ -43,7 +41,6 @@ export async function POST(req: Request) {
     .limit(1);
 
   if (reverse.length > 0) {
-    // Auto-accept both directions
     await db
       .update(connections)
       .set({ status: "accepted" })
