@@ -12,8 +12,6 @@ export default function AccountPage() {
   const { data: session, status, update } = useSession();
   const router = useRouter();
 
-  const [liveTokens, setLiveTokens] = useState<number | null>(null);
-  const [fetchError, setFetchError] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>(
     (session?.user?.visibility ?? "public") as Visibility
   );
@@ -26,23 +24,12 @@ export default function AccountPage() {
     }
   }, [status, router]);
 
-  // Fetch live tokenBalance + visibility directly from DB on mount
+  // Sync visibility from session once loaded
   useEffect(() => {
-    if (!session?.user?.id) return;
-    fetch("/api/students/me")
-      .then((r) => r.json())
-      .then((d) => {
-        if (d?.tokenBalance != null) {
-          setLiveTokens(d.tokenBalance);
-        } else {
-          setFetchError(d?.error ?? "Unknown error from /api/students/me");
-        }
-        if (d?.visibility) setVisibility(d.visibility as Visibility);
-      })
-      .catch((err) => {
-        setFetchError(err?.message ?? "Network error fetching token balance");
-      });
-  }, [session?.user?.id]);
+    if (session?.user?.visibility) {
+      setVisibility(session.user.visibility as Visibility);
+    }
+  }, [session?.user?.visibility]);
 
   if (status === "loading" || status === "unauthenticated") {
     return (
@@ -54,8 +41,8 @@ export default function AccountPage() {
 
   if (!session) return null;
 
-  // Use live DB value first, then session value, never silently fall to 0
-  const displayTokens = liveTokens ?? session.user.tokenBalance ?? null;
+  // JWT is refreshed from DB on every request via auth.ts — this is always live
+  const displayTokens = session.user.tokenBalance ?? 0;
 
   const handleSave = async () => {
     setLoading(true);
@@ -85,13 +72,7 @@ export default function AccountPage() {
             <p className="text-sm text-gray-500">{session.user.email}</p>
           </div>
           <div className="flex items-center gap-2">
-            {displayTokens !== null ? (
-              <span className="text-lg font-bold text-yellow-600">🪙 {displayTokens}</span>
-            ) : fetchError ? (
-              <span className="text-sm text-red-500">Token load failed</span>
-            ) : (
-              <span className="text-sm text-gray-400">Loading…</span>
-            )}
+            <span className="text-lg font-bold text-yellow-600">🪙 {displayTokens}</span>
           </div>
         </div>
         <div className="flex gap-3 pt-1">
