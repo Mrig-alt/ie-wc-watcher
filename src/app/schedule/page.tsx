@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { matches, teams, students, predictions, watchInvites } from "@/db/schema";
-import { eq, asc, inArray } from "drizzle-orm";
+import { eq, asc, inArray, gte } from "drizzle-orm";
 import MatchCard from "@/components/matches/MatchCard";
 import { stageLabel, formatMatchDate } from "@/lib/utils";
 
@@ -29,6 +29,7 @@ export default async function SchedulePage() {
         team2Id: matches.team2Id,
       })
       .from(matches)
+      .where(gte(matches.matchDatetime, new Date(new Date().setHours(0, 0, 0, 0))))
       .orderBy(asc(matches.matchDatetime));
 
     const allStudents = await db
