@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { matches, teams, students, matchReactions, watchInvites, venues, predictions } from "@/db/schema";
-import { eq, and, asc, inArray } from "drizzle-orm";
+import { matches, teams, students, matchReactions, watchInvites, venues, predictions, connections } from "@/db/schema";
+import { eq, and, asc, inArray, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { formatMatchDate, formatKickoff, stageLabel } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
@@ -16,6 +16,26 @@ export const dynamic = "force-dynamic";
 export default async function MatchDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const session = await auth();
+
+  let friendIds = new Set<string>();
+  if (session?.user?.id) {
+    const myConnections = await db
+      .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
+      .from(connections)
+      .where(
+        and(
+          eq(connections.status, "accepted"),
+          or(
+            eq(connections.requesterId, session.user.id),
+            eq(connections.requesteeId, session.user.id)
+          )
+        )
+      );
+    for (const c of myConnections) {
+      if (c.requesterId !== session.user.id) friendIds.add(c.requesterId);
+      if (c.requesteeId !== session.user.id) friendIds.add(c.requesteeId);
+    }
+  }
 
   const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
   if (!match) notFound();
@@ -33,11 +53,13 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
         ? db.select({ id: students.id, name: students.name }).from(students)
             .where(and(eq(students.teamId, match.team2Id), eq(students.flagged, false), eq(students.visibility, "public")))
         : Promise.resolve([]),
-      db.select({ id: watchInvites.id, inviterId: watchInvites.inviterId, venueId: watchInvites.venueId, locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl, inviterName: students.name })
+      db.select({ id: watchInvites.id, inviterId: watchInvites.inviterId, venueId: watchInvites.venueId, locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl, inviterName: students.name, visibility: students.visibility })
         .from(watchInvites).innerJoin(students, eq(students.id, watchInvites.inviterId)).where(eq(watchInvites.matchId, id)),
       db.select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl }).from(venues),
-      db.select({ id: matchReactions.id, emoji: matchReactions.emoji, matchMinute: matchReactions.matchMinute, createdAt: matchReactions.createdAt, studentId: matchReactions.studentId })
-        .from(matchReactions).where(eq(matchReactions.matchId, id)).orderBy(asc(matchReactions.createdAt)),
+      db.select({ id: matchReactions.id, emoji: matchReactions.emoji, matchMinute: matchReactions.matchMinute, createdAt: matchReactions.createdAt, studentId: matchReactions.studentId, studentName: students.name, studentVisibility: students.visibility })
+        .from(matchReactions)
+        .leftJoin(students, and(eq(students.id, matchReactions.studentId), eq(students.flagged, false)))
+        .where(eq(matchReactions.matchId, id)).orderBy(asc(matchReactions.createdAt)),
       session?.user?.id
         ? db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
         : Promise.resolve([]),
@@ -48,8 +70,18 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   const team2 = match.team2Id ? teamMap.get(match.team2Id) ?? null : null;
 
   const venueMap = new Map(allVenues.map((v) => [v.id, v]));
+  const filteredInvites = rawInvites.filter((inv) => {
+    if (inv.visibility === "stealth") return false;
+    if (inv.visibility === "friends") {
+      if (!session?.user?.id) return false;
+      if (inv.inviterId === session.user.id) return true;
+      return friendIds.has(inv.inviterId);
+    }
+    return true;
+  });
+
   const venueCounts: Record<string, { name: string; area: string | null; mapsUrl: string | null; url: string | null; count: number; people: string[] }> = {};
-  for (const inv of rawInvites) {
+  for (const inv of filteredInvites) {
     const key = inv.venueId ?? inv.locationName ?? "Unknown";
     const linked = inv.venueId ? venueMap.get(inv.venueId) : null;
     const name = linked?.name ?? inv.locationName ?? "Unknown";
@@ -59,15 +91,9 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   }
   const venueBreakdown = Object.values(venueCounts).sort((a, b) => b.count - a.count);
 
-  const reactorIds = [...new Set(reactions.map((r) => r.studentId))];
-  const reactionStudents = reactorIds.length > 0
-    ? await db.select({ id: students.id, name: students.name }).from(students)
-        .where(and(inArray(students.id, reactorIds), eq(students.flagged, false)))
-    : [];
-  const studentNameMap = new Map(reactionStudents.map((s) => [s.id, s.name]));
   const enrichedReactions = reactions.map((r) => ({
     ...r,
-    studentName: r.studentId === session?.user?.id ? "You" : (studentNameMap.get(r.studentId) ?? "Classmate"),
+    studentName: r.studentId === session?.user?.id ? "You" : ((r.studentVisibility === "stealth" || r.studentVisibility === "friends") ? "Anonymous" : (r.studentName ?? "Classmate")),
   }));
 
   const isLive = match.status === "live";
@@ -147,7 +173,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       <section>
         <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
           <MapPin className="h-4 w-4 text-green-500" /> Where people are watching
-          {rawInvites.length > 0 && <span className="text-xs font-normal text-gray-400 flex items-center gap-1"><Users className="h-3.5 w-3.5" />{rawInvites.length} going</span>}
+          {filteredInvites.length > 0 && <span className="text-xs font-normal text-gray-400 flex items-center gap-1"><Users className="h-3.5 w-3.5" />{filteredInvites.length} going</span>}
         </h2>
         {venueBreakdown.length === 0 ? (
           <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">

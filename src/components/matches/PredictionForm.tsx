@@ -63,8 +63,8 @@ export default function PredictionForm({ matchId, team1, team2, existing, locked
         <span className="text-xs text-gray-400">&ndash;</span>
         <ScoreInput value={score2} onChange={setScore2} />
         <span className="text-sm">{team2.flagEmoji}</span>
-        <Button size="sm" variant={saved ? "secondary" : "default"} onClick={handleSubmit} loading={loading} className="text-xs px-2">
-          {saved ? "✓ Saved" : "+5/15 🪙"}
+        <Button size="sm" variant={saved ? "secondary" : "default"} onClick={handleSubmit} disabled={loading} className="text-xs px-2">
+          {loading ? "…" : saved ? "✓ Saved" : "+5/15 🪙"}
         </Button>
       </div>
       {error && <p className="text-xs text-red-500">{error}</p>}

@@ -1,6 +1,6 @@
 import { db } from "@/db";
-import { students, bets, predictions, matches } from "@/db/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { students, bets, predictions, matches, groupMembers } from "@/db/schema";
+import { eq, and, isNull, sql, inArray } from "drizzle-orm";
 
 export const STAKE_TOKENS = 10;
 export const PREDICTION_CORRECT_TOKENS = 5;
@@ -20,11 +20,83 @@ export async function settleBetsForMatch(matchId: string) {
     .where(and(eq(bets.matchId, matchId), eq(bets.settled, false)));
 
   for (const bet of unsettledBets) {
+    if (bet.status === "pending") {
+      // Pending bet expires since match has started
+      const updated = await db
+        .update(bets)
+        .set({ settled: true, status: "expired" })
+        .where(and(eq(bets.id, bet.id), eq(bets.settled, false)))
+        .returning({ id: bets.id });
+      if (updated.length === 0) continue;
+
+      const challengerId = bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id;
+      if (bet.groupId) {
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, challengerId)));
+      } else {
+        await db
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+          .where(eq(students.id, challengerId));
+      }
+      continue;
+    }
+
     let winnerId: string | null = null;
-    if (match.team1Score > match.team2Score) {
-      winnerId = bet.student1Id;
-    } else if (match.team2Score > match.team1Score) {
-      winnerId = bet.student2Id;
+    let payoutType: "full" | "half" | "refund" = "full";
+
+    const isScoreChallenge = bet.student1Score1 !== null && bet.student1Score2 !== null;
+
+    if (isScoreChallenge) {
+      const s1_1 = bet.student1Score1!;
+      const s1_2 = bet.student1Score2!;
+      const s2_1 = bet.student2Score1 ?? 0;
+      const s2_2 = bet.student2Score2 ?? 0;
+
+      const err1 = Math.abs(s1_1 - match.team1Score) + Math.abs(s1_2 - match.team2Score);
+      const err2 = Math.abs(s2_1 - match.team1Score) + Math.abs(s2_2 - match.team2Score);
+
+      const exact1 = s1_1 === match.team1Score && s1_2 === match.team2Score;
+      const exact2 = s2_1 === match.team1Score && s2_2 === match.team2Score;
+
+      if (exact1 && !exact2) {
+        winnerId = bet.student1Id;
+        payoutType = "full";
+      } else if (exact2 && !exact1) {
+        winnerId = bet.student2Id;
+        payoutType = "full";
+      } else if (exact1 && exact2) {
+        winnerId = null;
+        payoutType = "refund";
+      } else {
+        // Both wrong
+        if (err1 < err2) {
+          winnerId = bet.student1Id;
+          payoutType = "half";
+        } else if (err2 < err1) {
+          winnerId = bet.student2Id;
+          payoutType = "half";
+        } else {
+          winnerId = null;
+          payoutType = "refund";
+        }
+      }
+    } else {
+      // Standard outcome-based challenge
+      if (match.team1Score > match.team2Score) {
+        winnerId = bet.student1Id;
+      } else if (match.team2Score > match.team1Score) {
+        winnerId = bet.student2Id;
+      } else if (match.team1Penalties !== null && match.team2Penalties !== null) {
+        if (match.team1Penalties > match.team2Penalties) {
+          winnerId = bet.student1Id;
+        } else if (match.team2Penalties > match.team1Penalties) {
+          winnerId = bet.student2Id;
+        }
+      }
+      payoutType = winnerId ? "full" : "refund";
     }
 
     // CAS guard: only update if still unsettled
@@ -35,22 +107,66 @@ export async function settleBetsForMatch(matchId: string) {
       .returning({ id: bets.id });
     if (updated.length === 0) continue;
 
-    if (winnerId === bet.student1Id) {
-      // student1Id paid the stake upfront, so they get their stake back + opponent's stake
-      await db
-        .update(students)
-        .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens * 2}` })
-        .where(eq(students.id, bet.student1Id));
-    } else if (winnerId === bet.student2Id) {
-      // student2Id never paid — they only receive the net profit (the stake amount)
-      // student1Id already lost their stake (deducted at bet creation), no further action
-      await db
-        .update(students)
-        .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
-        .where(eq(students.id, bet.student2Id));
+    // Execute payouts
+    if (payoutType === "full" && winnerId) {
+      if (bet.groupId) {
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens * 2}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, winnerId)));
+      } else {
+        await db
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens * 2}` })
+          .where(eq(students.id, winnerId));
+      }
+    } else if (payoutType === "half" && winnerId) {
+      // Closest wins half, the other half is returned to the loser
+      const winnerRefund = Math.round(bet.stakeTokens * 1.5);
+      const loserRefund = (bet.stakeTokens * 2) - winnerRefund;
+      const loserId = winnerId === bet.student1Id ? bet.student2Id : bet.student1Id;
+
+      if (bet.groupId) {
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${winnerRefund}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, winnerId)));
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${loserRefund}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, loserId)));
+      } else {
+        await db
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${winnerRefund}` })
+          .where(eq(students.id, winnerId));
+        await db
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${loserRefund}` })
+          .where(eq(students.id, loserId));
+      }
+    } else {
+      // Refund both players their stakeTokens (draw/tie/both exact match)
+      if (bet.groupId) {
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, bet.student1Id)));
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, bet.student2Id)));
+      } else {
+        await db
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+          .where(eq(students.id, bet.student1Id));
+        await db
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+          .where(eq(students.id, bet.student2Id));
+      }
     }
-    // Draw: student1Id already lost their stake, no refund. student2Id paid nothing.
-    // No token movement needed on draw.
   }
 }
 
@@ -89,10 +205,25 @@ export async function settlePredictionsForMatch(matchId: string) {
     if (updated.length === 0) continue;
 
     if (earned > 0) {
+      // Award globally
       await db
         .update(students)
         .set({ tokenBalance: sql`${students.tokenBalance} + ${earned}` })
         .where(eq(students.id, pred.studentId));
+
+      // Award to all friend groups the student is currently in
+      const memberships = await db
+        .select({ groupId: groupMembers.groupId })
+        .from(groupMembers)
+        .where(eq(groupMembers.studentId, pred.studentId));
+
+      if (memberships.length > 0) {
+        const groupIds = memberships.map((m) => m.groupId);
+        await db
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${earned}` })
+          .where(and(inArray(groupMembers.groupId, groupIds), eq(groupMembers.studentId, pred.studentId)));
+      }
     }
   }
 }

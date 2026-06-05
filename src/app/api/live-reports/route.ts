@@ -27,6 +27,7 @@ export async function GET() {
       venueName: liveReports.venueName,
       matchId: liveReports.matchId,
       studentName: students.name,
+      studentVisibility: students.visibility,
       studentId: liveReports.studentId,
       // venue details if linked
       linkedVenueName: venues.name,
@@ -51,7 +52,7 @@ export async function GET() {
     venueArea: r.linkedVenueArea ?? null,
     venueMapsUrl: r.linkedVenueMapsUrl ?? null,
     matchId: r.matchId,
-    studentName: r.studentName ?? "Someone",
+    studentName: (r.studentVisibility === "stealth" || r.studentVisibility === "friends") ? "Anonymous" : (r.studentName ?? "Someone"),
     studentId: r.studentId,
   }));
 

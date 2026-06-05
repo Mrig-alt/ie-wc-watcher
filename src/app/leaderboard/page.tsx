@@ -1,17 +1,35 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { students, teams } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { students, teams, connections } from "@/db/schema";
+import { eq, desc, and, or } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
-// Revalidate every 60 seconds — fresh enough for a leaderboard, avoids full DB
-// query on every single page load. force-dynamic was too aggressive.
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
 
 export default async function LeaderboardPage() {
   try {
     const session = await auth();
+
+    let friendIds = new Set<string>();
+    if (session?.user?.id) {
+      const myConnections = await db
+        .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
+        .from(connections)
+        .where(
+          and(
+            eq(connections.status, "accepted"),
+            or(
+              eq(connections.requesterId, session.user.id),
+              eq(connections.requesteeId, session.user.id)
+            )
+          )
+        );
+      for (const c of myConnections) {
+        if (c.requesterId !== session.user.id) friendIds.add(c.requesterId);
+        if (c.requesteeId !== session.user.id) friendIds.add(c.requesteeId);
+      }
+    }
 
     const rows = await db
       .select({
@@ -20,6 +38,7 @@ export default async function LeaderboardPage() {
         tokenBalance: students.tokenBalance,
         isHonoraryFan: students.isHonoraryFan,
         visibility: students.visibility,
+        leaderboardVisibility: students.leaderboardVisibility,
         teamName: teams.name,
         teamFlag: teams.flagEmoji,
       })
@@ -39,19 +58,26 @@ export default async function LeaderboardPage() {
 
         <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-50">
-            {rows.map((s, i) => (
-              <LeaderboardRow
-                key={s.id}
-                rank={i + 1}
-                student={{
-                  name: s.visibility === "stealth" && s.id !== session?.user.id ? "Anonymous 🕵️" : s.name,
-                  tokenBalance: s.tokenBalance,
-                  isHonoraryFan: s.isHonoraryFan,
-                  team: s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null,
-                }}
-                isCurrentUser={s.id === session?.user.id}
-              />
-            ))}
+            {(() => {
+              let anonymousCounter = 1;
+              return rows.map((s, i) => {
+                const isAnonymous = s.leaderboardVisibility === false && s.id !== session?.user?.id;
+                const displayName = isAnonymous ? `Anonymous ${anonymousCounter++} 🕵️` : s.name;
+                return (
+                  <LeaderboardRow
+                    key={s.id}
+                    rank={i + 1}
+                    student={{
+                      name: displayName,
+                      tokenBalance: s.tokenBalance,
+                      isHonoraryFan: s.isHonoraryFan,
+                      team: isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),
+                    }}
+                    isCurrentUser={s.id === session?.user?.id}
+                  />
+                );
+              });
+            })()}
           </div>
         </div>
 

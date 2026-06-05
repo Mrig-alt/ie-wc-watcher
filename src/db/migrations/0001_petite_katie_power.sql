@@ -1,0 +1,1 @@
+ALTER TABLE "teams" ADD COLUMN "eliminated_stage" "match_stage";

@@ -47,6 +47,8 @@ export async function GET(req: Request) {
       const newStatus = mapApiStatus(am.status);
       const score1 = am.score.fullTime.home;
       const score2 = am.score.fullTime.away;
+      const pen1 = am.score.penalties?.home ?? null;
+      const pen2 = am.score.penalties?.away ?? null;
 
       const resolvedStatus =
         newStatus === "completed" && (score1 === null || score2 === null) ? "live" : newStatus;
@@ -66,7 +68,7 @@ export async function GET(req: Request) {
 
         await db
           .update(matches)
-          .set({ status: resolvedStatus, team1Score: score1, team2Score: score2 })
+          .set({ status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByExtId.id));
 
         if ((!wasCompleted && resolvedStatus === "completed") || scoresNowAvailable) {
@@ -100,7 +102,7 @@ export async function GET(req: Request) {
 
         await db
           .update(matches)
-          .set({ externalId: am.id, status: resolvedStatus, team1Score: score1, team2Score: score2 })
+          .set({ externalId: am.id, status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByTeams.id));
 
         if ((!wasCompleted && resolvedStatus === "completed") || scoresNowAvailable) {

@@ -22,6 +22,7 @@ export const registerSchema = z.object({
   teamId: z.string().uuid("Invalid team").optional().nullable(),
   isHonoraryFan: z.boolean().optional().nullable(),
   visibility: z.enum(["public", "friends", "stealth"]).default("public"),
+  leaderboardVisibility: z.boolean().default(true),
   // PIN is now optional — if JOIN_PIN env var is not set, any value (or none) is accepted
   pin: z.string().optional(),
 });

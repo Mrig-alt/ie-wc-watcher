@@ -12,6 +12,7 @@ type ApiMatch = {
   score: {
     fullTime: { home: number | null; away: number | null };
     halfTime: { home: number | null; away: number | null };
+    penalties?: { home: number | null; away: number | null };
   };
   venue: string | null;
 };

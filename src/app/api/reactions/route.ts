@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   const body = await req.json();
 
   const [student] = await db
-    .select({ name: students.name })
+    .select({ name: students.name, visibility: students.visibility })
     .from(students)
     .where(eq(students.id, session.user.id))
     .limit(1);
@@ -32,9 +32,10 @@ export async function POST(req: Request) {
       })
       .returning();
 
+    const vibeName = (student?.visibility === "stealth" || student?.visibility === "friends") ? "Anonymous" : (student?.name ?? "Someone");
     broadcast({
       type: "vibe",
-      studentName: student?.name ?? "Someone",
+      studentName: vibeName,
       vibe: parsed.data.vibe,
       matchId: parsed.data.matchId,
       at: new Date().toISOString(),
@@ -53,9 +54,10 @@ export async function POST(req: Request) {
     .values({ studentId: session.user.id, ...parsed.data })
     .returning();
 
+  const reactionName = (student?.visibility === "stealth" || student?.visibility === "friends") ? "Anonymous" : (student?.name ?? "Someone");
   broadcast({
     type: "reaction",
-    studentName: student?.name ?? "Someone",
+    studentName: reactionName,
     emoji: parsed.data.emoji,
     matchId: parsed.data.matchId,
     at: new Date().toISOString(),

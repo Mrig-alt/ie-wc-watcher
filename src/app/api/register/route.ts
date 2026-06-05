@@ -43,7 +43,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, email, nationality, teamId, isHonoraryFan, visibility, pin } = parsed.data;
+  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin } = parsed.data;
 
   // PIN check: if JOIN_PIN is set, the supplied pin MUST match regardless of whether
   // the client sent a pin field. Omitting pin is not a bypass.
@@ -87,26 +87,49 @@ export async function POST(req: Request) {
     }
   }
 
-  const [{ value: totalStudents }] = await db
-    .select({ value: count() })
-    .from(students);
+  const student = await db.transaction(async (tx) => {
+    const [{ value: totalStudents }] = await tx
+      .select({ value: count() })
+      .from(students);
 
-  let tokenBalance = 100;
-  if (visibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
-  if (totalStudents < EARLY_BIRD_LIMIT) tokenBalance += EARLY_BIRD_BONUS_TOKENS;
+    let tokenBalance = 100;
+    if (visibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
+    const earlyBirdAwarded = totalStudents < EARLY_BIRD_LIMIT;
+    if (earlyBirdAwarded) tokenBalance += EARLY_BIRD_BONUS_TOKENS;
 
-  const [student] = await db
-    .insert(students)
-    .values({
-      name: name.trim(),
-      email: email.toLowerCase().trim(),
-      nationality: nationality?.trim() ?? null,
-      teamId: teamId ?? null,
-      isHonoraryFan: isHonoraryFan ?? false,
-      visibility,
-      tokenBalance,
-    })
-    .returning();
+    const [created] = await tx
+      .insert(students)
+      .values({
+        name: name.trim(),
+        email: email.toLowerCase().trim(),
+        nationality: nationality?.trim() ?? null,
+        teamId: teamId ?? null,
+        isHonoraryFan: isHonoraryFan ?? false,
+        visibility,
+        leaderboardVisibility,
+        tokenBalance,
+      })
+      .returning();
+
+    if (earlyBirdAwarded) {
+      const [{ value: postInsertCount }] = await tx
+        .select({ value: count() })
+        .from(students);
+
+      if (postInsertCount > EARLY_BIRD_LIMIT) {
+        await tx
+          .update(students)
+          .set({
+            tokenBalance: sql`${students.tokenBalance} - ${EARLY_BIRD_BONUS_TOKENS}`,
+          })
+          .where(eq(students.id, created.id));
+
+        created.tokenBalance -= EARLY_BIRD_BONUS_TOKENS;
+      }
+    }
+
+    return created;
+  });
 
   return NextResponse.json({ student }, { status: 201 });
 }

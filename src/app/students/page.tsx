@@ -1,8 +1,8 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { students, teams, connections } from "@/db/schema";
-import { eq, and, or } from "drizzle-orm";
-import StudentCard from "@/components/students/StudentCard";
+import { students, teams, connections, matches } from "@/db/schema";
+import { eq, and, or, asc } from "drizzle-orm";
+import ClassmatesPageClient from "@/components/students/ClassmatesPageClient";
 
 export const dynamic = "force-dynamic";
 
@@ -11,7 +11,7 @@ export default async function StudentsPage() {
     const session = await auth();
     const validSession = session?.user?.id ? session : null;
 
-    // Get accepted friend IDs if logged in
+    // Accepted friend IDs
     let friendIds = new Set<string>();
     if (validSession) {
       const myConnections = await db
@@ -32,24 +32,43 @@ export default async function StudentsPage() {
       }
     }
 
-    const allStudents = await db
-      .select({
-        id: students.id,
-        name: students.name,
-        nationality: students.nationality,
-        isHonoraryFan: students.isHonoraryFan,
-        tokenBalance: students.tokenBalance,
-        visibility: students.visibility,
-        lastSeenAt: students.lastSeenAt,
-        teamId: students.teamId,
-        teamName: teams.name,
-        teamFlag: teams.flagEmoji,
-        teamCode: teams.countryCode,
-      })
-      .from(students)
-      .leftJoin(teams, eq(students.teamId, teams.id))
-      .where(eq(students.flagged, false))
-      .orderBy(students.name);
+    const [allStudents, allTeams, upcomingMatches] = await Promise.all([
+      db
+        .select({
+          id: students.id,
+          name: students.name,
+          nationality: students.nationality,
+          isHonoraryFan: students.isHonoraryFan,
+          tokenBalance: students.tokenBalance,
+          visibility: students.visibility,
+          lastSeenAt: students.lastSeenAt,
+          teamId: students.teamId,
+          teamName: teams.name,
+          teamFlag: teams.flagEmoji,
+          teamCode: teams.countryCode,
+        })
+        .from(students)
+        .leftJoin(teams, eq(students.teamId, teams.id))
+        .where(eq(students.flagged, false))
+        .orderBy(students.name),
+
+      db
+        .select({ id: teams.id, name: teams.name, flagEmoji: teams.flagEmoji })
+        .from(teams),
+
+      db
+        .select({
+          id: matches.id,
+          team1Id: matches.team1Id,
+          team2Id: matches.team2Id,
+          team1Placeholder: matches.team1Placeholder,
+          team2Placeholder: matches.team2Placeholder,
+          matchDatetime: matches.matchDatetime,
+        })
+        .from(matches)
+        .where(eq(matches.status, "upcoming"))
+        .orderBy(asc(matches.matchDatetime)),
+    ]);
 
     // Filter by visibility
     const visible = allStudents.filter((s) => {
@@ -60,46 +79,26 @@ export default async function StudentsPage() {
       return false; // stealth
     });
 
-    const byCountry = new Map<string, typeof visible>();
-    for (const s of visible) {
-      const key = s.teamCode ?? "no-team";
-      if (!byCountry.has(key)) byCountry.set(key, []);
-      byCountry.get(key)!.push(s);
-    }
+    const mappedStudents = visible.map((s) => ({
+      id: s.id,
+      name: s.name,
+      nationality: s.nationality,
+      isHonoraryFan: s.isHonoraryFan,
+      tokenBalance: s.tokenBalance,
+      lastSeenAt: s.lastSeenAt,
+      team: s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag!, countryCode: s.teamCode! } : null,
+    }));
 
     return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-2xl font-bold text-gray-900">Classmates</h1>
-          <p className="text-sm text-gray-500 mt-1">{visible.length} classmates visible</p>
-        </div>
-
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {visible.map((s) => (
-            <StudentCard
-              key={s.id}
-              student={{
-                id: s.id,
-                name: s.name,
-                nationality: s.nationality,
-                isHonoraryFan: s.isHonoraryFan,
-                tokenBalance: s.tokenBalance,
-                lastSeenAt: s.lastSeenAt,
-                team: s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag!, countryCode: s.teamCode! } : null,
-              }}
-            />
-          ))}
-        </div>
-
-        {visible.length === 0 && (
-          <p className="text-center text-sm text-gray-400 py-12">
-            No classmates visible yet. Be the first to join!
-          </p>
-        )}
-      </div>
+      <ClassmatesPageClient
+        students={mappedStudents}
+        upcomingMatches={upcomingMatches}
+        teams={allTeams}
+        currentUserId={validSession?.user.id ?? null}
+        currentUserTokenBalance={validSession?.user.tokenBalance ?? 0}
+      />
     );
   } catch (e) {
-    // FIX: log full error server-side only — never expose stack/message in HTML
     console.error("[students] render error", e);
     return (
       <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center text-sm text-red-600 m-4">

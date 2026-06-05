@@ -62,6 +62,7 @@ export const teams = pgTable("teams", {
   group: varchar("group", { length: 1 }),
   confederation: varchar("confederation", { length: 10 }).notNull(),
   isEliminated: boolean("is_eliminated").notNull().default(false),
+  eliminatedStage: matchStageEnum("eliminated_stage"),
 });
 
 // ─── Students ─────────────────────────────────────────────────────────────────
@@ -74,6 +75,7 @@ export const students = pgTable("students", {
   teamId: uuid("team_id").references(() => teams.id, { onDelete: "set null" }),
   isHonoraryFan: boolean("is_honorary_fan").notNull().default(false),
   visibility: visibilityEnum("visibility").notNull().default("public"),
+  leaderboardVisibility: boolean("leaderboard_visibility").notNull().default(true),
   tokenBalance: integer("token_balance").notNull().default(100),
   flagged: boolean("flagged").notNull().default(false),
   lastSeenAt: timestamp("last_seen_at"),
@@ -125,6 +127,7 @@ export const groupMembers = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
+    tokenBalance: integer("token_balance").notNull().default(100),
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.groupId, t.studentId)]
@@ -159,6 +162,8 @@ export const matches = pgTable("matches", {
   groupName: varchar("group_name", { length: 1 }),
   team1Score: integer("team1_score"),
   team2Score: integer("team2_score"),
+  team1Penalties: integer("team1_penalties"),
+  team2Penalties: integer("team2_penalties"),
   status: matchStatusEnum("status").notNull().default("upcoming"),
   team1Placeholder: varchar("team1_placeholder", { length: 60 }),
   team2Placeholder: varchar("team2_placeholder", { length: 60 }),
@@ -203,9 +208,16 @@ export const bets = pgTable(
     student2Id: uuid("student2_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
+    groupId: uuid("group_id").references(() => friendGroups.id, { onDelete: "cascade" }),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    challengerTeamSide: integer("challenger_team_side"),
     stakeTokens: integer("stake_tokens").notNull().default(10),
     winnerId: uuid("winner_id").references(() => students.id),
     settled: boolean("settled").notNull().default(false),
+    student1Score1: integer("student1_score1"),
+    student1Score2: integer("student1_score2"),
+    student2Score1: integer("student2_score1"),
+    student2Score2: integer("student2_score2"),
   },
   (t) => [
     unique().on(t.matchId, t.student1Id, t.student2Id),

@@ -75,7 +75,10 @@ export default function AccountPage() {
             <span className="text-lg font-bold text-yellow-600">🪙 {displayTokens}</span>
           </div>
         </div>
-        <div className="flex gap-3 pt-1">
+        <div className="flex gap-4 pt-1">
+          {session.user.teamId && (
+            <a href="/my-team" className="text-xs text-green-600 hover:underline">View my team →</a>
+          )}
           <a href="/leaderboard" className="text-xs text-green-600 hover:underline">See leaderboard →</a>
         </div>
       </div>
@@ -86,8 +89,8 @@ export default function AccountPage() {
           value={visibility}
           onChange={(v) => { setVisibility(v); setSaved(false); }}
         />
-        <Button onClick={handleSave} loading={loading} className="w-full">
-          {saved ? "✓ Saved" : "Save changes"}
+        <Button onClick={handleSave} disabled={loading} className="w-full">
+          {loading ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
         </Button>
       </div>
 

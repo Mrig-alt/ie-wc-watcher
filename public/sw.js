@@ -1,7 +1,6 @@
 const CACHE_NAME = 'wc2026-v1';
 const STATIC_ASSETS = [
   '/',
-  '/schedule',
   '/leaderboard',
 ];
 

@@ -1,10 +1,12 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { matches, teams, students, predictions, watchInvites } from "@/db/schema";
-import { eq, and, gte, lte, asc, inArray } from "drizzle-orm";
+import { matches, teams, students, predictions, watchInvites, bets, friendGroups } from "@/db/schema";
+import { eq, and, gte, lte, asc, inArray, desc } from "drizzle-orm";
+import { alias } from "drizzle-orm/pg-core";
 import TodayHero from "@/components/matches/TodayHero";
 import MatchCardClient from "@/components/matches/MatchCardClient";
 import JoinBanner from "@/components/home/JoinBanner";
+import PendingChallengesWidget from "@/components/home/PendingChallengesWidget";
 
 export const dynamic = "force-dynamic";
 
@@ -30,22 +32,22 @@ export default async function HomePage() {
       .where(and(gte(matches.matchDatetime, todayStart), lte(matches.matchDatetime, todayEnd)))
       .orderBy(asc(matches.matchDatetime));
 
-    const allTeams = await db.select().from(teams);
-    const teamMap = new Map(allTeams.map((t) => [t.id, t]));
-
-    const allStudents = await db
-      .select({ id: students.id, name: students.name, teamId: students.teamId, visibility: students.visibility, lastSeenAt: students.lastSeenAt })
-      .from(students)
-      .where(eq(students.flagged, false));
-
-    const myPredictions = validSession
-      ? await db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
-      : [];
-
     const todayMatchIds = todayMatches.map((m) => m.id);
-    const todayInvites =
+
+    // Alias students for pending bet challenger names
+    const challenger = alias(students, "challenger");
+
+    const [allTeams, allStudents, myPredictions, todayInvites, pendingChallenges] = await Promise.all([
+      db.select().from(teams),
+      db
+        .select({ id: students.id, name: students.name, teamId: students.teamId, visibility: students.visibility, lastSeenAt: students.lastSeenAt })
+        .from(students)
+        .where(eq(students.flagged, false)),
+      validSession
+        ? db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
+        : Promise.resolve([]),
       todayMatchIds.length > 0
-        ? await db
+        ? db
             .select({
               inviterId: watchInvites.inviterId,
               matchId: watchInvites.matchId,
@@ -54,7 +56,68 @@ export default async function HomePage() {
             })
             .from(watchInvites)
             .where(inArray(watchInvites.matchId, todayMatchIds))
-        : [];
+        : Promise.resolve([]),
+      validSession
+        ? db
+            .select({
+              id: bets.id,
+              stakeTokens: bets.stakeTokens,
+              challengerName: challenger.name,
+              matchDatetime: matches.matchDatetime,
+              team1Id: matches.team1Id,
+              team2Id: matches.team2Id,
+              team1Placeholder: matches.team1Placeholder,
+              team2Placeholder: matches.team2Placeholder,
+              groupId: bets.groupId,
+              student1Score1: bets.student1Score1,
+              student1Score2: bets.student1Score2,
+            })
+            .from(bets)
+            .innerJoin(matches, eq(matches.id, bets.matchId))
+            .innerJoin(challenger, eq(challenger.id, bets.student1Id))
+            .where(
+              and(
+                eq(bets.student2Id, validSession.user.id),
+                eq(bets.status, "pending"),
+                eq(bets.settled, false)
+              )
+            )
+            .orderBy(desc(matches.matchDatetime))
+        : Promise.resolve([]),
+    ]);
+
+    // Resolve group names for pending challenges
+    const groupIdsNeeded = [...new Set((pendingChallenges as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];
+    const groupNameMap = new Map<string, string>();
+    if (groupIdsNeeded.length > 0) {
+      const groupRows = await db.select({ id: friendGroups.id, name: friendGroups.name }).from(friendGroups).where(inArray(friendGroups.id, groupIdsNeeded));
+      for (const g of groupRows) groupNameMap.set(g.id, g.name);
+    }
+
+    const teamMap = new Map(allTeams.map((t) => [t.id, t]));
+
+    // Build serializable pending challenges for widget
+    const pendingChallengeProps = (pendingChallenges as Array<{
+      id: string; stakeTokens: number; challengerName: string;
+      matchDatetime: Date; team1Id: string | null; team2Id: string | null;
+      team1Placeholder: string | null; team2Placeholder: string | null; groupId: string | null;
+      student1Score1: number | null; student1Score2: number | null;
+    }>).map((c) => {
+      const t1 = c.team1Id ? teamMap.get(c.team1Id) : null;
+      const t2 = c.team2Id ? teamMap.get(c.team2Id) : null;
+      const n1 = t1 ? `${t1.flagEmoji} ${t1.name}` : (c.team1Placeholder ?? "TBD");
+      const n2 = t2 ? `${t2.flagEmoji} ${t2.name}` : (c.team2Placeholder ?? "TBD");
+      return {
+        id: c.id,
+        stakeTokens: c.stakeTokens,
+        challengerName: c.challengerName,
+        matchLabel: `${n1} vs ${n2}`,
+        matchDatetime: c.matchDatetime.toISOString(),
+        groupName: c.groupId ? (groupNameMap.get(c.groupId) ?? null) : null,
+        student1Score1: c.student1Score1,
+        student1Score2: c.student1Score2,
+      };
+    });
 
     const liveCount = todayMatches.filter((m) => m.status === "live").length;
     const upcomingCount = todayMatches.filter((m) => m.status === "upcoming").length;
@@ -67,12 +130,22 @@ export default async function HomePage() {
         }
       : null;
 
+    const myTeamId = validSession?.user.teamId;
+    const myTeamRaw = myTeamId ? teamMap.get(myTeamId) ?? null : null;
+    const myTeam = myTeamRaw
+      ? { name: myTeamRaw.name, flagEmoji: myTeamRaw.flagEmoji, countryCode: myTeamRaw.countryCode }
+      : null;
+
     return (
       <div className="space-y-6">
-        <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatch} tokenBalance={validSession?.user.tokenBalance} />
+        <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatch} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
 
         {/* Client component — uses useSession() so it always reflects true auth state */}
         <JoinBanner />
+
+        {pendingChallengeProps.length > 0 && (
+          <PendingChallengesWidget challenges={pendingChallengeProps} />
+        )}
 
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-3">{liveCount > 0 ? "\uD83D\uDD34 Live now" : "Today's matches"}</h2>

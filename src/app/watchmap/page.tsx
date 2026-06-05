@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { watchInvites, venues, matches, teams, students } from "@/db/schema";
+import { watchInvites, venues, matches, teams, students, connections } from "@/db/schema";
 import { eq, asc, and, or } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import WatchMapClient from "@/components/watchmap/WatchMapClient";
@@ -9,8 +9,28 @@ export const dynamic = "force-dynamic";
 export default async function WatchMapPage() {
   const session = await auth();
 
+  let friendIds = new Set<string>();
+  if (session?.user?.id) {
+    const myConnections = await db
+      .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
+      .from(connections)
+      .where(
+        and(
+          eq(connections.status, "accepted"),
+          or(
+            eq(connections.requesterId, session.user.id),
+            eq(connections.requesteeId, session.user.id)
+          )
+        )
+      );
+    for (const c of myConnections) {
+      if (c.requesterId !== session.user.id) friendIds.add(c.requesterId);
+      if (c.requesteeId !== session.user.id) friendIds.add(c.requesteeId);
+    }
+  }
+
   // Scope to upcoming/live matches only and filter flagged inviters — prevents full table scan
-  const allInvites = await db
+  const allInvitesRaw = await db
     .select({
       id: watchInvites.id,
       matchId: watchInvites.matchId,
@@ -19,11 +39,22 @@ export default async function WatchMapPage() {
       locationName: watchInvites.locationName,
       locationUrl: watchInvites.locationUrl,
       inviterName: students.name,
+      visibility: students.visibility,
     })
     .from(watchInvites)
     .innerJoin(students, eq(students.id, watchInvites.inviterId))
     .innerJoin(matches, eq(matches.id, watchInvites.matchId))
     .where(and(eq(students.flagged, false), or(eq(matches.status, "upcoming"), eq(matches.status, "live"))));
+
+  const allInvites = allInvitesRaw.filter((inv) => {
+    if (inv.visibility === "stealth") return false;
+    if (inv.visibility === "friends") {
+      if (!session?.user?.id) return false;
+      if (inv.inviterId === session.user.id) return true;
+      return friendIds.has(inv.inviterId);
+    }
+    return true;
+  });
 
   const allMatches = await db
     .select({
@@ -49,6 +80,7 @@ export default async function WatchMapPage() {
     .select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl })
     .from(venues);
   const venueMap = new Map(allVenues.map((v) => [v.id, v]));
+  const matchMap = new Map(allMatches.map((m) => [m.id, m]));
 
   // My existing watch plans (for logged-in user)
   const myPlans = session?.user?.id
@@ -118,7 +150,7 @@ export default async function WatchMapPage() {
     const mapsUrl = linked?.mapsUrl ?? null;
     if (!barCounts[key]) barCounts[key] = { venueId: inv.venueId ?? null, name, area, mapsUrl, totalPeople: 0, byMatch: [] };
     barCounts[key].totalPeople++;
-    const match = allMatches.find((m) => m.id === inv.matchId);
+    const match = matchMap.get(inv.matchId);
     if (match) {
       const t1 = match.team1Id ? teamMap.get(match.team1Id) : null;
       const t2 = match.team2Id ? teamMap.get(match.team2Id) : null;

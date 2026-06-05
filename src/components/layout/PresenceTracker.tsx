@@ -7,10 +7,28 @@ import { useSession } from "next-auth/react";
 export default function PresenceTracker() {
   const { data: session } = useSession();
 
+  // Register service worker in production
+  useEffect(() => {
+    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
+      navigator.serviceWorker.register("/sw.js").catch(console.error);
+    }
+  }, []);
+
   useEffect(() => {
     // Guard on user.id — session.user alone can be a truthy empty object before id is populated
     if (!session?.user?.id) return;
-    fetch("/api/presence", { method: "POST" }).catch(() => {});
+
+    const ping = () => {
+      fetch("/api/presence", { method: "POST" }).catch(() => {});
+    };
+
+    // Initial ping on mount/auth
+    ping();
+
+    // Re-ping every 3 minutes to keep lastSeenAt fresh
+    const interval = setInterval(ping, 3 * 60 * 1000);
+
+    return () => clearInterval(interval);
   }, [session?.user?.id]);
 
   return null;

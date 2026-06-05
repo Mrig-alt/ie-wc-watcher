@@ -1,0 +1,41 @@
+{
+  "version": "7",
+  "dialect": "postgresql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "7",
+      "when": 1780661688609,
+      "tag": "0000_cute_the_initiative",
+      "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1780661922963,
+      "tag": "0001_petite_katie_power",
+      "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1780672257731,
+      "tag": "0002_small_spencer_smythe",
+      "breakpoints": true
+    },
+    {
+      "idx": 3,
+      "version": "7",
+      "when": 1780673692674,
+      "tag": "0003_busy_makkari",
+      "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "7",
+      "when": 1780676278101,
+      "tag": "0004_solid_avengers",
+      "breakpoints": true
+    }
+  ]
+}

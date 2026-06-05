@@ -19,6 +19,7 @@ type WatchLocation = {
   locationUrl: string | null;
   venueId: string | null;
   people: string[];
+  inviterIds: string[];
 };
 
 export default function WatchTogetherCard({ matchId }: { matchId: string }) {
@@ -41,7 +42,7 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
     // Guard on user.id — session.user alone can be a truthy empty object before id is populated
     if (session?.user?.id) {
       const mine = (data.locations ?? []).find((l: WatchLocation) =>
-        l.people.includes(session.user.name)
+        l.inviterIds.includes(session.user.id)
       );
       setMyLocation(mine?.locationName ?? null);
     }

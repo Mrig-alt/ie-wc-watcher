@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSession } from "next-auth/react";
 import { useEffect, useState, useCallback } from "react";
-import { Trophy, Coins } from "lucide-react";
+import { Trophy, Coins, UserPlus } from "lucide-react";
 
 export default function Header() {
   const { data: session } = useSession();
@@ -76,9 +76,11 @@ export default function Header() {
           ) : (
             <Link
               href="/join"
-              className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+              className="flex items-center gap-1.5 rounded-lg bg-green-600 p-2 text-white hover:bg-green-700 transition-colors sm:px-3 sm:py-1.5"
+              title="Join Class"
             >
-              Join
+              <UserPlus className="h-4 w-4" />
+              <span className="hidden sm:inline text-sm font-medium">Join</span>
             </Link>
           )}
         </div>

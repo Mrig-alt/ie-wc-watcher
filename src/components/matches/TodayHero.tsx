@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { formatKickoff } from "@/lib/utils";
 
 interface TodayHeroProps {
@@ -10,9 +11,10 @@ interface TodayHeroProps {
   } | null;
   myTeam?: { name: string; flagEmoji: string; countryCode: string } | null;
   tokenBalance?: number;
+  isLoggedIn?: boolean;
 }
 
-export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam, tokenBalance }: TodayHeroProps) {
+export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam, tokenBalance, isLoggedIn }: TodayHeroProps) {
   return (
     <div className="rounded-2xl bg-gradient-to-br from-green-600 to-green-800 p-6 text-white shadow-lg">
       <div className="flex items-start justify-between">
@@ -20,13 +22,29 @@ export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam,
           <h1 className="text-xl font-bold">IE World Cup 2026</h1>
           <p className="mt-0.5 text-green-200 text-sm">Class cohort tracker</p>
         </div>
-        {myTeam && (
-          <div className="flex flex-col items-end">
-            <span className="text-3xl">{myTeam.flagEmoji}</span>
-            <span className="text-xs text-green-200 mt-0.5">{myTeam.name}</span>
-          </div>
+        {isLoggedIn && (
+          myTeam ? (
+            <Link
+              href="/my-team"
+              className="flex flex-col items-end group"
+              title={`My team: ${myTeam.name}`}
+            >
+              <span className="text-3xl transition-transform group-hover:scale-110 select-none">{myTeam.flagEmoji}</span>
+              <span className="text-xs text-green-200 mt-0.5 group-hover:text-white transition-colors">{myTeam.name}</span>
+            </Link>
+          ) : (
+            <Link
+              href="/my-team"
+              className="flex flex-col items-end group"
+              title="Select your supported team"
+            >
+              <span className="text-3xl transition-transform group-hover:scale-110 select-none">🏳️</span>
+              <span className="text-xs text-green-200 mt-0.5 group-hover:text-white transition-colors">Select Team</span>
+            </Link>
+          )
         )}
       </div>
+
 
       <div className="mt-4 flex items-center gap-4">
         {liveCount > 0 && (

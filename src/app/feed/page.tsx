@@ -14,6 +14,7 @@ export default async function FeedPage() {
         name: teams.name,
         flagEmoji: teams.flagEmoji,
         countryCode: teams.countryCode,
+        eliminatedStage: teams.eliminatedStage,
       })
       .from(teams)
       .where(eq(teams.isEliminated, true));
@@ -51,7 +52,7 @@ export default async function FeedPage() {
                     key={team.id}
                     team={team}
                     students={supporters}
-                    eliminatedInStage="group"
+                    eliminatedInStage={team.eliminatedStage ?? "group"}
                   />
                 );
               })}

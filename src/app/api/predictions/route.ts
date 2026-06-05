@@ -24,6 +24,9 @@ export async function POST(req: Request) {
     .limit(1);
 
   if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
+  if (new Date() >= new Date(match.matchDatetime)) {
+    return NextResponse.json({ error: "Predictions are locked — match has started" }, { status: 403 });
+  }
   if (match.status !== "upcoming") {
     return NextResponse.json({ error: "Predictions locked" }, { status: 403 });
   }

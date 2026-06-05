@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { students } from "@/db/schema";
+import { students, teams } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 function isAdmin(email: string | undefined) {
@@ -10,7 +10,7 @@ function isAdmin(email: string | undefined) {
 }
 
 // POST /api/admin/moderate
-// Body: { id: string; action: "flag" | "unflag" | "set_team"; teamId?: string }
+// Body: { id: string; action: "flag" | "unflag" | "set_team" | "eliminate_team" | "restore_team"; teamId?: string; eliminatedStage?: string }
 export async function POST(req: Request) {
   const session = await auth();
   if (!isAdmin(session?.user?.email)) {
@@ -18,10 +18,34 @@ export async function POST(req: Request) {
   }
 
   const body = await req.json();
-  const { id, action, teamId } = body as { id: string; action: string; teamId?: string };
+  const { id, action, teamId, eliminatedStage } = body as {
+    id?: string;
+    action: string;
+    teamId?: string;
+    eliminatedStage?: string;
+  };
 
-  if (!id || !action) {
-    return NextResponse.json({ error: "id and action required" }, { status: 400 });
+  const targetId = id || teamId;
+  if (!targetId || !action) {
+    return NextResponse.json({ error: "id/teamId and action required" }, { status: 400 });
+  }
+
+  if (action === "eliminate_team") {
+    const [updatedTeam] = await db
+      .update(teams)
+      .set({ isEliminated: true, eliminatedStage: (eliminatedStage as any) ?? null })
+      .where(eq(teams.id, targetId))
+      .returning();
+    return NextResponse.json({ team: updatedTeam });
+  }
+
+  if (action === "restore_team") {
+    const [updatedTeam] = await db
+      .update(teams)
+      .set({ isEliminated: false, eliminatedStage: null })
+      .where(eq(teams.id, targetId))
+      .returning();
+    return NextResponse.json({ team: updatedTeam });
   }
 
   let update: Partial<typeof students.$inferInsert> = {};
@@ -39,7 +63,7 @@ export async function POST(req: Request) {
   const [updated] = await db
     .update(students)
     .set(update)
-    .where(eq(students.id, id))
+    .where(eq(students.id, targetId))
     .returning({ id: students.id, flagged: students.flagged, teamId: students.teamId });
 
   return NextResponse.json({ student: updated });

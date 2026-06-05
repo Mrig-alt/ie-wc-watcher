@@ -84,10 +84,10 @@ export default async function SchedulePage() {
                 // FIX: guard null teamId — null===null would match all teamless
                 // students to every TBD knockout slot (same bug fixed on home page)
                 const team1Supporters = match.team1Id !== null
-                  ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility === "public")
+                  ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility !== "stealth")
                   : [];
                 const team2Supporters = match.team2Id !== null
-                  ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility === "public")
+                  ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility !== "stealth")
                   : [];
 
                 const myPred = myPredictions.find((p) => p.matchId === match.id);
