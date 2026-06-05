@@ -17,78 +17,73 @@ export async function GET() {
     connectionString.includes("127.0.0.1");
   const sslMode = isLocalhost ? false : "require";
 
-  try {
-    const client = postgres(connectionString, {
-      prepare: false,
-      max: 1,
-      ssl: sslMode,
-      connect_timeout: 5,
-    });
+  const client = postgres(connectionString, {
+    prepare: false,
+    max: 1,
+    ssl: sslMode,
+    connect_timeout: 5,
+  });
 
-    // 1. Get all tables in public schema
-    const tables = await client`
-      SELECT table_name 
-      FROM information_schema.tables 
-      WHERE table_schema = 'public'
-    `;
+  const queryTimes: Record<string, number | string> = {};
 
-    // 2. Get columns of 'teams' table
-    const teamsColumns = await client`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'teams'
-    `;
-
-    // 3. Get columns of 'bets' table
-    const betsColumns = await client`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'bets'
-    `;
-
-    // 4. Get columns of 'students' table
-    const studentsColumns = await client`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'students'
-    `;
-
-    // 4b. Get columns of 'matches' table
-    const matchesColumns = await client`
-      SELECT column_name, data_type, is_nullable
-      FROM information_schema.columns 
-      WHERE table_schema = 'public' AND table_name = 'matches'
-    `;
-
-    // 5. Get list of migrations applied (if drizzle_migrations table exists)
-    let migrations = null;
+  async function timeQuery(name: string, fn: () => Promise<any>) {
+    const start = Date.now();
     try {
-      migrations = await client`
-        SELECT id, name, created_at 
-        FROM __drizzle_migrations
-        ORDER BY created_at DESC
-      `;
+      await fn();
+      queryTimes[name] = Date.now() - start;
     } catch (e) {
-      migrations = "Table __drizzle_migrations does not exist or error: " + String(e);
+      queryTimes[name] = "Failed after " + (Date.now() - start) + "ms: " + String(e);
     }
+  }
+
+  try {
+    // 1. SELECT 1
+    await timeQuery("select_1", () => client`SELECT 1`);
+
+    // 2. Query matches (today matches logic)
+    const now = new Date();
+    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+
+    await timeQuery("query_matches", () => client`
+      SELECT id 
+      FROM matches 
+      WHERE match_datetime >= ${todayStart} AND match_datetime <= ${todayEnd}
+    `);
+
+    // 3. Query all teams
+    await timeQuery("query_teams", () => client`
+      SELECT id, name FROM teams
+    `);
+
+    // 4. Query students
+    await timeQuery("query_students", () => client`
+      SELECT id, name FROM students WHERE flagged = false
+    `);
+
+    // 5. Query watch_invites
+    await timeQuery("query_watch_invites", () => client`
+      SELECT id FROM watch_invites LIMIT 5
+    `);
+
+    // 6. Query bets
+    await timeQuery("query_bets", () => client`
+      SELECT id FROM bets LIMIT 5
+    `);
 
     await client.end();
 
     return NextResponse.json({
       success: true,
-      tables: tables.map(t => t.table_name),
-      teamsColumns: teamsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
-      betsColumns: betsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
-      studentsColumns: studentsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
-      matchesColumns: matchesColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
-      migrations,
+      queryTimes,
     });
   } catch (error) {
     const err = error as Error;
+    await client.end();
     return NextResponse.json({
       success: false,
+      queryTimes,
       errorMessage: err.message || String(error),
-      errorStack: err.stack || null,
     });
   }
 }
