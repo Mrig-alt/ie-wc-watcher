@@ -4,6 +4,7 @@ import { matches, teams, students, predictions, watchInvites } from "@/db/schema
 import { eq, asc, inArray, gte } from "drizzle-orm";
 import MatchCard from "@/components/matches/MatchCard";
 import { stageLabel, formatMatchDate } from "@/lib/utils";
+import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -32,12 +33,10 @@ export default async function SchedulePage() {
       .where(gte(matches.matchDatetime, new Date(new Date().setHours(0, 0, 0, 0))))
       .orderBy(asc(matches.matchDatetime));
 
-    const allStudents = await db
-      .select({ id: students.id, name: students.name, teamId: students.teamId, visibility: students.visibility, lastSeenAt: students.lastSeenAt })
-      .from(students)
-      .where(eq(students.flagged, false));
-
-    const allTeams = await db.select().from(teams);
+    const [allStudents, allTeams] = await Promise.all([
+      getCachedActiveStudents(),
+      getCachedTeams(),
+    ]);
     const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
     const myPredictions = validSession

@@ -49,7 +49,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     async jwt(params) {
       // Step 1: run the base token-building logic from authConfig (handles user sign-in)
-      const { token, user } = params;
+      const { token, user, trigger, session } = params;
 
       if (user) {
         // Fresh sign-in — seed token from the user object returned by authorize()
@@ -63,31 +63,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (!token.id && token.sub) token.id = token.sub;
 
-      // Step 2: on every subsequent request (not sign-in), refresh live values from DB
-      // This ensures tokenBalance, teamId, visibility are always fresh.
-      // lastSeenAt is handled by /api/presence — no need to update it here.
-      if (!user && token?.id) {
-        try {
-          const [fresh] = await db
-            .select({
-              tokenBalance: students.tokenBalance,
-              teamId: students.teamId,
-              visibility: students.visibility,
-              flagged: students.flagged,
-            })
-            .from(students)
-            .where(eq(students.id, token.id as string))
-            .limit(1);
-
-          if (fresh) {
-            if (fresh.flagged) return null; // kill session for flagged users
-            token.tokenBalance = fresh.tokenBalance;
-            token.teamId = fresh.teamId;
-            token.visibility = fresh.visibility;
-          }
-        } catch {
-          // DB unavailable — keep stale token values rather than breaking auth
-        }
+      // Step 2: Handle client-side session updates (zero-DB!)
+      if (trigger === "update" && session) {
+        if (session.tokenBalance !== undefined) token.tokenBalance = session.tokenBalance;
+        if (session.teamId !== undefined) token.teamId = session.teamId;
+        if (session.visibility !== undefined) token.visibility = session.visibility;
       }
 
       return token;

@@ -2,6 +2,7 @@
 
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { Trophy, Users, Calendar, ArrowLeft, Search, ShieldCheck, Settings, Info, Sparkles } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -83,6 +84,7 @@ export default function MyTeamClient({
   standings = [],
 }: Props) {
   const router = useRouter();
+  const { update } = useSession();
   const [isPending, startTransition] = useTransition();
   const [isEditing, setIsEditing] = useState(false);
   const [selectedTeamId, setSelectedTeamId] = useState<string | null>(team?.id ?? null);
@@ -120,6 +122,7 @@ export default function MyTeamClient({
         const data = await res.json();
         setError(data.error ?? "Failed to save team choice");
       } else {
+        await update({ teamId: activeTeamId });
         setIsEditing(false);
         router.refresh();
       }

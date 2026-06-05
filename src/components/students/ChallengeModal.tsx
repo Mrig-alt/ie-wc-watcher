@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useSession } from "next-auth/react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -41,6 +42,7 @@ export default function ChallengeModal({
   groupId = null,
   onSuccess,
 }: ChallengeModalProps) {
+  const { update } = useSession();
   const [matchId, setMatchId] = useState("");
   const [challengeType, setChallengeType] = useState<"winner" | "score">("winner");
   const [challengerTeamSide, setChallengerTeamSide] = useState<number | null>(null);
@@ -82,6 +84,7 @@ export default function ChallengeModal({
       if (!res.ok) {
         setError(data.error ?? "Failed to send challenge");
       } else {
+        await update({ tokenBalance: myBalance - stakeTokens });
         if (onSuccess) onSuccess();
         onClose();
       }

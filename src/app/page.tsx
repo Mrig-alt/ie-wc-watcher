@@ -7,6 +7,7 @@ import TodayHero from "@/components/matches/TodayHero";
 import MatchCardClient from "@/components/matches/MatchCardClient";
 import JoinBanner from "@/components/home/JoinBanner";
 import PendingChallengesWidget from "@/components/home/PendingChallengesWidget";
+import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 
 export const dynamic = "force-dynamic";
 
@@ -38,11 +39,8 @@ export default async function HomePage() {
     const challenger = alias(students, "challenger");
 
     const [allTeams, allStudents, myPredictions, todayInvites, pendingChallenges] = await Promise.all([
-      db.select().from(teams),
-      db
-        .select({ id: students.id, name: students.name, teamId: students.teamId, visibility: students.visibility, lastSeenAt: students.lastSeenAt })
-        .from(students)
-        .where(eq(students.flagged, false)),
+      getCachedTeams(),
+      getCachedActiveStudents(),
       validSession
         ? db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
         : Promise.resolve([]),
