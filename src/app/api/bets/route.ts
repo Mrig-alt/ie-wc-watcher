@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { bets, students, matches } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, or, sql } from "drizzle-orm";
 import { z } from "zod";
 import { STAKE_TOKENS } from "@/lib/tokens";
 
@@ -46,15 +46,17 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Insufficient token balance" }, { status: 400 });
   }
 
-  // Check bet doesn't already exist between these two for this match
+  // Check bet doesn't already exist between these two for this match (either direction)
   const existing = await db
     .select({ id: bets.id })
     .from(bets)
     .where(
       and(
         eq(bets.matchId, matchId),
-        eq(bets.student1Id, session.user.id),
-        eq(bets.student2Id, opponentId)
+        or(
+          and(eq(bets.student1Id, session.user.id), eq(bets.student2Id, opponentId)),
+          and(eq(bets.student1Id, opponentId), eq(bets.student2Id, session.user.id))
+        )
       )
     )
     .limit(1);
@@ -69,7 +71,6 @@ export async function POST(req: Request) {
     .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeTokens}` })
     .where(eq(students.id, session.user.id));
 
-  // Create the bet
   const [bet] = await db
     .insert(bets)
     .values({
@@ -89,14 +90,19 @@ export async function GET(req: Request) {
 
   const { searchParams } = new URL(req.url);
   const matchId = searchParams.get("matchId");
+  const userId = session.user.id;
 
+  // Return bets where user is either the creator (student1Id) OR the opponent (student2Id)
   const results = await db
     .select()
     .from(bets)
     .where(
       matchId
-        ? and(eq(bets.matchId, matchId), eq(bets.student1Id, session.user.id))
-        : eq(bets.student1Id, session.user.id)
+        ? and(
+            eq(bets.matchId, matchId),
+            or(eq(bets.student1Id, userId), eq(bets.student2Id, userId))
+          )
+        : or(eq(bets.student1Id, userId), eq(bets.student2Id, userId))
     );
 
   return NextResponse.json({ bets: results });

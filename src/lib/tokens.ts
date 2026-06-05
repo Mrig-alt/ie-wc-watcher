@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { students, bets, predictions, matches } from "@/db/schema";
-import { eq, and, isNull, isNotNull, sql } from "drizzle-orm";
+import { eq, and, isNull, sql } from "drizzle-orm";
 
 export const STAKE_TOKENS = 10;
 export const PREDICTION_CORRECT_TOKENS = 5;
@@ -27,7 +27,7 @@ export async function settleBetsForMatch(matchId: string) {
       winnerId = bet.student2Id;
     }
 
-    // CAS guard: only update if still unsettled — prevents double-credit on concurrent syncs
+    // CAS guard: only update if still unsettled
     const updated = await db
       .update(bets)
       .set({ settled: true, winnerId })
@@ -36,20 +36,18 @@ export async function settleBetsForMatch(matchId: string) {
     if (updated.length === 0) continue;
 
     if (winnerId) {
+      // Winner gets their stake back + opponent's stake
       await db
         .update(students)
         .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens * 2}` })
         .where(eq(students.id, winnerId));
     } else {
-      // Draw: refund both
+      // Draw: only refund student1Id (the bet creator who paid upfront).
+      // student2Id never had tokens deducted so they get nothing back.
       await db
         .update(students)
         .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
         .where(eq(students.id, bet.student1Id));
-      await db
-        .update(students)
-        .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
-        .where(eq(students.id, bet.student2Id));
     }
   }
 }
@@ -59,8 +57,6 @@ export async function settlePredictionsForMatch(matchId: string) {
   if (!match || match.status !== "completed") return;
   if (match.team1Score === null || match.team2Score === null) return;
 
-  // Only fetch predictions that have NOT been settled yet (tokensEarned is null)
-  // This is the primary guard — already-settled predictions are never touched
   const unsettled = await db
     .select()
     .from(predictions)
@@ -84,18 +80,12 @@ export async function settlePredictionsForMatch(matchId: string) {
     }
 
     // CAS guard: only write if tokensEarned is STILL null at write time
-    // Prevents double-credit if two cron requests race on the same prediction
     const updated = await db
       .update(predictions)
       .set({ tokensEarned: earned })
-      .where(
-        and(
-          eq(predictions.id, pred.id),
-          isNull(predictions.tokensEarned)  // double-check at write time
-        )
-      )
+      .where(and(eq(predictions.id, pred.id), isNull(predictions.tokensEarned)))
       .returning({ id: predictions.id });
-    if (updated.length === 0) continue; // already settled by concurrent request
+    if (updated.length === 0) continue;
 
     if (earned > 0) {
       await db
