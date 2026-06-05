@@ -7,14 +7,27 @@ import { Trophy, Coins } from "lucide-react";
 
 export default function Header() {
   const { data: session } = useSession();
-  const [liveTokens, setLiveTokens] = useState<number | null>(null);
+  const [liveTokens, setLiveTokens] = useState<number | null>(
+    session?.user?.tokenBalance ?? null
+  );
+
+  // Sync from session immediately whenever session changes
+  useEffect(() => {
+    if (session?.user?.tokenBalance != null) {
+      setLiveTokens(session.user.tokenBalance);
+    }
+  }, [session?.user?.id, session?.user?.tokenBalance]);
 
   const fetchTokens = useCallback(() => {
-    // Gate on user.id — session.user alone can be a truthy empty object before id is populated
-    if (!session?.user?.id) { setLiveTokens(null); return; }
+    if (!session?.user?.id) {
+      setLiveTokens(null);
+      return;
+    }
     fetch("/api/students/me")
-      .then((r) => r.ok ? r.json() : null)
-      .then((d) => { if (d?.tokenBalance != null) setLiveTokens(d.tokenBalance); })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (d?.tokenBalance != null) setLiveTokens(d.tokenBalance);
+      })
       .catch(() => {});
   }, [session?.user?.id]);
 
@@ -46,16 +59,25 @@ export default function Header() {
         <div className="flex items-center gap-3">
           {session ? (
             <>
-              <Link href="/account" className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900">
+              <Link
+                href="/account"
+                className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
+              >
                 <Coins className="h-4 w-4 text-yellow-500" />
-                <span>{liveTokens ?? "—"}</span>
+                <span>{liveTokens ?? session.user.tokenBalance ?? "\u2014"}</span>
               </Link>
-              <Link href="/account" className="text-sm font-medium text-gray-600 hover:text-gray-900 truncate max-w-[100px]">
+              <Link
+                href="/account"
+                className="text-sm font-medium text-gray-600 hover:text-gray-900 truncate max-w-[100px]"
+              >
                 {session.user.name?.split(" ")[0]}
               </Link>
             </>
           ) : (
-            <Link href="/join" className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors">
+            <Link
+              href="/join"
+              className="rounded-lg bg-green-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-green-700 transition-colors"
+            >
               Join
             </Link>
           )}
