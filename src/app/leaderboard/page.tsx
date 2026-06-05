@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { students, teams } from "@/db/schema";
 import { eq, desc } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
+import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
 
@@ -30,7 +31,7 @@ export default async function LeaderboardPage() {
         <div>
           <h1 className="text-2xl font-bold text-gray-900">Token Leaderboard 🏆</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Earn tokens from match bets (+20 per win) and predictions (+5 correct, +15 exact)
+            Earn tokens: +{PREDICTION_CORRECT_TOKENS} correct winner · +{PREDICTION_EXACT_TOKENS} exact score · 2× your stake on winning a bet
           </p>
         </div>
 
@@ -58,7 +59,6 @@ export default async function LeaderboardPage() {
       </div>
     );
   } catch (e) {
-    // FIX: log full error server-side only — never expose stack/message in HTML
     console.error("[leaderboard] render error", e);
     return (
       <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center text-sm text-red-600 m-4">
