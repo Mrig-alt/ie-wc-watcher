@@ -210,9 +210,14 @@ export default async function HomePage() {
     );
   } catch (e) {
     console.error("[home] render error", e);
+    const err = e as Error;
     return (
-      <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center text-sm text-red-600 m-4">
-        Something went wrong loading the home page. Please refresh or try again shortly.
+      <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-left text-sm text-red-600 m-4 space-y-2">
+        <p className="font-bold">Something went wrong loading the home page:</p>
+        <p className="font-mono bg-red-100 p-2 rounded text-xs overflow-auto">{err?.message || String(e)}</p>
+        {err?.stack && (
+          <pre className="font-mono bg-red-100 p-2 rounded text-xs overflow-auto max-h-40">{err.stack}</pre>
+        )}
       </div>
     );
   }

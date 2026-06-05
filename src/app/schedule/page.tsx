@@ -135,11 +135,15 @@ export default async function SchedulePage() {
       </div>
     );
   } catch (e) {
-    // FIX: log full error server-side only — never expose stack/message in HTML
     console.error("[schedule] render error", e);
+    const err = e as Error;
     return (
-      <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center text-sm text-red-600 m-4">
-        Something went wrong loading the schedule. Please refresh or try again shortly.
+      <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-left text-sm text-red-600 m-4 space-y-2">
+        <p className="font-bold">Something went wrong loading the schedule:</p>
+        <p className="font-mono bg-red-100 p-2 rounded text-xs overflow-auto">{err?.message || String(e)}</p>
+        {err?.stack && (
+          <pre className="font-mono bg-red-100 p-2 rounded text-xs overflow-auto max-h-40">{err.stack}</pre>
+        )}
       </div>
     );
   }
