@@ -4,13 +4,13 @@ import * as schema from "./schema";
 
 const connectionString = process.env.DATABASE_URL!;
 
-// Render internal Postgres uses self-signed certs — rejectUnauthorized:false handles this.
-// For local dev (localhost), SSL is disabled entirely.
 const isLocalhost =
   connectionString.includes("localhost") ||
   connectionString.includes("127.0.0.1");
 
-const sslMode = isLocalhost ? false : { rejectUnauthorized: false };
+// Supabase pooler (port 6543) requires SSL but with a valid cert
+// Using ssl:'require' is the correct mode for Supabase
+const sslMode = isLocalhost ? false : "require";
 
 const client = postgres(connectionString, {
   prepare: false,
