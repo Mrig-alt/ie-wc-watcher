@@ -106,7 +106,9 @@ export default function MatchCard({
             <div className="flex flex-col items-center shrink-0 min-w-[56px]">
               {isCompleted || isLive ? (
                 <span className="text-xl font-bold text-gray-900">
-                  {match.team1Score ?? 0}\u2013{match.team2Score ?? 0}
+                  {match.team1Score != null && match.team2Score != null
+                    ? `${match.team1Score}\u2013${match.team2Score}`
+                    : <span className="text-red-500 text-base font-semibold">Live</span>}
                 </span>
               ) : (
                 <span className="text-sm font-medium text-gray-400">vs</span>
