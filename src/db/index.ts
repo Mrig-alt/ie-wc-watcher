@@ -12,12 +12,18 @@ const isLocalhost =
 // Using ssl:'require' is the correct mode for Supabase
 const sslMode = isLocalhost ? false : "require";
 
+// Supabase's transaction pooler (port 6543) assigns one server-side connection
+// per client connection. In a serverless/short-lived Node process like Render,
+// max:1 is correct — each request borrows one connection, runs its queries
+// sequentially, then returns it. Using max>1 causes pool contention that hangs
+// requests indefinitely when all slots are occupied.
 const client = postgres(connectionString, {
   prepare: false,
-  max: 3,
+  max: 1,
   ssl: sslMode,
-  connect_timeout: 10,
-  idle_timeout: 20,
+  connect_timeout: 15,
+  idle_timeout: 10,
+  max_lifetime: 60,
 });
 
 export const db = drizzle(client, { schema });

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections, matches } from "@/db/schema";
-import { eq, and, or, asc } from "drizzle-orm";
+import { eq, and, asc } from "drizzle-orm";
 import ClassmatesPageClient from "@/components/students/ClassmatesPageClient";
 
 export const dynamic = "force-dynamic";
@@ -11,25 +11,23 @@ export default async function StudentsPage() {
     const session = await auth();
     const validSession = session?.user?.id ? session : null;
 
-    // Accepted friend IDs
+    // Accepted friend IDs — use two separate indexed queries instead of OR
+    // (OR on two UUID columns can't use individual indexes efficiently)
     let friendIds = new Set<string>();
     if (validSession) {
-      const myConnections = await db
-        .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
-        .from(connections)
-        .where(
-          and(
-            eq(connections.status, "accepted"),
-            or(
-              eq(connections.requesterId, validSession.user.id),
-              eq(connections.requesteeId, validSession.user.id)
-            )
-          )
-        );
-      for (const c of myConnections) {
-        if (c.requesterId !== validSession.user.id) friendIds.add(c.requesterId);
-        if (c.requesteeId !== validSession.user.id) friendIds.add(c.requesteeId);
-      }
+      const uid = validSession.user.id;
+      const [asRequester, asRequestee] = await Promise.all([
+        db
+          .select({ requesteeId: connections.requesteeId })
+          .from(connections)
+          .where(and(eq(connections.requesterId, uid), eq(connections.status, "accepted"))),
+        db
+          .select({ requesterId: connections.requesterId })
+          .from(connections)
+          .where(and(eq(connections.requesteeId, uid), eq(connections.status, "accepted"))),
+      ]);
+      for (const c of asRequester) friendIds.add(c.requesteeId);
+      for (const c of asRequestee) friendIds.add(c.requesterId);
     }
 
     const [allStudents, allTeams, upcomingMatches] = await Promise.all([
