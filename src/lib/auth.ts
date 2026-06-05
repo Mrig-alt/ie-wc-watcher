@@ -20,8 +20,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { email, pin } = credentials as { email: string; pin?: string };
         if (!email) return null;
 
-        // PIN check: if JOIN_PIN is set, the supplied pin MUST match.
-        // An empty/missing pin is also rejected — no bypass allowed.
         const joinPin = process.env.JOIN_PIN;
         if (joinPin && pin !== joinPin) return null;
 
@@ -60,12 +58,20 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .from(students)
             .where(eq(students.id, token.id as string))
             .limit(1);
+
           if (fresh) {
             if (fresh.flagged) return null;
             token.tokenBalance = fresh.tokenBalance;
             token.teamId = fresh.teamId;
             token.visibility = fresh.visibility;
           }
+
+          // Update lastSeenAt in background — fire and forget, never block auth
+          db.update(students)
+            .set({ lastSeenAt: new Date() })
+            .where(eq(students.id, token.id as string))
+            .catch(() => {}); // never throw, auth must not fail due to this
+
         } catch {
           // DB unavailable — keep stale values
         }
