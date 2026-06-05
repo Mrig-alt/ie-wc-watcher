@@ -9,12 +9,10 @@ services:
         value: production
       - key: DATABASE_URL
         sync: false
-      # NextAuth v5 uses AUTH_SECRET + AUTH_URL (required for cookie signing)
       - key: AUTH_SECRET
         sync: false
       - key: AUTH_URL
         sync: false
-      # Legacy names kept for backwards compat
       - key: NEXTAUTH_SECRET
         sync: false
       - key: NEXTAUTH_URL
@@ -31,9 +29,5 @@ services:
         sync: false
       - key: LOCK_TEAMS_AT
         value: "2026-06-11T00:00:00Z"
-      - key: VAPID_PUBLIC_KEY
-        sync: false
-      - key: VAPID_PRIVATE_KEY
-        sync: false
-      - key: VAPID_SUBJECT
-        sync: false
+      # VAPID keys intentionally omitted — push notifications not yet implemented.
+      # Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT here when ready.
