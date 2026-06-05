@@ -12,15 +12,6 @@ export async function GET() {
     });
   }
 
-  // Mask sensitive parts of the URL for display
-  const maskedUrl = connectionString.replace(
-    /(postgres(?:ql)?:\/\/)([^:]+):([^@]+)@([^/:]+)(:\d+)?\/(.+)/,
-    (_, proto, user, pass, host, port, db) => {
-      const maskedPass = "*".repeat(pass.length);
-      return `${proto}${user}:${maskedPass}@${host}${port || ""}/${db}`;
-    }
-  );
-
   const isLocalhost =
     connectionString.includes("localhost") ||
     connectionString.includes("127.0.0.1");
@@ -31,27 +22,65 @@ export async function GET() {
       prepare: false,
       max: 1,
       ssl: sslMode,
-      connect_timeout: 3, // 3 seconds timeout
+      connect_timeout: 5,
     });
 
-    const result = await client`SELECT 1 as val`;
+    // 1. Get all tables in public schema
+    const tables = await client`
+      SELECT table_name 
+      FROM information_schema.tables 
+      WHERE table_schema = 'public'
+    `;
+
+    // 2. Get columns of 'teams' table
+    const teamsColumns = await client`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'teams'
+    `;
+
+    // 3. Get columns of 'bets' table
+    const betsColumns = await client`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'bets'
+    `;
+
+    // 4. Get columns of 'students' table
+    const studentsColumns = await client`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'students'
+    `;
+
+    // 5. Get list of migrations applied (if drizzle_migrations table exists)
+    let migrations = null;
+    try {
+      migrations = await client`
+        SELECT id, name, created_at 
+        FROM __drizzle_migrations
+        ORDER BY created_at DESC
+      `;
+    } catch (e) {
+      migrations = "Table __drizzle_migrations does not exist or error: " + String(e);
+    }
+
     await client.end();
 
     return NextResponse.json({
       success: true,
-      maskedUrl,
-      sslMode,
-      result,
+      tables: tables.map(t => t.table_name),
+      teamsColumns: teamsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
+      betsColumns: betsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
+      studentsColumns: studentsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
+      migrations,
     });
   } catch (error) {
     const err = error as Error;
     return NextResponse.json({
       success: false,
-      maskedUrl,
-      sslMode,
       errorMessage: err.message || String(error),
       errorStack: err.stack || null,
-      errorName: err.name || null,
     });
   }
 }
