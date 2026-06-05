@@ -3,7 +3,6 @@ import Credentials from "next-auth/providers/credentials";
 import { db } from "@/db";
 import { students } from "@/db/schema";
 import { eq } from "drizzle-orm";
-import { loginSchema } from "./validations";
 import { authConfig } from "./auth.config";
 
 export const { handlers, auth, signIn, signOut } = NextAuth({
@@ -43,10 +42,31 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     }),
   ],
   callbacks: {
-    async jwt(params) {
-      const token = await (authConfig.callbacks!.jwt as NonNullable<typeof authConfig.callbacks>["jwt"])!(params);
+    // Re-declare all authConfig callbacks here cleanly — do NOT call authConfig.callbacks.jwt
+    // manually, that would double-execute since authConfig is also spread above.
+    authorized: authConfig.callbacks!.authorized,
+    session: authConfig.callbacks!.session,
 
-      if (!params.user && token?.id) {
+    async jwt(params) {
+      // Step 1: run the base token-building logic from authConfig (handles user sign-in)
+      const { token, user } = params;
+
+      if (user) {
+        // Fresh sign-in — seed token from the user object returned by authorize()
+        token.id = user.id as string;
+        token.sub = user.id as string;
+        token.teamId = (user as { teamId?: string | null }).teamId ?? null;
+        token.visibility = (user as { visibility?: string }).visibility ?? "public";
+        token.tokenBalance = (user as { tokenBalance?: number }).tokenBalance ?? 100;
+        token.email = (user as { email?: string }).email ?? null;
+      }
+
+      if (!token.id && token.sub) token.id = token.sub;
+
+      // Step 2: on every subsequent request (not sign-in), refresh live values from DB
+      // This ensures tokenBalance, teamId, visibility are always fresh.
+      // lastSeenAt is handled by /api/presence — no need to update it here.
+      if (!user && token?.id) {
         try {
           const [fresh] = await db
             .select({
@@ -60,20 +80,13 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             .limit(1);
 
           if (fresh) {
-            if (fresh.flagged) return null;
+            if (fresh.flagged) return null; // kill session for flagged users
             token.tokenBalance = fresh.tokenBalance;
             token.teamId = fresh.teamId;
             token.visibility = fresh.visibility;
           }
-
-          // Update lastSeenAt in background — fire and forget, never block auth
-          db.update(students)
-            .set({ lastSeenAt: new Date() })
-            .where(eq(students.id, token.id as string))
-            .catch(() => {}); // never throw, auth must not fail due to this
-
         } catch {
-          // DB unavailable — keep stale values
+          // DB unavailable — keep stale token values rather than breaking auth
         }
       }
 

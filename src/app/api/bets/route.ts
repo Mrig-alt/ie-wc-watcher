@@ -35,17 +35,6 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Betting is closed for this match" }, { status: 403 });
   }
 
-  // Check requester has enough tokens
-  const [requester] = await db
-    .select({ tokenBalance: students.tokenBalance })
-    .from(students)
-    .where(eq(students.id, session.user.id))
-    .limit(1);
-
-  if (!requester || requester.tokenBalance < stakeTokens) {
-    return NextResponse.json({ error: "Insufficient token balance" }, { status: 400 });
-  }
-
   // Check bet doesn't already exist between these two for this match (either direction)
   const existing = await db
     .select({ id: bets.id })
@@ -65,21 +54,45 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Bet already exists" }, { status: 409 });
   }
 
-  // Deduct stake tokens from requester upfront
-  await db
-    .update(students)
-    .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeTokens}` })
-    .where(eq(students.id, session.user.id));
+  // Wrap balance check + deduction + insert in a single transaction.
+  // If the insert fails, the deduction is rolled back automatically.
+  let bet: typeof bets.$inferSelect;
+  try {
+    bet = await db.transaction(async (tx) => {
+      // Re-check balance inside transaction to prevent race conditions
+      const [requester] = await tx
+        .select({ tokenBalance: students.tokenBalance })
+        .from(students)
+        .where(eq(students.id, session.user.id))
+        .limit(1);
 
-  const [bet] = await db
-    .insert(bets)
-    .values({
-      matchId,
-      student1Id: session.user.id,
-      student2Id: opponentId,
-      stakeTokens,
-    })
-    .returning();
+      if (!requester || requester.tokenBalance < stakeTokens) {
+        throw new Error("INSUFFICIENT_TOKENS");
+      }
+
+      await tx
+        .update(students)
+        .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeTokens}` })
+        .where(eq(students.id, session.user.id));
+
+      const [created] = await tx
+        .insert(bets)
+        .values({
+          matchId,
+          student1Id: session.user.id,
+          student2Id: opponentId,
+          stakeTokens,
+        })
+        .returning();
+
+      return created;
+    });
+  } catch (e: unknown) {
+    if (e instanceof Error && e.message === "INSUFFICIENT_TOKENS") {
+      return NextResponse.json({ error: "Insufficient token balance" }, { status: 400 });
+    }
+    throw e;
+  }
 
   return NextResponse.json({ bet }, { status: 201 });
 }
@@ -92,7 +105,6 @@ export async function GET(req: Request) {
   const matchId = searchParams.get("matchId");
   const userId = session.user.id;
 
-  // Return bets where user is either the creator (student1Id) OR the opponent (student2Id)
   const results = await db
     .select()
     .from(bets)

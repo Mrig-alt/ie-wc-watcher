@@ -35,20 +35,22 @@ export async function settleBetsForMatch(matchId: string) {
       .returning({ id: bets.id });
     if (updated.length === 0) continue;
 
-    if (winnerId) {
-      // Winner gets their stake back + opponent's stake
+    if (winnerId === bet.student1Id) {
+      // student1Id paid the stake upfront, so they get their stake back + opponent's stake
       await db
         .update(students)
         .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens * 2}` })
-        .where(eq(students.id, winnerId));
-    } else {
-      // Draw: only refund student1Id (the bet creator who paid upfront).
-      // student2Id never had tokens deducted so they get nothing back.
+        .where(eq(students.id, bet.student1Id));
+    } else if (winnerId === bet.student2Id) {
+      // student2Id never paid — they only receive the net profit (the stake amount)
+      // student1Id already lost their stake (deducted at bet creation), no further action
       await db
         .update(students)
         .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
-        .where(eq(students.id, bet.student1Id));
+        .where(eq(students.id, bet.student2Id));
     }
+    // Draw: student1Id already lost their stake, no refund. student2Id paid nothing.
+    // No token movement needed on draw.
   }
 }
 
@@ -79,7 +81,6 @@ export async function settlePredictionsForMatch(matchId: string) {
       earned += PREDICTION_EXACT_TOKENS - PREDICTION_CORRECT_TOKENS;
     }
 
-    // CAS guard: only write if tokensEarned is STILL null at write time
     const updated = await db
       .update(predictions)
       .set({ tokensEarned: earned })
