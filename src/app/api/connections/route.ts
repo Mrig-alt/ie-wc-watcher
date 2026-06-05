@@ -20,6 +20,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cannot connect to yourself" }, { status: 400 });
   }
 
+  // Check if we already sent a request
   const existing = await db
     .select({ id: connections.id, status: connections.status })
     .from(connections)
@@ -32,6 +33,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ connection: existing[0] });
   }
 
+  // Check if the other person already sent us a request (reverse)
   const reverse = await db
     .select({ id: connections.id })
     .from(connections)
@@ -41,18 +43,17 @@ export async function POST(req: Request) {
     .limit(1);
 
   if (reverse.length > 0) {
-    await db
+    // Just update the existing row to accepted — do NOT insert a second row.
+    // Querying friends must check both directions: (A→B) OR (B→A) with status=accepted.
+    const [conn] = await db
       .update(connections)
       .set({ status: "accepted" })
-      .where(eq(connections.id, reverse[0].id));
-
-    const [conn] = await db
-      .insert(connections)
-      .values({ requesterId: session.user.id, requesteeId, status: "accepted" })
+      .where(eq(connections.id, reverse[0].id))
       .returning();
-    return NextResponse.json({ connection: conn }, { status: 201 });
+    return NextResponse.json({ connection: conn }, { status: 200 });
   }
 
+  // New request
   const [conn] = await db
     .insert(connections)
     .values({ requesterId: session.user.id, requesteeId })
