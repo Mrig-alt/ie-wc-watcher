@@ -13,13 +13,13 @@ export default function AccountPage() {
   const router = useRouter();
 
   const [liveTokens, setLiveTokens] = useState<number | null>(null);
+  const [fetchError, setFetchError] = useState<string | null>(null);
   const [visibility, setVisibility] = useState<Visibility>(
     (session?.user?.visibility ?? "public") as Visibility
   );
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
-  // Redirect unauthenticated users without calling router.push in render
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/join");
@@ -30,12 +30,18 @@ export default function AccountPage() {
   useEffect(() => {
     if (!session?.user?.id) return;
     fetch("/api/students/me")
-      .then((r) => r.ok ? r.json() : null)
+      .then((r) => r.json())
       .then((d) => {
-        if (d?.tokenBalance != null) setLiveTokens(d.tokenBalance);
+        if (d?.tokenBalance != null) {
+          setLiveTokens(d.tokenBalance);
+        } else {
+          setFetchError(d?.error ?? "Unknown error from /api/students/me");
+        }
         if (d?.visibility) setVisibility(d.visibility as Visibility);
       })
-      .catch(() => {});
+      .catch((err) => {
+        setFetchError(err?.message ?? "Network error fetching token balance");
+      });
   }, [session?.user?.id]);
 
   if (status === "loading" || status === "unauthenticated") {
@@ -48,7 +54,8 @@ export default function AccountPage() {
 
   if (!session) return null;
 
-  const displayTokens = liveTokens ?? session.user.tokenBalance ?? 0;
+  // Use live DB value first, then session value, never silently fall to 0
+  const displayTokens = liveTokens ?? session.user.tokenBalance ?? null;
 
   const handleSave = async () => {
     setLoading(true);
@@ -78,7 +85,13 @@ export default function AccountPage() {
             <p className="text-sm text-gray-500">{session.user.email}</p>
           </div>
           <div className="flex items-center gap-2">
-            <span className="text-lg font-bold text-yellow-600">🪙 {displayTokens}</span>
+            {displayTokens !== null ? (
+              <span className="text-lg font-bold text-yellow-600">🪙 {displayTokens}</span>
+            ) : fetchError ? (
+              <span className="text-sm text-red-500">Token load failed</span>
+            ) : (
+              <span className="text-sm text-gray-400">Loading…</span>
+            )}
           </div>
         </div>
         <div className="flex gap-3 pt-1">
