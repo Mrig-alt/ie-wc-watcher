@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { students, bets, predictions, matches } from "@/db/schema";
-import { eq, and, isNull, sql } from "drizzle-orm";
+import { eq, and, isNull, isNotNull, sql } from "drizzle-orm";
 
 export const STAKE_TOKENS = 10;
 export const PREDICTION_CORRECT_TOKENS = 5;
@@ -33,7 +33,7 @@ export async function settleBetsForMatch(matchId: string) {
       .set({ settled: true, winnerId })
       .where(and(eq(bets.id, bet.id), eq(bets.settled, false)))
       .returning({ id: bets.id });
-    if (updated.length === 0) continue; // already settled by a concurrent request
+    if (updated.length === 0) continue;
 
     if (winnerId) {
       await db
@@ -59,6 +59,8 @@ export async function settlePredictionsForMatch(matchId: string) {
   if (!match || match.status !== "completed") return;
   if (match.team1Score === null || match.team2Score === null) return;
 
+  // Only fetch predictions that have NOT been settled yet (tokensEarned is null)
+  // This is the primary guard — already-settled predictions are never touched
   const unsettled = await db
     .select()
     .from(predictions)
@@ -67,21 +69,33 @@ export async function settlePredictionsForMatch(matchId: string) {
   for (const pred of unsettled) {
     let earned = 0;
     const actualWinner =
-      match.team1Score > match.team2Score ? "home" : match.team2Score > match.team1Score ? "away" : "draw";
+      match.team1Score > match.team2Score ? "home" :
+      match.team2Score > match.team1Score ? "away" : "draw";
     const predWinner =
-      pred.predictedScore1 > pred.predictedScore2 ? "home" : pred.predictedScore2 > pred.predictedScore1 ? "away" : "draw";
+      pred.predictedScore1 > pred.predictedScore2 ? "home" :
+      pred.predictedScore2 > pred.predictedScore1 ? "away" : "draw";
 
     if (actualWinner === predWinner) earned += PREDICTION_CORRECT_TOKENS;
-    if (pred.predictedScore1 === match.team1Score && pred.predictedScore2 === match.team2Score)
+    if (
+      pred.predictedScore1 === match.team1Score &&
+      pred.predictedScore2 === match.team2Score
+    ) {
       earned += PREDICTION_EXACT_TOKENS - PREDICTION_CORRECT_TOKENS;
+    }
 
-    // CAS guard: only update if tokensEarned is still null — prevents double-credit on concurrent syncs
+    // CAS guard: only write if tokensEarned is STILL null at write time
+    // Prevents double-credit if two cron requests race on the same prediction
     const updated = await db
       .update(predictions)
       .set({ tokensEarned: earned })
-      .where(and(eq(predictions.id, pred.id), isNull(predictions.tokensEarned)))
+      .where(
+        and(
+          eq(predictions.id, pred.id),
+          isNull(predictions.tokensEarned)  // double-check at write time
+        )
+      )
       .returning({ id: predictions.id });
-    if (updated.length === 0) continue; // already settled by a concurrent request
+    if (updated.length === 0) continue; // already settled by concurrent request
 
     if (earned > 0) {
       await db

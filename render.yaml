@@ -2,7 +2,6 @@ services:
   - type: web
     name: world-cup-pairing
     runtime: node
-    rootDir: world-cup-pairing
     buildCommand: pnpm install --frozen-lockfile && pnpm build
     startCommand: pnpm start
     envVars:
