@@ -53,6 +53,13 @@ export async function GET() {
       WHERE table_schema = 'public' AND table_name = 'students'
     `;
 
+    // 4b. Get columns of 'matches' table
+    const matchesColumns = await client`
+      SELECT column_name, data_type, is_nullable
+      FROM information_schema.columns 
+      WHERE table_schema = 'public' AND table_name = 'matches'
+    `;
+
     // 5. Get list of migrations applied (if drizzle_migrations table exists)
     let migrations = null;
     try {
@@ -73,6 +80,7 @@ export async function GET() {
       teamsColumns: teamsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
       betsColumns: betsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
       studentsColumns: studentsColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
+      matchesColumns: matchesColumns.map(c => ({ name: c.column_name, type: c.data_type, nullable: c.is_nullable })),
       migrations,
     });
   } catch (error) {
