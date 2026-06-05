@@ -5,7 +5,9 @@ import { eq, desc } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
-export const dynamic = "force-dynamic";
+// Revalidate every 60 seconds — fresh enough for a leaderboard, avoids full DB
+// query on every single page load. force-dynamic was too aggressive.
+export const revalidate = 60;
 
 export default async function LeaderboardPage() {
   try {
