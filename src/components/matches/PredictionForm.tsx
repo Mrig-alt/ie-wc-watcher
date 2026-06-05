@@ -10,7 +10,7 @@ interface PredictionFormProps {
   team2: { name: string; flagEmoji: string };
   existing?: { predictedScore1: number; predictedScore2: number } | null;
   locked?: boolean;
-  onDone?: () => void;
+  onDone?: (saved?: { predictedScore1: number; predictedScore2: number }) => void;
 }
 
 export default function PredictionForm({ matchId, team1, team2, existing, locked, onDone }: PredictionFormProps) {
@@ -19,9 +19,11 @@ export default function PredictionForm({ matchId, team1, team2, existing, locked
   const [score2, setScore2] = useState(existing?.predictedScore2 ?? 0);
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+  const [error, setError] = useState("");
 
   const handleSubmit = async () => {
     setLoading(true);
+    setError("");
     try {
       const res = await fetch("/api/predictions", {
         method: "POST",
@@ -30,12 +32,15 @@ export default function PredictionForm({ matchId, team1, team2, existing, locked
       });
       if (res.ok) {
         setSaved(true);
-        // Tell the Header to re-fetch the live token balance
         window.dispatchEvent(new Event("token-refresh"));
-        // Re-render server components so the prediction chip reflects the save
         router.refresh();
-        setTimeout(() => onDone?.(), 800);
+        setTimeout(() => onDone?.({ predictedScore1: score1, predictedScore2: score2 }), 800);
+      } else {
+        const data = await res.json().catch(() => ({}));
+        setError(data.error ?? "Failed to save prediction");
       }
+    } catch {
+      setError("Network error — please try again");
     } finally {
       setLoading(false);
     }
@@ -44,30 +49,25 @@ export default function PredictionForm({ matchId, team1, team2, existing, locked
   if (locked) {
     return (
       <div className="text-xs text-gray-400 italic">
-        {existing
-          ? `Your prediction: ${team1.flagEmoji} ${existing.predictedScore1}\u2013${existing.predictedScore2} ${team2.flagEmoji}`
-          : "Predictions locked"}
+        {existing ? `Your prediction: ${team1.flagEmoji} ${existing.predictedScore1}–${existing.predictedScore2} ${team2.flagEmoji}` : "Predictions locked"}
       </div>
     );
   }
 
   return (
-    <div className="flex items-center gap-2">
-      <span className="text-xs text-gray-500">Predict:</span>
-      <span className="text-sm">{team1.flagEmoji}</span>
-      <ScoreInput value={score1} onChange={setScore1} />
-      <span className="text-xs text-gray-400">&ndash;</span>
-      <ScoreInput value={score2} onChange={setScore2} />
-      <span className="text-sm">{team2.flagEmoji}</span>
-      <Button
-        size="sm"
-        variant={saved ? "secondary" : "default"}
-        onClick={handleSubmit}
-        loading={loading}
-        className="text-xs px-2"
-      >
-        {saved ? "\u2713 Saved" : "+5/15 \uD83E\uDE99"}
-      </Button>
+    <div className="flex flex-col gap-1">
+      <div className="flex items-center gap-2">
+        <span className="text-xs text-gray-500">Predict:</span>
+        <span className="text-sm">{team1.flagEmoji}</span>
+        <ScoreInput value={score1} onChange={setScore1} />
+        <span className="text-xs text-gray-400">&ndash;</span>
+        <ScoreInput value={score2} onChange={setScore2} />
+        <span className="text-sm">{team2.flagEmoji}</span>
+        <Button size="sm" variant={saved ? "secondary" : "default"} onClick={handleSubmit} loading={loading} className="text-xs px-2">
+          {saved ? "✓ Saved" : "+5/15 🪙"}
+        </Button>
+      </div>
+      {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );
 }
