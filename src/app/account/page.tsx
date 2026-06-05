@@ -9,7 +9,7 @@ import VisibilitySelector from "@/components/profile/VisibilitySelector";
 type Visibility = "public" | "friends" | "stealth";
 
 export default function AccountPage() {
-  const { data: session, update } = useSession();
+  const { data: session, status, update } = useSession();
   const router = useRouter();
 
   const [liveTokens, setLiveTokens] = useState<number | null>(null);
@@ -18,6 +18,13 @@ export default function AccountPage() {
   );
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
+
+  // Redirect unauthenticated users without calling router.push in render
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/join");
+    }
+  }, [status, router]);
 
   // Fetch live tokenBalance + visibility directly from DB on mount
   useEffect(() => {
@@ -31,9 +38,12 @@ export default function AccountPage() {
       .catch(() => {});
   }, [session?.user?.id]);
 
-  if (!session) {
-    router.push("/join");
-    return null;
+  if (status === "loading" || status === "unauthenticated") {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600" />
+      </div>
+    );
   }
 
   const displayTokens = liveTokens ?? session.user.tokenBalance ?? 0;

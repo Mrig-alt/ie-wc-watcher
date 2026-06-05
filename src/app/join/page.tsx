@@ -101,7 +101,8 @@ function JoinPageInner() {
 
   const selectedTeam = teams.find((t) => t.id === teamId);
   const isHonoraryFan = selectedTeam ? selectedTeam.group === null : false;
-  const tokenPreview = 100 + (visibility === "public" ? 50 : 0);
+  const earlyBird = studentCount !== null && studentCount < 20 ? 75 : 0;
+  const tokenPreview = 100 + (visibility === "public" ? 50 : 0) + earlyBird;
 
   const handleSignIn = async () => {
     setLoading(true);
@@ -193,28 +194,30 @@ function JoinPageInner() {
           </div>
         </div>
 
-        {/* RETURNING USER — always require PIN */}
+        {/* RETURNING USER */}
         {mode === "returning" && (
           <div className="space-y-4">
             <div className="rounded-lg bg-green-50 px-4 py-3">
               <p className="text-sm font-medium text-green-800">
-                \uD83D\uDC4B Welcome back{firstName ? `, ${firstName}` : ""}! Enter the class PIN to continue.
+                \uD83D\uDC4B Welcome back{firstName ? `, ${firstName}` : ""}!{pinRequired ? " Enter the class PIN to continue." : ""}
               </p>
             </div>
-            <div className="grid gap-1.5">
-              <Label htmlFor="pin-return">Class PIN</Label>
-              <Input
-                id="pin-return"
-                type="password"
-                value={pin}
-                onChange={(e) => { setPin(e.target.value); setError(""); }}
-                placeholder="Enter class PIN"
-                autoComplete="off"
-                onKeyDown={(e) => e.key === "Enter" && pin.trim() && handleSignIn()}
-              />
-            </div>
+            {pinRequired && (
+              <div className="grid gap-1.5">
+                <Label htmlFor="pin-return">Class PIN</Label>
+                <Input
+                  id="pin-return"
+                  type="password"
+                  value={pin}
+                  onChange={(e) => { setPin(e.target.value); setError(""); }}
+                  placeholder="Enter class PIN"
+                  autoComplete="off"
+                  onKeyDown={(e) => e.key === "Enter" && pin.trim() && handleSignIn()}
+                />
+              </div>
+            )}
             {error && <p className="text-sm text-red-500">{error}</p>}
-            <Button className="w-full" disabled={loading || !pin.trim()} onClick={handleSignIn}>
+            <Button className="w-full" disabled={loading || (pinRequired && !pin.trim())} onClick={handleSignIn}>
               {loading ? "Signing in..." : "Sign in \u2192"}
             </Button>
           </div>
@@ -310,6 +313,7 @@ function JoinPageInner() {
           <div className="rounded-lg bg-gray-50 px-4 py-3 text-sm text-gray-600">
             You&apos;ll start with <span className="font-bold text-gray-900">\uD83E\uDE99 {tokenPreview} tokens</span>
             {visibility === "public" && <span className="text-yellow-600"> (includes +50 public bonus \uD83C\uDF89)</span>}
+            {earlyBird > 0 && <span className="text-green-600"> +{earlyBird} early-bird bonus \uD83C\uDF1F</span>}
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
           <Button className="w-full" onClick={handleRegister} disabled={loading}>
