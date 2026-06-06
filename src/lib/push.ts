@@ -4,15 +4,19 @@ import { students, groupMembers } from "@/db/schema";
 import { eq, inArray, and, isNotNull } from "drizzle-orm";
 
 const vapidKeys = {
-  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "BMRRFkonUC7ymoeuZc9lx_CK5WrMlOCzLfp3RMaobzyU253M6clwxfWRqZg3l7JYIi9nylm53mnVVy7-Zu6wRtI",
-  privateKey: process.env.VAPID_PRIVATE_KEY || "Beyuty_U9ld_PG5Q6xg_Q2yETY7DH91Wv6g-9JVLsjU",
+  publicKey: process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
+  privateKey: process.env.VAPID_PRIVATE_KEY || "",
 };
 
-webpush.setVapidDetails(
-  "mailto:admin@ie-wc-watcher.com",
-  vapidKeys.publicKey,
-  vapidKeys.privateKey
-);
+if (vapidKeys.publicKey && vapidKeys.privateKey) {
+  webpush.setVapidDetails(
+    "mailto:admin@ie-wc-watcher.com",
+    vapidKeys.publicKey,
+    vapidKeys.privateKey
+  );
+} else {
+  console.warn("VAPID keys are missing. Push notifications will not work.");
+}
 
 export async function sendGroupJoinNotification(groupId: string, newUserName: string, newUserId: string) {
   try {
