@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
 import { SessionProvider } from "next-auth/react";
+import { auth } from "@/lib/auth";
 import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
 import PresenceTracker from "@/components/layout/PresenceTracker";
@@ -38,11 +39,12 @@ export const viewport: Viewport = {
   maximumScale: 1,
 };
 
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const session = await auth();
   return (
     <html lang="en">
       <head>
@@ -52,7 +54,7 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 pb-20`}
       >
-        <SessionProvider>
+        <SessionProvider session={session}>
           <PresenceTracker />
           <Header />
           <main className="mx-auto max-w-2xl px-4 py-6">
