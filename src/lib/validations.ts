@@ -25,6 +25,7 @@ export const registerSchema = z.object({
   leaderboardVisibility: z.boolean().default(true),
   // PIN is now optional — if JOIN_PIN env var is not set, any value (or none) is accepted
   pin: z.string().optional(),
+  groupPin: z.string().length(8, "Group PIN must be exactly 8 characters").optional().or(z.literal("")),
 });
 
 export const loginSchema = z.object({

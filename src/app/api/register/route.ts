@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students, teams } from "@/db/schema";
+import { students, teams, friendGroups, groupMembers } from "@/db/schema";
 import { eq, count, sql } from "drizzle-orm";
 import { registerSchema } from "@/lib/validations";
 import {
@@ -43,7 +43,22 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin } = parsed.data;
+  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin, groupPin } = parsed.data;
+
+  // If a groupPin is provided, verify the group exists before proceeding
+  let groupToJoin = null;
+  if (groupPin) {
+    const [group] = await db
+      .select()
+      .from(friendGroups)
+      .where(eq(friendGroups.inviteCode, groupPin.toUpperCase()))
+      .limit(1);
+
+    if (!group) {
+      return NextResponse.json({ error: "Invalid group PIN" }, { status: 400 });
+    }
+    groupToJoin = group;
+  }
 
   // PIN check: if JOIN_PIN is set, the supplied pin MUST match regardless of whether
   // the client sent a pin field. Omitting pin is not a bypass.
@@ -126,6 +141,14 @@ export async function POST(req: Request) {
 
         created.tokenBalance -= EARLY_BIRD_BONUS_TOKENS;
       }
+    }
+
+    if (groupToJoin) {
+      await tx.insert(groupMembers).values({
+        groupId: groupToJoin.id,
+        studentId: created.id,
+        tokenBalance: 100, // Fixed starting balance in a group
+      });
     }
 
     return created;

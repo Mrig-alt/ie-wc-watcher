@@ -48,7 +48,8 @@ function JoinPageInner() {
   }, [status, router, next]);
 
   const [teams, setTeams] = useState<Team[]>([]);
-  const [step, setStep] = useState<"identity" | "team" | "visibility">("identity");
+  const [step, setStep] = useState<"identity" | "team" | "visibility" | "group">("identity");
+  const [groupPin, setGroupPin] = useState("");
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
@@ -137,6 +138,7 @@ function JoinPageInner() {
           isHonoraryFan,
           visibility,
           leaderboardVisibility,
+          groupPin: groupPin.trim() || undefined,
         }),
       });
       const data = await res.json();
@@ -353,13 +355,54 @@ function JoinPageInner() {
             {earlyBird > 0 && <span className="text-green-600"> +{earlyBird} early-bird bonus \uD83C\uDF1F</span>}
           </div>
           {error && <p className="text-sm text-red-500">{error}</p>}
-          <Button className="w-full" onClick={handleRegister} disabled={loading}>
-            {loading ? "Joining..." : "Join the game \uD83C\uDFC6"}
+          <Button className="w-full" onClick={() => setStep("group")}>
+            Continue →
           </Button>
           <button
             type="button"
             className="w-full text-sm text-gray-400 hover:text-gray-600"
             onClick={() => setStep("team")}
+          >
+            \u2190 Back
+          </button>
+        </div>
+      )}
+
+      {/* NEW USER — step 4: group */}
+      {mode === "new" && step === "group" && (
+        <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+          <div className="text-center space-y-1">
+            <h2 className="font-semibold text-gray-900">Join a Mini-League?</h2>
+            <p className="text-sm text-gray-500">
+              Did a friend invite you to a private mini-league? Enter the PIN below. 
+              <br/><br/>
+              <span className="font-medium">Note: You can always skip this for now and join a group later from the Classmates tab!</span>
+            </p>
+          </div>
+
+          <div className="grid gap-1.5 pt-2">
+            <Label htmlFor="group-pin" className="text-center">Group Invite PIN (Optional)</Label>
+            <Input
+              id="group-pin"
+              value={groupPin}
+              onChange={(e) => { setGroupPin(e.target.value.toUpperCase()); setError(""); }}
+              placeholder="e.g. A1B2C3D4"
+              className="text-center font-mono tracking-widest uppercase"
+              maxLength={8}
+            />
+          </div>
+
+          {error && <p className="text-sm text-center text-red-500">{error}</p>}
+          
+          <div className="pt-2">
+            <Button className="w-full" onClick={handleRegister} disabled={loading}>
+              {loading ? "Joining..." : "Finish & Join the Game \uD83C\uDFC6"}
+            </Button>
+          </div>
+          <button
+            type="button"
+            className="w-full text-sm text-gray-400 hover:text-gray-600"
+            onClick={() => setStep("visibility")}
           >
             \u2190 Back
           </button>
