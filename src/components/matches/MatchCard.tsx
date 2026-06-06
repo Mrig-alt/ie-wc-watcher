@@ -12,6 +12,7 @@ import PresenceDot from "@/components/students/PresenceDot";
 import Link from "next/link";
 import { useState } from "react";
 import { MapPin, ChevronDown, ChevronUp } from "lucide-react";
+import LocalTime from "@/components/ui/LocalTime";
 
 interface Supporter {
   id: string;
@@ -98,7 +99,7 @@ export default function MatchCard({
             {isLive && <Badge variant="live">LIVE</Badge>}
             {isFriendly && <Badge variant="friendly">Practice</Badge>}
           </div>
-          <span className="text-xs text-gray-400">{formatKickoff(match.matchDatetime)}</span>
+          <span className="text-xs text-gray-400"><LocalTime datetime={match.matchDatetime} /></span>
         </div>
 
         {/* Scoreline / teams */}

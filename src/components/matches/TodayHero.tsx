@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { formatKickoff } from "@/lib/utils";
 
+import LocalTime from "@/components/ui/LocalTime";
+
 interface TodayHeroProps {
   upcomingCount: number;
   liveCount: number;
@@ -63,12 +65,11 @@ export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam,
 
       {nextMatch && liveCount === 0 && (
         <div className="mt-3 rounded-xl bg-white/10 px-4 py-2.5">
-          <p className="text-xs text-green-200">Next match</p>
-          <p className="font-semibold">
-            {nextMatch.team1?.flagEmoji ?? "🏳️"} {nextMatch.team1?.name ?? "TBD"} vs{" "}
-            {nextMatch.team2?.flagEmoji ?? "🏳️"} {nextMatch.team2?.name ?? "TBD"}
-          </p>
-          <p className="text-xs text-green-200 mt-0.5">{formatKickoff(nextMatch.matchDatetime)}</p>
+          <p className="text-[10px] uppercase tracking-wider text-green-200 font-semibold mb-1">Next match</p>
+          <div className="flex items-center justify-between">
+            <span className="font-semibold">{nextMatch.team1?.flagEmoji} {nextMatch.team1?.name} vs {nextMatch.team2?.flagEmoji} {nextMatch.team2?.name}</span>
+            <span className="text-sm font-medium"><LocalTime datetime={nextMatch.matchDatetime} /></span>
+          </div>
         </div>
       )}
     </div>
