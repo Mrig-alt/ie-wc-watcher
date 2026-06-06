@@ -1,10 +1,11 @@
 import { redirect } from "next/navigation";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { students, teams } from "@/db/schema";
-import { eq, desc } from "drizzle-orm";
+import { students, teams, matches } from "@/db/schema";
+import { eq, desc, asc } from "drizzle-orm";
 import Link from "next/link";
 import AdminTable from "@/components/admin/AdminTable";
+import MatchSimulator from "@/components/admin/MatchSimulator";
 
 export const dynamic = "force-dynamic";
 
@@ -41,6 +42,28 @@ export default async function AdminPage() {
   }, {});
   const sorted = Object.entries(countryCount).sort((a, b) => b[1] - a[1]);
 
+  const { alias } = require("drizzle-orm/pg-core");
+  const t1 = alias(teams, "t1");
+  const t2 = alias(teams, "t2");
+
+  const upcomingMatchesRaw = await db
+    .select({
+      id: matches.id,
+      matchDatetime: matches.matchDatetime,
+      team1Placeholder: matches.team1Placeholder,
+      team2Placeholder: matches.team2Placeholder,
+      team1Name: t1.name,
+      team2Name: t2.name,
+    })
+    .from(matches)
+    .leftJoin(t1, eq(matches.team1Id, t1.id))
+    .leftJoin(t2, eq(matches.team2Id, t2.id))
+    .where(eq(matches.status, "upcoming"))
+    .orderBy(asc(matches.matchDatetime))
+    .limit(20);
+
+  const upcomingMatches = upcomingMatchesRaw;
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -53,6 +76,8 @@ export default async function AdminPage() {
           Export CSV
         </Link>
       </div>
+
+      <MatchSimulator upcomingMatches={upcomingMatches} />
 
       <div className="grid grid-cols-3 gap-4">
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm text-center">
