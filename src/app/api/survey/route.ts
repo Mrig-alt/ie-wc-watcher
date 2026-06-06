@@ -16,6 +16,10 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
+  if (session.user.isGuest) {
+    return NextResponse.json({ error: "Guests cannot submit surveys" }, { status: 403 });
+  }
+
   const body = await req.json();
   const parsed = surveyInputSchema.safeParse(body);
   if (!parsed.success) {
