@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { friendGroups, groupMembers } from "@/db/schema";
 import { and, eq } from "drizzle-orm";
 import { z } from "zod";
+import { sendGroupJoinNotification } from "@/lib/push";
 
 const joinSchema = z.object({
   inviteCode: z.string().min(4).max(8).toUpperCase(),
@@ -41,6 +42,8 @@ export async function POST(req: Request) {
   }
 
   await db.insert(groupMembers).values({ groupId: group.id, studentId: session.user.id });
+
+  sendGroupJoinNotification(group.id, session.user.name ?? "A classmate", session.user.id).catch(console.error);
 
   return NextResponse.json({ group, alreadyMember: false }, { status: 201 });
 }

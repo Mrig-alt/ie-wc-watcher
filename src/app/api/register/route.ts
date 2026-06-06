@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { students, teams, friendGroups, groupMembers } from "@/db/schema";
 import { eq, count, sql } from "drizzle-orm";
+import { sendGroupJoinNotification } from "@/lib/push";
 import { registerSchema } from "@/lib/validations";
 import {
   PUBLIC_BONUS_TOKENS,
@@ -151,8 +152,12 @@ export async function POST(req: Request) {
       });
     }
 
-    return created;
+    return { created, groupToJoin };
   });
 
-  return NextResponse.json({ student }, { status: 201 });
+  if (student.groupToJoin) {
+    sendGroupJoinNotification(student.groupToJoin.id, student.created.name, student.created.id).catch(console.error);
+  }
+
+  return NextResponse.json({ student: student.created }, { status: 201 });
 }

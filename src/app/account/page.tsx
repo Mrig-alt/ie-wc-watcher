@@ -5,6 +5,7 @@ import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import VisibilitySelector from "@/components/profile/VisibilitySelector";
+import PushSettings from "@/components/profile/PushSettings";
 
 type Visibility = "public" | "friends" | "stealth";
 
@@ -93,6 +94,8 @@ export default function AccountPage() {
           {loading ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
         </Button>
       </div>
+
+      <PushSettings />
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-3">
         <h2 className="font-semibold text-gray-900">Your data</h2>

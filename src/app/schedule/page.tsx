@@ -1,15 +1,21 @@
+import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { matches, teams, students, predictions, watchInvites } from "@/db/schema";
-import { eq, asc, inArray, gte } from "drizzle-orm";
+import { eq, asc, inArray, gte, or, and } from "drizzle-orm";
 import MatchCard from "@/components/matches/MatchCard";
 import { stageLabel, formatMatchDate } from "@/lib/utils";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
+import { calculateGroupStandings } from "@/lib/standings";
+import GroupStandingsTable from "@/components/standings/GroupStandingsTable";
 
 export const dynamic = "force-dynamic";
 
-export default async function SchedulePage() {
+export default async function SchedulePage({ searchParams }: { searchParams: Promise<{ tab?: string }> }) {
   try {
+    const { tab } = await searchParams;
+    const isGroups = tab === "groups";
+
     const session = await auth();
     const validSession = session?.user?.id ? session : null;
 
@@ -32,6 +38,8 @@ export default async function SchedulePage() {
       .from(matches)
       .where(gte(matches.matchDatetime, new Date(new Date().setHours(0, 0, 0, 0))))
       .orderBy(asc(matches.matchDatetime));
+
+    const allMatchesForStandings = isGroups ? await db.select().from(matches) : [];
 
     const [allStudents, allTeams] = await Promise.all([
       getCachedActiveStudents(),
@@ -67,71 +75,91 @@ export default async function SchedulePage() {
     }
 
     return (
-      <div className="space-y-8">
+      <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Full Schedule</h1>
-          <p className="text-sm text-gray-500 mt-1">All matches — friendlies, group stage, and knockout</p>
+          <h1 className="text-2xl font-bold text-gray-900">Tournament</h1>
+          <p className="text-sm text-gray-500 mt-1">Track matches and view the live group standings</p>
         </div>
 
-        {Array.from(grouped.entries()).map(([day, dayMatches]) => (
-          <section key={day}>
-            <h2 className="text-base font-semibold text-gray-700 mb-3 sticky top-14 bg-gray-50 py-1">{day}</h2>
-            <div className="space-y-3">
-              {dayMatches.map((match) => {
-                const t1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;
-                const t2 = match.team2Id ? teamMap.get(match.team2Id) ?? null : null;
+        <div className="flex gap-2 rounded-xl bg-gray-100 p-1 mb-6 max-w-[400px]">
+          <Link href="/schedule" className={`flex-1 text-center py-2 text-sm font-medium rounded-lg transition-colors ${!isGroups ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            Matches
+          </Link>
+          <Link href="/schedule?tab=groups" className={`flex-1 text-center py-2 text-sm font-medium rounded-lg transition-colors ${isGroups ? "bg-white text-gray-900 shadow-sm" : "text-gray-500 hover:text-gray-700"}`}>
+            Groups
+          </Link>
+        </div>
 
-                // FIX: guard null teamId — null===null would match all teamless
-                // students to every TBD knockout slot (same bug fixed on home page)
-                const team1Supporters = match.team1Id !== null
-                  ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility !== "stealth")
-                  : [];
-                const team2Supporters = match.team2Id !== null
-                  ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility !== "stealth")
-                  : [];
+        {isGroups ? (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L"].map(groupLetter => {
+              const groupTeams = allTeams.filter(t => t.group === groupLetter);
+              if (groupTeams.length === 0) return null;
+              const stats = calculateGroupStandings(groupLetter, allMatchesForStandings, groupTeams);
+              return <GroupStandingsTable key={groupLetter} groupName={groupLetter} stats={stats} />;
+            })}
+          </div>
+        ) : (
+          <div className="space-y-8">
+            {Array.from(grouped.entries()).map(([day, dayMatches]) => (
+              <section key={day}>
+                <h2 className="text-base font-semibold text-gray-700 mb-3 sticky top-14 bg-gray-50 py-1">{day}</h2>
+                <div className="space-y-3">
+                  {dayMatches.map((match) => {
+                    const t1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;
+                    const t2 = match.team2Id ? teamMap.get(match.team2Id) ?? null : null;
 
-                const myPred = myPredictions.find((p) => p.matchId === match.id);
-                const myInvite = allInvites.find((i) => i.matchId === match.id && i.inviterId === validSession?.user.id);
+                    const team1Supporters = match.team1Id !== null
+                      ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility !== "stealth")
+                      : [];
+                    const team2Supporters = match.team2Id !== null
+                      ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility !== "stealth")
+                      : [];
+                    const isOnTeam1 = validSession?.user.teamId === match.team1Id;
+                    const isOnTeam2 = validSession?.user.teamId === match.team2Id;
 
-                const myTeamId = validSession?.user.teamId;
-                // FIX: same null guard for isOnTeam checks
-                const isOnTeam1 = myTeamId !== null && myTeamId !== undefined && myTeamId === match.team1Id;
-                const isOnTeam2 = myTeamId !== null && myTeamId !== undefined && myTeamId === match.team2Id;
-                const opponentTeamSupporters = isOnTeam1 ? team2Supporters : isOnTeam2 ? team1Supporters : [];
-                const opponentInviteRaw = allInvites.find(
-                  (i) => i.matchId === match.id && opponentTeamSupporters.map((s) => s.id).includes(i.inviterId)
-                );
-                const opponentInviter = opponentInviteRaw
-                  ? allStudents.find((s) => s.id === opponentInviteRaw.inviterId)
-                  : null;
+                    const myInvite = validSession
+                      ? allInvites.find((i) => i.matchId === match.id && i.inviterId === validSession.user.id)
+                      : null;
+                    const myPred = myPredictions.find((p) => p.matchId === match.id);
 
-                const fullMatch = {
-                  ...match,
-                  team1: t1 ? { id: t1.id, name: t1.name, flagEmoji: t1.flagEmoji } : null,
-                  team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
-                };
+                    const opponentTeamSupporters = isOnTeam1 ? team2Supporters : isOnTeam2 ? team1Supporters : [];
+                    const opponentInviteRaw = allInvites.find(
+                      (i) => i.matchId === match.id && opponentTeamSupporters.map((s) => s.id).includes(i.inviterId)
+                    );
+                    const opponentInviter = opponentInviteRaw
+                      ? allStudents.find((s) => s.id === opponentInviteRaw.inviterId)
+                      : null;
 
-                return (
-                  <MatchCard
-                    key={match.id}
-                    match={fullMatch as Parameters<typeof MatchCard>[0]["match"]}
-                    team1Supporters={team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
-                    team2Supporters={team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
-                    currentUserId={validSession?.user.id}
-                    currentUserTeamId={validSession?.user.teamId}
-                    prediction={myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null}
-                    myWatchInvite={myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null}
-                    opponentWatchInvite={
-                      opponentInviteRaw && opponentInviter
-                        ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
-                        : null
-                    }
-                  />
-                );
-              })}
-            </div>
-          </section>
-        ))}
+                    const fullMatch = {
+                      ...match,
+                      team1: t1 ? { id: t1.id, name: t1.name, flagEmoji: t1.flagEmoji } : null,
+                      team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
+                    };
+
+                    return (
+                      <MatchCard
+                        key={match.id}
+                        match={fullMatch as Parameters<typeof MatchCard>[0]["match"]}
+                        team1Supporters={team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
+                        team2Supporters={team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
+                        currentUserId={validSession?.user.id}
+                        currentUserTeamId={validSession?.user.teamId}
+                        prediction={myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null}
+                        myWatchInvite={myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null}
+                        opponentWatchInvite={
+                          opponentInviteRaw && opponentInviter
+                            ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
+                            : null
+                        }
+                      />
+                    );
+                  })}
+                </div>
+              </section>
+            ))}
+          </div>
+        )}
       </div>
     );
   } catch (e) {
