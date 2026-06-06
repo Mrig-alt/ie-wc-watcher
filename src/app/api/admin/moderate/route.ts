@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { students, teams } from "@/db/schema";
+import { students, teams, matchStageEnum } from "@/db/schema";
 import { eq } from "drizzle-orm";
 
 function isAdmin(email: string | undefined) {
@@ -31,6 +31,9 @@ export async function POST(req: Request) {
   }
 
   if (action === "eliminate_team") {
+    if (eliminatedStage && !matchStageEnum.enumValues.includes(eliminatedStage as any)) {
+      return NextResponse.json({ error: "Invalid eliminatedStage" }, { status: 400 });
+    }
     const [updatedTeam] = await db
       .update(teams)
       .set({ isEliminated: true, eliminatedStage: (eliminatedStage as any) ?? null })

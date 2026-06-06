@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { watchInvites, students, connections } from "@/db/schema";
-import { eq, and, or } from "drizzle-orm";
+import { eq, and, or, isNull } from "drizzle-orm";
 import { watchTogetherSchema } from "@/lib/validations";
 
 export async function GET(req: Request) {
@@ -44,7 +44,7 @@ export async function GET(req: Request) {
       createdAt: watchInvites.createdAt,
     })
     .from(watchInvites)
-    .innerJoin(students, eq(students.id, watchInvites.inviterId))
+    .innerJoin(students, and(eq(students.id, watchInvites.inviterId), isNull(students.deletedAt), eq(students.flagged, false)))
     .where(eq(watchInvites.matchId, matchId));
 
   const invites = invitesRaw.filter((inv) => {
@@ -89,6 +89,7 @@ export async function GET(req: Request) {
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.isGuest) return NextResponse.json({ error: "Forbidden for guests" }, { status: 403 });
 
   const body = await req.json();
   const parsed = watchTogetherSchema.safeParse(body);
@@ -134,6 +135,7 @@ export async function POST(req: Request) {
 export async function DELETE(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (session.user.isGuest) return NextResponse.json({ error: "Forbidden for guests" }, { status: 403 });
 
   const { searchParams } = new URL(req.url);
   const matchId = searchParams.get("matchId");

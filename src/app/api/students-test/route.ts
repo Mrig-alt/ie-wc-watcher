@@ -16,6 +16,7 @@ export async function GET() {
     log.push("1. Calling auth()");
     const t0 = t();
     const session = await auth();
+    if (process.env.NODE_ENV !== "development" && session?.user?.email !== process.env.ADMIN_EMAIL) return NextResponse.json({error: "Unauthorized"}, {status: 401});
     timings.auth = t() - t0;
     const validSession = session?.user?.id ? session : null;
     log.push(`2. auth() done in ${timings.auth}ms — userId: ${validSession?.user?.id ?? "none"}`);

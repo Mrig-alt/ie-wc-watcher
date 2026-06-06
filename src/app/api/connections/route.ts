@@ -20,44 +20,55 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Cannot connect to yourself" }, { status: 400 });
   }
 
-  // Check if we already sent a request
-  const existing = await db
-    .select({ id: connections.id, status: connections.status })
-    .from(connections)
-    .where(
-      and(eq(connections.requesterId, session.user.id), eq(connections.requesteeId, requesteeId))
-    )
-    .limit(1);
+  try {
+    const result = await db.transaction(async (tx) => {
+      // Check if we already sent a request
+      const existing = await tx
+        .select({ id: connections.id, status: connections.status })
+        .from(connections)
+        .where(
+          and(eq(connections.requesterId, session.user.id), eq(connections.requesteeId, requesteeId))
+        )
+        .for("update")
+        .limit(1);
 
-  if (existing.length > 0) {
-    return NextResponse.json({ connection: existing[0] });
+      if (existing.length > 0) {
+        return { connection: existing[0], status: 200 };
+      }
+
+      // Check if the other person already sent us a request (reverse)
+      const reverse = await tx
+        .select({ id: connections.id })
+        .from(connections)
+        .where(
+          and(eq(connections.requesterId, requesteeId), eq(connections.requesteeId, session.user.id))
+        )
+        .for("update")
+        .limit(1);
+
+      if (reverse.length > 0) {
+        // Just update the existing row to accepted — do NOT insert a second row.
+        // Querying friends must check both directions: (A→B) OR (B→A) with status=accepted.
+        const [conn] = await tx
+          .update(connections)
+          .set({ status: "accepted" })
+          .where(eq(connections.id, reverse[0].id))
+          .returning();
+        return { connection: conn, status: 200 };
+      }
+
+      // New request
+      const [conn] = await tx
+        .insert(connections)
+        .values({ requesterId: session.user.id, requesteeId })
+        .returning();
+
+      return { connection: conn, status: 201 };
+    });
+
+    return NextResponse.json({ connection: result.connection }, { status: result.status });
+  } catch (e) {
+    console.error("Connection request error:", e);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }
-
-  // Check if the other person already sent us a request (reverse)
-  const reverse = await db
-    .select({ id: connections.id })
-    .from(connections)
-    .where(
-      and(eq(connections.requesterId, requesteeId), eq(connections.requesteeId, session.user.id))
-    )
-    .limit(1);
-
-  if (reverse.length > 0) {
-    // Just update the existing row to accepted — do NOT insert a second row.
-    // Querying friends must check both directions: (A→B) OR (B→A) with status=accepted.
-    const [conn] = await db
-      .update(connections)
-      .set({ status: "accepted" })
-      .where(eq(connections.id, reverse[0].id))
-      .returning();
-    return NextResponse.json({ connection: conn }, { status: 200 });
-  }
-
-  // New request
-  const [conn] = await db
-    .insert(connections)
-    .values({ requesterId: session.user.id, requesteeId })
-    .returning();
-
-  return NextResponse.json({ connection: conn }, { status: 201 });
 }

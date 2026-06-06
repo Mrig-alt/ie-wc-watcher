@@ -53,7 +53,6 @@ export async function GET() {
     venueMapsUrl: r.linkedVenueMapsUrl ?? null,
     matchId: r.matchId,
     studentName: (r.studentVisibility === "stealth" || r.studentVisibility === "friends") ? "Anonymous" : (r.studentName ?? "Someone"),
-    studentId: r.studentId,
   }));
 
   return NextResponse.json({ reports: normalised });

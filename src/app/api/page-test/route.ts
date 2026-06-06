@@ -15,6 +15,7 @@ export async function GET() {
   try {
     log.push("Calling auth()");
     const session = await auth();
+    if (process.env.NODE_ENV !== "development" && session?.user?.email !== process.env.ADMIN_EMAIL) return NextResponse.json({error: "Unauthorized"}, {status: 401});
     log.push("auth() completed");
     
     const validSession = session?.user?.id ? session : null;

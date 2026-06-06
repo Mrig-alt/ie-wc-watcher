@@ -11,7 +11,9 @@ import {
   index,
   decimal,
   real,
+  check,
 } from "drizzle-orm/pg-core";
+import { sql } from "drizzle-orm";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
 
@@ -53,6 +55,8 @@ export const liveReportStatusEnum = pgEnum("live_report_status", [
   "quiet_now",
 ]);
 
+export const betStatusEnum = pgEnum("bet_status", ["pending", "accepted", "declined", "expired"]);
+
 // ─── Teams ────────────────────────────────────────────────────────────────────
 
 export const teams = pgTable("teams", {
@@ -86,7 +90,9 @@ export const students = pgTable("students", {
   deletedAt: timestamp("deleted_at"),
   lastFloorReplenishedAt: timestamp("last_floor_replenished_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [
+  check("token_balance_check", sql`${t.tokenBalance} >= 0`),
+]);
 
 // ─── Connections ──────────────────────────────────────────────────────────────
 
@@ -219,7 +225,7 @@ export const bets = pgTable(
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
     groupId: uuid("group_id").references(() => friendGroups.id, { onDelete: "cascade" }),
-    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    status: betStatusEnum("status").notNull().default("pending"),
     challengerTeamSide: integer("challenger_team_side"),
     stakeTokens: integer("stake_tokens").notNull().default(10),
     winnerId: uuid("winner_id").references(() => students.id),

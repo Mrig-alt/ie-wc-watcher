@@ -25,7 +25,7 @@ export async function GET() {
     .leftJoin(teams, eq(students.teamId, teams.id))
     .orderBy(desc(students.createdAt));
 
-  const sanitize = (v: string) => (/^[=+\-@]/.test(v) ? `'${v}` : v);
+  const sanitize = (v: string) => (/^[=+\-@\t\r]/.test(v) ? `'${v}` : v);
   const header = ["id", "name", "email", "nationality", "team", "tokenBalance", "visibility", "flagged", "createdAt"].join(",");
   const csvRows = rows.map((r) =>
     [

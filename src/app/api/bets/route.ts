@@ -46,28 +46,28 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Betting is closed for this match" }, { status: 403 });
   }
 
-  // Check bet doesn't already exist between these two for this match (either direction)
-  const existing = await db
-    .select({ id: bets.id })
-    .from(bets)
-    .where(
-      and(
-        eq(bets.matchId, matchId),
-        or(
-          and(eq(bets.student1Id, session.user.id), eq(bets.student2Id, opponentId)),
-          and(eq(bets.student1Id, opponentId), eq(bets.student2Id, session.user.id))
-        )
-      )
-    )
-    .limit(1);
-
-  if (existing.length > 0) {
-    return NextResponse.json({ error: "Bet already exists" }, { status: 409 });
-  }
-
   let bet: typeof bets.$inferSelect;
   try {
     bet = await db.transaction(async (tx) => {
+      // Check bet doesn't already exist between these two for this match (either direction)
+      const existing = await tx
+        .select({ id: bets.id })
+        .from(bets)
+        .where(
+          and(
+            eq(bets.matchId, matchId),
+            or(
+              and(eq(bets.student1Id, session.user.id), eq(bets.student2Id, opponentId)),
+              and(eq(bets.student1Id, opponentId), eq(bets.student2Id, session.user.id))
+            )
+          )
+        )
+        .for("update")
+        .limit(1);
+
+      if (existing.length > 0) {
+        throw new Error("BET_ALREADY_EXISTS");
+      }
       if (groupId) {
         // Group-specific bet validation
         // Sort IDs to prevent deadlocks when locking group members
@@ -189,6 +189,9 @@ export async function POST(req: Request) {
     });
   } catch (e: unknown) {
     if (e instanceof Error) {
+      if (e.message === "BET_ALREADY_EXISTS") {
+        return NextResponse.json({ error: "Bet already exists" }, { status: 409 });
+      }
       if (e.message === "NOT_IN_GROUP_CHALLENGER") {
         return NextResponse.json({ error: "You are not a member of this group" }, { status: 400 });
       }

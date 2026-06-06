@@ -67,13 +67,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
       if (!token.id && token.sub) token.id = token.sub;
 
-      // Step 2: Handle client-side session updates (zero-DB!)
-      if (trigger === "update" && session) {
-        if (session.tokenBalance !== undefined) token.tokenBalance = session.tokenBalance;
-        if (session.teamId !== undefined) token.teamId = session.teamId;
-        if (session.visibility !== undefined) token.visibility = session.visibility;
-        if (session.isGuest !== undefined) token.isGuest = session.isGuest;
-        if (session.hasBoughtIn !== undefined) token.hasBoughtIn = session.hasBoughtIn;
+      // Step 2: Handle client-side session updates
+      if (trigger === "update") {
+        if (token.id) {
+          const [student] = await db
+            .select()
+            .from(students)
+            .where(eq(students.id, token.id as string))
+            .limit(1);
+          if (student) {
+            token.tokenBalance = student.tokenBalance;
+            token.teamId = student.teamId;
+            token.visibility = student.visibility;
+            token.isGuest = student.isGuest;
+            token.hasBoughtIn = student.hasBoughtIn;
+          }
+        }
       }
 
       return token;

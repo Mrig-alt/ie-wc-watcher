@@ -1,15 +1,13 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { matches, teams } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { eq, and, sql } from "drizzle-orm";
 import { fetchWCMatches, mapApiStatus } from "@/lib/football-api";
 import { settleBetsForMatch, settlePredictionsForMatch } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
 
-// In-process lock — prevents two concurrent cron fires from racing on the same matches.
-// If a sync is already running, the second request bails out immediately.
-let syncRunning = false;
+
 
 export async function GET(req: Request) {
   const cronSecret = process.env.CRON_SECRET;
@@ -25,11 +23,14 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "API key not configured" }, { status: 503 });
   }
 
-  if (syncRunning) {
+  const result = await db.execute(sql`SELECT pg_try_advisory_lock(1)`);
+  const lockAcquired = (result as any).rows 
+    ? (result as any).rows[0].pg_try_advisory_lock 
+    : (result as any)[0]?.pg_try_advisory_lock;
+
+  if (!lockAcquired) {
     return NextResponse.json({ skipped: true, reason: "sync already in progress" }, { status: 200 });
   }
-
-  syncRunning = true;
   try {
     const apiMatches = await fetchWCMatches();
     if (!apiMatches.length) {
@@ -116,6 +117,6 @@ export async function GET(req: Request) {
 
     return NextResponse.json({ synced, settled });
   } finally {
-    syncRunning = false;
+    await db.execute(sql`SELECT pg_advisory_unlock(1)`);
   }
 }

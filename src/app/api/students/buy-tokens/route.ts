@@ -10,23 +10,40 @@ export async function POST() {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
 
-  // Refill student balance by 100 tokens and mark them as having bought in
-  const [updated] = await db
-    .update(students)
-    .set({
-      tokenBalance: sql`${students.tokenBalance} + 100`,
-      hasBoughtIn: true,
-    })
-    .where(eq(students.id, session.user.id))
-    .returning();
+  const result = await db.transaction(async (tx) => {
+    const [student] = await tx
+      .select({ tokenBalance: students.tokenBalance, hasBoughtIn: students.hasBoughtIn })
+      .from(students)
+      .where(eq(students.id, session.user.id))
+      .for("update");
 
-  if (!updated) {
-    return NextResponse.json({ error: "Student not found" }, { status: 404 });
+    if (!student) {
+      return { status: 404, error: "Student not found" };
+    }
+
+    if (student.hasBoughtIn) {
+      return { status: 400, error: "Already bought in" };
+    }
+
+    const [updated] = await tx
+      .update(students)
+      .set({
+        tokenBalance: sql`${students.tokenBalance} + 100`,
+        hasBoughtIn: true,
+      })
+      .where(eq(students.id, session.user.id))
+      .returning();
+
+    return { status: 200, data: updated };
+  });
+
+  if (result.status !== 200) {
+    return NextResponse.json({ error: result.error }, { status: result.status });
   }
 
   return NextResponse.json({
     success: true,
-    tokenBalance: updated.tokenBalance,
-    hasBoughtIn: updated.hasBoughtIn,
+    tokenBalance: result.data!.tokenBalance,
+    hasBoughtIn: result.data!.hasBoughtIn,
   });
 }

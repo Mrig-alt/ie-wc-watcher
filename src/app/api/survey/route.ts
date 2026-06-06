@@ -25,37 +25,45 @@ export async function POST(req: Request) {
   const { questionKey, responseText } = parsed.data;
 
   try {
-    const [existing] = await db
-      .select({ status: surveyResponses.status })
-      .from(surveyResponses)
-      .where(
-        and(
-          eq(surveyResponses.studentId, session.user.id),
-          eq(surveyResponses.questionKey, questionKey)
+    const inserted = await db.transaction(async (tx) => {
+      const [existing] = await tx
+        .select({ status: surveyResponses.status })
+        .from(surveyResponses)
+        .where(
+          and(
+            eq(surveyResponses.studentId, session.user.id),
+            eq(surveyResponses.questionKey, questionKey)
+          )
         )
-      )
-      .limit(1);
+        .for("update")
+        .limit(1);
 
-    if (existing && existing.status === "approved") {
-      return NextResponse.json({ error: "ALREADY_APPROVED" }, { status: 400 });
-    }
+      if (existing && existing.status === "approved") {
+        throw new Error("ALREADY_APPROVED");
+      }
 
-    const [inserted] = await db
-      .insert(surveyResponses)
-      .values({
-        studentId: session.user.id,
-        questionKey,
-        responseText,
-        status: "pending",
-      })
-      .onConflictDoUpdate({
-        target: [surveyResponses.studentId, surveyResponses.questionKey],
-        set: { responseText, status: "pending", updatedAt: new Date() },
-      })
-      .returning();
+      const [res] = await tx
+        .insert(surveyResponses)
+        .values({
+          studentId: session.user.id,
+          questionKey,
+          responseText,
+          status: "pending",
+        })
+        .onConflictDoUpdate({
+          target: [surveyResponses.studentId, surveyResponses.questionKey],
+          set: { responseText, status: "pending", updatedAt: new Date() },
+        })
+        .returning();
+
+      return res;
+    });
 
     return NextResponse.json({ success: true, response: inserted }, { status: 200 });
-  } catch (error) {
+  } catch (error: unknown) {
+    if (error instanceof Error && error.message === "ALREADY_APPROVED") {
+      return NextResponse.json({ error: "ALREADY_APPROVED" }, { status: 400 });
+    }
     console.error("Survey submission error:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

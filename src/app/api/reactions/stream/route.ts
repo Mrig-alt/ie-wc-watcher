@@ -1,8 +1,11 @@
 import { addClient, removeClient } from "@/lib/reaction-stream";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const session = await auth();
+  if (!session?.user) return new Response("Unauthorized", {status:401});
   let write: (data: string) => void;
   let closed = false;
   let heartbeatId: ReturnType<typeof setInterval> | undefined;

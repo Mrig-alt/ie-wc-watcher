@@ -11,14 +11,10 @@ export async function GET(req: Request) {
   if (!email) return NextResponse.json({ exists: false });
 
   const [student] = await db
-    .select({ name: students.name, isGuest: students.isGuest })
+    .select({ id: students.id })
     .from(students)
     .where(eq(students.email, email))
     .limit(1);
 
-  return NextResponse.json({
-    exists: !!student,
-    firstName: student ? student.name.split(" ")[0] : null,
-    isGuest: student ? student.isGuest : false,
-  });
+  return NextResponse.json({ exists: !!student });
 }

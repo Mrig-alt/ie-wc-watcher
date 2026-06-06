@@ -7,6 +7,7 @@ export async function GET() {
   const start = Date.now();
   try {
     const session = await auth();
+    if (process.env.NODE_ENV !== "development" && session?.user?.email !== process.env.ADMIN_EMAIL) return NextResponse.json({error: "Unauthorized"}, {status: 401});
     return NextResponse.json({
       success: true,
       timeTaken: Date.now() - start,

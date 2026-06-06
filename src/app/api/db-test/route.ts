@@ -1,9 +1,13 @@
 import { NextResponse } from "next/server";
 import postgres from "postgres";
+import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
+  const session = await auth();
+  if (process.env.NODE_ENV !== "development" && session?.user?.email !== process.env.ADMIN_EMAIL) return NextResponse.json({error: "Unauthorized"}, {status: 401});
+
   const connectionString = process.env.DATABASE_URL || "";
   if (!connectionString) {
     return NextResponse.json({

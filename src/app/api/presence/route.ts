@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and, isNull } from "drizzle-orm";
 
 export async function POST() {
   const session = await auth();
@@ -14,7 +14,7 @@ export async function POST() {
   await db
     .update(students)
     .set({ lastSeenAt: new Date() })
-    .where(eq(students.id, userId));
+    .where(and(eq(students.id, userId), isNull(students.deletedAt)));
 
   return NextResponse.json({ ok: true });
 }

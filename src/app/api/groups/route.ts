@@ -7,7 +7,7 @@ import { z } from "zod";
 
 function generateCode() {
   const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  return Array.from({ length: 6 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
+  return Array.from({ length: 8 }, () => chars[Math.floor(Math.random() * chars.length)]).join("");
 }
 
 const createSchema = z.object({

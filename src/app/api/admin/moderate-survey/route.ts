@@ -17,31 +17,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
     }
 
-    const [response] = await db
-      .select()
-      .from(surveyResponses)
-      .where(eq(surveyResponses.id, responseId))
-      .limit(1);
-
-    if (!response) {
-      return NextResponse.json({ error: "Survey response not found" }, { status: 404 });
-    }
-
-    if (response.status !== "pending") {
-      return NextResponse.json({ error: "Response is already moderated" }, { status: 400 });
-    }
-
-    if (action === "reject") {
-      const [updated] = await db
-        .update(surveyResponses)
-        .set({ status: "rejected", updatedAt: new Date() })
+    // Process moderation in a transaction to prevent race conditions
+    const result = await db.transaction(async (tx) => {
+      const [response] = await tx
+        .select()
+        .from(surveyResponses)
         .where(eq(surveyResponses.id, responseId))
-        .returning();
-      return NextResponse.json({ success: true, response: updated });
-    }
+        .for("update")
+        .limit(1);
 
-    // Approve: award 3 tokens and record in ledger
-    const updated = await db.transaction(async (tx) => {
+      if (!response) {
+        throw new Error("NOT_FOUND");
+      }
+
+      if (response.status !== "pending") {
+        throw new Error("ALREADY_MODERATED");
+      }
+
+      if (action === "reject") {
+        const [updated] = await tx
+          .update(surveyResponses)
+          .set({ status: "rejected", updatedAt: new Date() })
+          .where(eq(surveyResponses.id, responseId))
+          .returning();
+        return { success: true, response: updated };
+      }
+
+      // Approve: award 3 tokens and record in ledger
       // 1. Update response status
       const [res] = await tx
         .update(surveyResponses)
@@ -77,11 +79,19 @@ export async function POST(req: Request) {
           .where(and(inArray(groupMembers.groupId, groupIds), eq(groupMembers.studentId, response.studentId)));
       }
 
-      return res;
+      return { success: true, response: res };
     });
 
-    return NextResponse.json({ success: true, response: updated });
-  } catch (error) {
+    return NextResponse.json(result);
+  } catch (error: unknown) {
+    if (error instanceof Error) {
+      if (error.message === "NOT_FOUND") {
+        return NextResponse.json({ error: "Survey response not found" }, { status: 404 });
+      }
+      if (error.message === "ALREADY_MODERATED") {
+        return NextResponse.json({ error: "Response is already moderated" }, { status: 400 });
+      }
+    }
     console.error("Survey moderation failed:", error);
     return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
   }

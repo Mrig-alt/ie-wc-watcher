@@ -201,65 +201,77 @@ export async function DELETE(
 
   const { id } = await params;
 
-  // Retrieve the bet and its match details
-  const [bet] = await db
-    .select({
-      id: bets.id,
-      matchId: bets.matchId,
-      student1Id: bets.student1Id,
-      student2Id: bets.student2Id,
-      groupId: bets.groupId,
-      status: bets.status,
-      challengerTeamSide: bets.challengerTeamSide,
-      stakeTokens: bets.stakeTokens,
-      student1Score1: bets.student1Score1,
-      matchDatetime: matches.matchDatetime,
-    })
-    .from(bets)
-    .innerJoin(matches, eq(matches.id, bets.matchId))
-    .where(eq(bets.id, id))
-    .limit(1);
+  try {
+    await db.transaction(async (tx) => {
+      // Retrieve the bet and its match details
+      const [bet] = await tx
+        .select({
+          id: bets.id,
+          matchId: bets.matchId,
+          student1Id: bets.student1Id,
+          student2Id: bets.student2Id,
+          groupId: bets.groupId,
+          status: bets.status,
+          challengerTeamSide: bets.challengerTeamSide,
+          stakeTokens: bets.stakeTokens,
+          student1Score1: bets.student1Score1,
+          matchDatetime: matches.matchDatetime,
+        })
+        .from(bets)
+        .innerJoin(matches, eq(matches.id, bets.matchId))
+        .where(eq(bets.id, id))
+        .for("update")
+        .limit(1);
 
-  if (!bet) return NextResponse.json({ error: "Bet not found" }, { status: 404 });
+      if (!bet) throw new Error("NOT_FOUND");
+      if (bet.status !== "pending") throw new Error("NOT_PENDING");
 
-  if (bet.status !== "pending") {
-    return NextResponse.json({ error: "Can only cancel pending challenges" }, { status: 400 });
-  }
+      // Deduce challenger ID
+      const isScore = bet.student1Score1 !== null;
+      const challengerId = isScore 
+        ? bet.student1Id 
+        : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id);
 
-  // Deduce challenger ID
-  const isScore = bet.student1Score1 !== null;
-  const challengerId = isScore 
-    ? bet.student1Id 
-    : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id);
+      // Only the challenger can cancel
+      if (session.user.id !== challengerId) {
+        throw new Error("FORBIDDEN");
+      }
 
-  // Only the challenger can cancel
-  if (session.user.id !== challengerId) {
-    return NextResponse.json({ error: "Only the challenger who created the bet can cancel it" }, { status: 403 });
-  }
+      if (bet.groupId) {
+        await tx
+          .update(groupMembers)
+          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, challengerId)));
+      } else {
+        await tx
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+          .where(eq(students.id, challengerId));
 
-  // Cancel and refund challenger
-  await db.transaction(async (tx) => {
-    if (bet.groupId) {
-      await tx
-        .update(groupMembers)
-        .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
-        .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, challengerId)));
-    } else {
-      await tx
-        .update(students)
-        .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
-        .where(eq(students.id, challengerId));
+        await tx.insert(tokenLedger).values({
+          studentId: challengerId,
+          amount: bet.stakeTokens,
+          reason: "bet_refund_cancel",
+          matchId: bet.matchId,
+        });
+      }
 
-      await tx.insert(tokenLedger).values({
-        studentId: challengerId,
-        amount: bet.stakeTokens,
-        reason: "bet_refund_cancel",
-        matchId: bet.matchId,
-      });
+      await tx.delete(bets).where(eq(bets.id, id));
+    });
+  } catch (e: unknown) {
+    if (e instanceof Error) {
+      if (e.message === "NOT_FOUND") {
+        return NextResponse.json({ error: "Bet not found" }, { status: 404 });
+      }
+      if (e.message === "NOT_PENDING") {
+        return NextResponse.json({ error: "Can only cancel pending challenges" }, { status: 400 });
+      }
+      if (e.message === "FORBIDDEN") {
+        return NextResponse.json({ error: "Only the challenger who created the bet can cancel it" }, { status: 403 });
+      }
     }
-
-    await tx.delete(bets).where(eq(bets.id, id));
-  });
+    throw e;
+  }
 
   return NextResponse.json({ ok: true });
 }
