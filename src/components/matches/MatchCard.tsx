@@ -81,8 +81,9 @@ export default function MatchCard({
   const t1Flag = match.team1?.flagEmoji ?? "\uD83C\uDFF3\uFE0F";
   const t2Flag = match.team2?.flagEmoji ?? "\uD83C\uDFF3\uFE0F";
 
-  // Can predict if logged in, match is upcoming, and both teams are known
-  const canPredict = !!currentUserId && isUpcoming && !!match.team1 && !!match.team2;
+  // Can predict if logged in, match is upcoming, both teams known, and it's >1hr before kickoff
+  const cutoffTime = new Date(new Date(match.matchDatetime).getTime() - 60 * 60 * 1000);
+  const canPredict = !!currentUserId && isUpcoming && !!match.team1 && !!match.team2 && new Date() < cutoffTime;
 
   return (
     <Card className={isLive ? "ring-2 ring-red-400" : ""}>
