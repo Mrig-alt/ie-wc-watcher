@@ -32,6 +32,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         city: matches.city,
         team1Placeholder: matches.team1Placeholder,
         team2Placeholder: matches.team2Placeholder,
+        team1Odds: matches.team1Odds,
+        team2Odds: matches.team2Odds,
         team1Id: matches.team1Id,
         team2Id: matches.team2Id,
       })

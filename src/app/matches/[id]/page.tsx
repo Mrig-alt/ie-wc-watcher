@@ -123,6 +123,11 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           <div className="flex flex-col items-center gap-1 flex-1">
             <span className="text-5xl">{team1?.flagEmoji ?? "🏳️"}</span>
             <span className="text-sm font-semibold text-center">{t1Name}</span>
+            {match.team1Odds != null && (
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-sm mt-1">
+                {match.team1Odds.toFixed(2)}x
+              </span>
+            )}
             <div className="flex flex-wrap justify-center gap-1 mt-1">
               {team1Supporters.map((s) => (<span key={s.id} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{s.name.split(" ")[0]}</span>))}
             </div>
@@ -138,6 +143,11 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           <div className="flex flex-col items-center gap-1 flex-1">
             <span className="text-5xl">{team2?.flagEmoji ?? "🏳️"}</span>
             <span className="text-sm font-semibold text-center">{t2Name}</span>
+            {match.team2Odds != null && (
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-0.5 rounded-sm mt-1">
+                {match.team2Odds.toFixed(2)}x
+              </span>
+            )}
             <div className="flex flex-wrap justify-center gap-1 mt-1">
               {team2Supporters.map((s) => (<span key={s.id} className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-600">{s.name.split(" ")[0]}</span>))}
             </div>

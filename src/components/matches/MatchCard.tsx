@@ -35,6 +35,8 @@ interface MatchCardProps {
     team2: { id: string; name: string; flagEmoji: string } | null;
     team1Placeholder: string | null;
     team2Placeholder: string | null;
+    team1Odds?: number | null;
+    team2Odds?: number | null;
   };
   team1Supporters: Supporter[];
   team2Supporters: Supporter[];
@@ -101,13 +103,13 @@ export default function MatchCard({
         {/* Scoreline / teams */}
         <Link href={`/matches/${match.id}`} className="block hover:opacity-80 transition-opacity">
           <div className="flex items-center justify-between gap-3">
-            <TeamSide flag={t1Flag} name={t1Name} supporters={team1Supporters} highlight={myTeamSide === "team1"} />
+            <TeamSide flag={t1Flag} name={t1Name} supporters={team1Supporters} highlight={myTeamSide === "team1"} odds={match.team1Odds} />
 
             <div className="flex flex-col items-center shrink-0 min-w-[56px]">
               {isCompleted || isLive ? (
                 <span className="text-xl font-bold text-gray-900">
                   {match.team1Score != null && match.team2Score != null
-                    ? `${match.team1Score}\u2013${match.team2Score}`
+                    ? `${match.team1Score}–${match.team2Score}`
                     : <span className="text-red-500 text-base font-semibold">Live</span>}
                 </span>
               ) : (
@@ -118,7 +120,7 @@ export default function MatchCard({
               )}
             </div>
 
-            <TeamSide flag={t2Flag} name={t2Name} supporters={team2Supporters} highlight={myTeamSide === "team2"} right />
+            <TeamSide flag={t2Flag} name={t2Name} supporters={team2Supporters} highlight={myTeamSide === "team2"} odds={match.team2Odds} right />
           </div>
         </Link>
 
@@ -232,12 +234,14 @@ function TeamSide({
   supporters,
   highlight,
   right,
+  odds,
 }: {
   flag: string;
   name: string;
   supporters: Supporter[];
   highlight?: boolean;
   right?: boolean;
+  odds?: number | null;
 }) {
   return (
     <div className={`flex flex-col ${right ? "items-end" : "items-start"} gap-1 flex-1 min-w-0`}>
@@ -246,6 +250,11 @@ function TeamSide({
         <span className={`text-sm font-semibold truncate ${highlight ? "text-green-700" : "text-gray-900"}`}>
           {name}
         </span>
+        {odds != null && (
+          <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">
+            {odds.toFixed(2)}x
+          </span>
+        )}
       </div>
       {supporters.length > 0 && (
         <div className={`flex flex-wrap gap-1 ${right ? "justify-end" : ""}`}>
