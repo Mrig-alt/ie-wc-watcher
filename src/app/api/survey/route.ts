@@ -25,6 +25,21 @@ export async function POST(req: Request) {
   const { questionKey, responseText } = parsed.data;
 
   try {
+    const [existing] = await db
+      .select({ status: surveyResponses.status })
+      .from(surveyResponses)
+      .where(
+        and(
+          eq(surveyResponses.studentId, session.user.id),
+          eq(surveyResponses.questionKey, questionKey)
+        )
+      )
+      .limit(1);
+
+    if (existing && existing.status === "approved") {
+      return NextResponse.json({ error: "ALREADY_APPROVED" }, { status: 400 });
+    }
+
     const [inserted] = await db
       .insert(surveyResponses)
       .values({

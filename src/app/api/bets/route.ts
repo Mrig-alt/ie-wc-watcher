@@ -70,24 +70,33 @@ export async function POST(req: Request) {
     bet = await db.transaction(async (tx) => {
       if (groupId) {
         // Group-specific bet validation
-        const [challengerMember] = await tx
-          .select({ tokenBalance: groupMembers.tokenBalance })
+        // Sort IDs to prevent deadlocks when locking group members
+        const firstMemberId = session.user.id < opponentId ? session.user.id : opponentId;
+        const secondMemberId = session.user.id < opponentId ? opponentId : session.user.id;
+
+        const [firstMember] = await tx
+          .select({ studentId: groupMembers.studentId, tokenBalance: groupMembers.tokenBalance })
           .from(groupMembers)
-          .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, session.user.id)))
+          .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, firstMemberId)))
+          .for("update")
           .limit(1);
 
-        const [opponentMember] = await tx
-          .select({ tokenBalance: groupMembers.tokenBalance })
+        const [secondMember] = await tx
+          .select({ studentId: groupMembers.studentId, tokenBalance: groupMembers.tokenBalance })
           .from(groupMembers)
-          .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, opponentId)))
+          .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, secondMemberId)))
+          .for("update")
           .limit(1);
 
-        if (!challengerMember) {
-          throw new Error("NOT_IN_GROUP_CHALLENGER");
-        }
-        if (!opponentMember) {
+        if (!firstMember || !secondMember) {
+          const hasChallenger = firstMemberId === session.user.id ? firstMember : secondMember;
+          if (!hasChallenger) throw new Error("NOT_IN_GROUP_CHALLENGER");
           throw new Error("NOT_IN_GROUP_OPPONENT");
         }
+
+        const challengerMember = firstMember.studentId === session.user.id ? firstMember : secondMember;
+        const opponentMember = firstMember.studentId === opponentId ? firstMember : secondMember;
+
         if (challengerMember.tokenBalance < stakeTokens) {
           throw new Error("INSUFFICIENT_TOKENS_CHALLENGER");
         }
@@ -102,22 +111,35 @@ export async function POST(req: Request) {
           .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, session.user.id)));
       } else {
         // Global bet validation
-        const [requester] = await tx
-          .select({ tokenBalance: students.tokenBalance })
+        // Sort IDs to prevent deadlocks when locking student records
+        const firstId = session.user.id < opponentId ? session.user.id : opponentId;
+        const secondId = session.user.id < opponentId ? opponentId : session.user.id;
+
+        const [firstStudent] = await tx
+          .select({ id: students.id, tokenBalance: students.tokenBalance })
           .from(students)
-          .where(eq(students.id, session.user.id))
+          .where(eq(students.id, firstId))
+          .for("update")
           .limit(1);
 
-        const [opponent] = await tx
-          .select({ tokenBalance: students.tokenBalance })
+        const [secondStudent] = await tx
+          .select({ id: students.id, tokenBalance: students.tokenBalance })
           .from(students)
-          .where(eq(students.id, opponentId))
+          .where(eq(students.id, secondId))
+          .for("update")
           .limit(1);
 
-        if (!requester || requester.tokenBalance < stakeTokens) {
+        if (!firstStudent || !secondStudent) {
+          throw new Error("OPPONENT_NOT_FOUND");
+        }
+
+        const requester = firstStudent.id === session.user.id ? firstStudent : secondStudent;
+        const opponent = firstStudent.id === opponentId ? firstStudent : secondStudent;
+
+        if (requester.tokenBalance < stakeTokens) {
           throw new Error("INSUFFICIENT_TOKENS_REQUESTER");
         }
-        if (!opponent || opponent.tokenBalance < stakeTokens) {
+        if (opponent.tokenBalance < stakeTokens) {
           throw new Error("INSUFFICIENT_TOKENS_OPPONENT");
         }
 
@@ -178,6 +200,9 @@ export async function POST(req: Request) {
       }
       if (e.message === "INSUFFICIENT_TOKENS_OPPONENT") {
         return NextResponse.json({ error: "Opponent has insufficient tokens to accept this challenge" }, { status: 400 });
+      }
+      if (e.message === "OPPONENT_NOT_FOUND") {
+        return NextResponse.json({ error: "Opponent not found" }, { status: 404 });
       }
     }
     throw e;

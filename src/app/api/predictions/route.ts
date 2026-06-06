@@ -1,13 +1,22 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { predictions, matches, predictionHistory } from "@/db/schema";
-import { eq, and, count } from "drizzle-orm";
+import { predictions, matches, predictionHistory, students } from "@/db/schema";
+import { eq, and, count, isNull } from "drizzle-orm";
 import { predictionSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const [student] = await db
+    .select({ id: students.id })
+    .from(students)
+    .where(and(eq(students.id, session.user.id), isNull(students.deletedAt)))
+    .limit(1);
+  if (!student) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   if (session.user.isGuest) {
     return NextResponse.json({ error: "Guests cannot submit predictions. Verify your class PIN first." }, { status: 403 });
@@ -120,6 +129,15 @@ export async function POST(req: Request) {
 export async function GET(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  const [student] = await db
+    .select({ id: students.id })
+    .from(students)
+    .where(and(eq(students.id, session.user.id), isNull(students.deletedAt)))
+    .limit(1);
+  if (!student) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
 
   const { searchParams } = new URL(req.url);
   const matchId = searchParams.get("matchId");

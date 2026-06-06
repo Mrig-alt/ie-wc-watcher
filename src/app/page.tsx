@@ -8,6 +8,7 @@ import MatchCardClient from "@/components/matches/MatchCardClient";
 import JoinBanner from "@/components/home/JoinBanner";
 import PendingChallengesWidget from "@/components/home/PendingChallengesWidget";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
+import { getMadridTodayRange } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -16,9 +17,7 @@ export default async function HomePage() {
     const session = await auth();
     const validSession = session?.user?.id ? session : null;
 
-    const now = new Date();
-    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+    const { start: todayStart, end: todayEnd } = getMadridTodayRange();
 
     const todayMatches = await db
       .select({

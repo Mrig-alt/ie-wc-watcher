@@ -92,6 +92,7 @@ export async function PATCH(
             .select({ tokenBalance: groupMembers.tokenBalance })
             .from(groupMembers)
             .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, opponentId)))
+            .for("update")
             .limit(1);
 
           if (!opponentMember || opponentMember.tokenBalance < bet.stakeTokens) {
@@ -109,6 +110,7 @@ export async function PATCH(
             .select({ tokenBalance: students.tokenBalance })
             .from(students)
             .where(eq(students.id, opponentId))
+            .for("update")
             .limit(1);
 
           if (!opponent || opponent.tokenBalance < bet.stakeTokens) {

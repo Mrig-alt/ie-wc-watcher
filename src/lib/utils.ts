@@ -1,21 +1,54 @@
 import { type ClassValue, clsx } from "clsx";
 import { twMerge } from "tailwind-merge";
-import { format, isToday, isTomorrow } from "date-fns";
-import { toZonedTime } from "date-fns-tz";
+import { format } from "date-fns";
+import { toZonedTime, fromZonedTime } from "date-fns-tz";
 import type { MatchStage } from "@/db/schema";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
 }
 
-export function formatMatchDate(dt: Date): string {
-  if (isToday(dt)) return "Today";
-  if (isTomorrow(dt)) return "Tomorrow";
-  return format(dt, "EEE, d MMM");
+export function getMadridTodayRange() {
+  const tz = "Europe/Madrid";
+  const now = new Date();
+  const zonedNow = toZonedTime(now, tz);
+
+  const startOfZoned = new Date(zonedNow);
+  startOfZoned.setHours(0, 0, 0, 0);
+
+  const endOfZoned = new Date(zonedNow);
+  endOfZoned.setHours(23, 59, 59, 999);
+
+  const startUtc = fromZonedTime(startOfZoned, tz);
+  const endUtc = fromZonedTime(endOfZoned, tz);
+
+  return { start: startUtc, end: endUtc };
+}
+
+export function formatMatchDate(dt: Date, timezone?: string): string {
+  const tz = timezone ?? "Europe/Madrid";
+  const zonedMatch = toZonedTime(dt, tz);
+  const zonedNow = toZonedTime(new Date(), tz);
+
+  const isZonedToday =
+    zonedMatch.getFullYear() === zonedNow.getFullYear() &&
+    zonedMatch.getMonth() === zonedNow.getMonth() &&
+    zonedMatch.getDate() === zonedNow.getDate();
+
+  const tomorrow = new Date(zonedNow);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const isZonedTomorrow =
+    zonedMatch.getFullYear() === tomorrow.getFullYear() &&
+    zonedMatch.getMonth() === tomorrow.getMonth() &&
+    zonedMatch.getDate() === tomorrow.getDate();
+
+  if (isZonedToday) return "Today";
+  if (isZonedTomorrow) return "Tomorrow";
+  return format(zonedMatch, "EEE, d MMM");
 }
 
 export function formatKickoff(dt: Date, timezone?: string): string {
-  const tz = timezone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const tz = timezone ?? "Europe/Madrid";
   const zoned = toZonedTime(dt, tz);
   return format(zoned, "HH:mm");
 }

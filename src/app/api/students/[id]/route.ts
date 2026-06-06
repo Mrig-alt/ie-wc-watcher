@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students } from "@/db/schema";
-import { eq, count, sql } from "drizzle-orm";
+import { eq, count, sql, and, isNull } from "drizzle-orm";
 import { updateStudentSchema } from "@/lib/validations";
 import {
   PUBLIC_BONUS_TOKENS,
@@ -48,7 +48,7 @@ export async function PATCH(
   const [currentStudent] = await db
     .select()
     .from(students)
-    .where(eq(students.id, id))
+    .where(and(eq(students.id, id), isNull(students.deletedAt)))
     .limit(1);
 
   if (!currentStudent) {

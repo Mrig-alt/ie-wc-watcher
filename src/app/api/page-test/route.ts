@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { matches, teams, students, predictions, watchInvites, bets, friendGroups } from "@/db/schema";
 import { eq, and, gte, lte, asc, inArray, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
+import { getMadridTodayRange } from "@/lib/utils";
 
 export const dynamic = "force-dynamic";
 
@@ -18,9 +19,7 @@ export async function GET() {
     
     const validSession = session?.user?.id ? session : null;
     
-    const now = new Date();
-    const todayStart = new Date(now); todayStart.setHours(0, 0, 0, 0);
-    const todayEnd = new Date(now); todayEnd.setHours(23, 59, 59, 999);
+    const { start: todayStart, end: todayEnd } = getMadridTodayRange();
     
     log.push("Querying todayMatches");
     const todayMatches = await db

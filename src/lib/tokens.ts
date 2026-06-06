@@ -293,43 +293,46 @@ export async function settlePredictionsForMatch(matchId: string) {
 }
 
 export async function checkAndReplenishFloor(studentId: string) {
-  const [student] = await db
-    .select({
-      id: students.id,
-      tokenBalance: students.tokenBalance,
-      lastFloorReplenishedAt: students.lastFloorReplenishedAt,
-    })
-    .from(students)
-    .where(eq(students.id, studentId))
-    .limit(1);
-
-  if (!student) return null;
-
-  const now = new Date();
-  const balance = student.tokenBalance;
-  const lastReplenished = student.lastFloorReplenishedAt;
-  const isEligible =
-    balance < 10 &&
-    (!lastReplenished || now.getTime() - lastReplenished.getTime() > 24 * 60 * 60 * 1000);
-
-  if (isEligible) {
-    const diff = 10 - balance;
-    await db
-      .update(students)
-      .set({
-        tokenBalance: 10,
-        lastFloorReplenishedAt: now,
+  return await db.transaction(async (tx) => {
+    const [student] = await tx
+      .select({
+        id: students.id,
+        tokenBalance: students.tokenBalance,
+        lastFloorReplenishedAt: students.lastFloorReplenishedAt,
       })
-      .where(eq(students.id, studentId));
+      .from(students)
+      .where(eq(students.id, studentId))
+      .for("update")
+      .limit(1);
 
-    await db.insert(tokenLedger).values({
-      studentId,
-      amount: diff,
-      reason: "floor_grant",
-    });
+    if (!student) return null;
 
-    return 10;
-  }
+    const now = new Date();
+    const balance = student.tokenBalance;
+    const lastReplenished = student.lastFloorReplenishedAt;
+    const isEligible =
+      balance < 10 &&
+      (!lastReplenished || now.getTime() - lastReplenished.getTime() > 24 * 60 * 60 * 1000);
 
-  return balance;
+    if (isEligible) {
+      const diff = 10 - balance;
+      await tx
+        .update(students)
+        .set({
+          tokenBalance: 10,
+          lastFloorReplenishedAt: now,
+        })
+        .where(eq(students.id, studentId));
+
+      await tx.insert(tokenLedger).values({
+        studentId,
+        amount: diff,
+        reason: "floor_grant",
+      });
+
+      return 10;
+    }
+
+    return balance;
+  });
 }

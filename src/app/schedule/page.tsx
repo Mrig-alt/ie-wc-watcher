@@ -3,7 +3,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { matches, teams, students, predictions, watchInvites } from "@/db/schema";
 import { eq, asc, inArray, gte, or, and } from "drizzle-orm";
-import { stageLabel, formatMatchDate } from "@/lib/utils";
+import { stageLabel, formatMatchDate, getMadridTodayRange } from "@/lib/utils";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { calculateGroupStandings } from "@/lib/standings";
 import GroupStandingsTable from "@/components/standings/GroupStandingsTable";
@@ -18,6 +18,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
     const session = await auth();
     const validSession = session?.user?.id ? session : null;
+
+    const { start: todayStart } = getMadridTodayRange();
 
     const allMatches = await db
       .select({
@@ -38,7 +40,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
         team2Id: matches.team2Id,
       })
       .from(matches)
-      .where(gte(matches.matchDatetime, new Date(new Date().setHours(0, 0, 0, 0))))
+      .where(gte(matches.matchDatetime, todayStart))
       .orderBy(asc(matches.matchDatetime));
 
     const allMatchesForStandings = isGroups ? await db.select().from(matches) : [];
