@@ -85,7 +85,7 @@ export async function DELETE(req: Request) {
     return NextResponse.json({ error: "id required" }, { status: 400 });
   }
 
-  await db.delete(students).where(eq(students.id, id));
+  await db.update(students).set({ deletedAt: new Date() }).where(eq(students.id, id));
 
   return NextResponse.json({ deleted: id });
 }

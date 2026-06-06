@@ -5,6 +5,7 @@ import { SessionProvider } from "next-auth/react";
 import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
 import PresenceTracker from "@/components/layout/PresenceTracker";
+import SurveyWidget from "@/components/survey/SurveyWidget";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -58,6 +59,7 @@ export default function RootLayout({
             {children}
           </main>
           <MobileNav />
+          <SurveyWidget />
         </SessionProvider>
       </body>
     </html>

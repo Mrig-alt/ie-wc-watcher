@@ -1,5 +1,5 @@
 import { db } from "@/db";
-import { students, bets, predictions, matches, groupMembers } from "@/db/schema";
+import { students, bets, predictions, matches, groupMembers, tokenLedger } from "@/db/schema";
 import { eq, and, isNull, sql, inArray } from "drizzle-orm";
 
 export const STAKE_TOKENS = 10;
@@ -40,6 +40,13 @@ export async function settleBetsForMatch(matchId: string) {
           .update(students)
           .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
           .where(eq(students.id, challengerId));
+
+        await db.insert(tokenLedger).values({
+          studentId: challengerId,
+          amount: bet.stakeTokens,
+          reason: "bet_refund_expired",
+          matchId,
+        });
       }
       continue;
     }
@@ -119,6 +126,13 @@ export async function settleBetsForMatch(matchId: string) {
           .update(students)
           .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens * 2}` })
           .where(eq(students.id, winnerId));
+
+        await db.insert(tokenLedger).values({
+          studentId: winnerId,
+          amount: bet.stakeTokens * 2,
+          reason: "bet_payout_win",
+          matchId,
+        });
       }
     } else if (payoutType === "half" && winnerId) {
       // Closest wins half, the other half is returned to the loser
@@ -144,6 +158,19 @@ export async function settleBetsForMatch(matchId: string) {
           .update(students)
           .set({ tokenBalance: sql`${students.tokenBalance} + ${loserRefund}` })
           .where(eq(students.id, loserId));
+
+        await db.insert(tokenLedger).values({
+          studentId: winnerId,
+          amount: winnerRefund,
+          reason: "bet_payout_half_win",
+          matchId,
+        });
+        await db.insert(tokenLedger).values({
+          studentId: loserId,
+          amount: loserRefund,
+          reason: "bet_payout_half_loss",
+          matchId,
+        });
       }
     } else {
       // Refund both players their stakeTokens (draw/tie/both exact match)
@@ -165,6 +192,19 @@ export async function settleBetsForMatch(matchId: string) {
           .update(students)
           .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
           .where(eq(students.id, bet.student2Id));
+
+        await db.insert(tokenLedger).values({
+          studentId: bet.student1Id,
+          amount: bet.stakeTokens,
+          reason: "bet_refund_draw",
+          matchId,
+        });
+        await db.insert(tokenLedger).values({
+          studentId: bet.student2Id,
+          amount: bet.stakeTokens,
+          reason: "bet_refund_draw",
+          matchId,
+        });
       }
     }
   }
@@ -178,7 +218,7 @@ export async function settlePredictionsForMatch(matchId: string) {
   const unsettled = await db
     .select()
     .from(predictions)
-    .where(and(eq(predictions.matchId, matchId), isNull(predictions.tokensEarned)));
+    .where(and(eq(predictions.matchId, matchId), eq(predictions.settled, false)));
 
   for (const pred of unsettled) {
     let earned = 0;
@@ -207,33 +247,89 @@ export async function settlePredictionsForMatch(matchId: string) {
       earned += PREDICTION_EXACT_TOKENS;
     }
 
-    const updated = await db
-      .update(predictions)
-      .set({ tokensEarned: earned })
-      .where(and(eq(predictions.id, pred.id), isNull(predictions.tokensEarned)))
-      .returning({ id: predictions.id });
-    if (updated.length === 0) continue;
+    // Hard cap prediction payouts to 100 tokens
+    earned = Math.min(earned, 100);
 
-    if (earned > 0) {
-      // Award globally
-      await db
-        .update(students)
-        .set({ tokenBalance: sql`${students.tokenBalance} + ${earned}` })
-        .where(eq(students.id, pred.studentId));
+    await db.transaction(async (tx) => {
+      const updated = await tx
+        .update(predictions)
+        .set({ tokensEarned: earned, settled: true })
+        .where(and(eq(predictions.id, pred.id), eq(predictions.settled, false)))
+        .returning({ id: predictions.id });
+      
+      if (updated.length === 0) return;
 
-      // Award to all friend groups the student is currently in
-      const memberships = await db
-        .select({ groupId: groupMembers.groupId })
-        .from(groupMembers)
-        .where(eq(groupMembers.studentId, pred.studentId));
+      if (earned > 0) {
+        // Award globally
+        await tx
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} + ${earned}` })
+          .where(eq(students.id, pred.studentId));
 
-      if (memberships.length > 0) {
-        const groupIds = memberships.map((m) => m.groupId);
-        await db
-          .update(groupMembers)
-          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${earned}` })
-          .where(and(inArray(groupMembers.groupId, groupIds), eq(groupMembers.studentId, pred.studentId)));
+        // Log to token ledger
+        await tx.insert(tokenLedger).values({
+          studentId: pred.studentId,
+          amount: earned,
+          reason: "prediction_payout",
+          matchId,
+        });
+
+        // Award to all friend groups the student is currently in
+        const memberships = await tx
+          .select({ groupId: groupMembers.groupId })
+          .from(groupMembers)
+          .where(eq(groupMembers.studentId, pred.studentId));
+
+        if (memberships.length > 0) {
+          const groupIds = memberships.map((m) => m.groupId);
+          await tx
+            .update(groupMembers)
+            .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${earned}` })
+            .where(and(inArray(groupMembers.groupId, groupIds), eq(groupMembers.studentId, pred.studentId)));
+        }
       }
-    }
+    });
   }
+}
+
+export async function checkAndReplenishFloor(studentId: string) {
+  const [student] = await db
+    .select({
+      id: students.id,
+      tokenBalance: students.tokenBalance,
+      lastFloorReplenishedAt: students.lastFloorReplenishedAt,
+    })
+    .from(students)
+    .where(eq(students.id, studentId))
+    .limit(1);
+
+  if (!student) return null;
+
+  const now = new Date();
+  const balance = student.tokenBalance;
+  const lastReplenished = student.lastFloorReplenishedAt;
+  const isEligible =
+    balance < 10 &&
+    (!lastReplenished || now.getTime() - lastReplenished.getTime() > 24 * 60 * 60 * 1000);
+
+  if (isEligible) {
+    const diff = 10 - balance;
+    await db
+      .update(students)
+      .set({
+        tokenBalance: 10,
+        lastFloorReplenishedAt: now,
+      })
+      .where(eq(students.id, studentId));
+
+    await db.insert(tokenLedger).values({
+      studentId,
+      amount: diff,
+      reason: "floor_grant",
+    });
+
+    return 10;
+  }
+
+  return balance;
 }

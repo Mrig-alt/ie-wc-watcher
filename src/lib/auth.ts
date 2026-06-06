@@ -25,7 +25,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           .where(eq(students.email, email.toLowerCase()))
           .limit(1);
 
-        if (!student || student.flagged) return null;
+        if (!student || student.flagged || student.deletedAt) return null;
 
         const joinPin = process.env.JOIN_PIN;
         if (!student.isGuest && joinPin && pin !== joinPin) return null;

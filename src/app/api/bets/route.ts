@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { bets, students, matches, groupMembers } from "@/db/schema";
+import { bets, students, matches, groupMembers, tokenLedger } from "@/db/schema";
 import { eq, and, or, sql, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { STAKE_TOKENS } from "@/lib/tokens";
@@ -126,6 +126,14 @@ export async function POST(req: Request) {
           .update(students)
           .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeTokens}` })
           .where(eq(students.id, session.user.id));
+
+        // Log in token ledger
+        await tx.insert(tokenLedger).values({
+          studentId: session.user.id,
+          amount: -stakeTokens,
+          reason: "bet_placed",
+          matchId,
+        });
       }
 
       const isScore = student1Score1 !== undefined && student1Score1 !== null;

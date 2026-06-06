@@ -14,6 +14,8 @@ type MatchOption = {
   team1Placeholder: string | null;
   team2Placeholder: string | null;
   matchDatetime: Date | string;
+  team1Odds: number | null;
+  team2Odds: number | null;
 };
 
 type TeamInfo = {
@@ -188,26 +190,36 @@ export default function ChallengeModal({
                 <button
                   type="button"
                   onClick={() => setChallengerTeamSide(1)}
-                  className={`flex-1 rounded-lg border p-3 text-center transition-all ${
+                  className={`flex-1 rounded-lg border p-3 text-center transition-all flex flex-col items-center justify-center ${
                     challengerTeamSide === 1
                       ? "border-green-500 bg-green-50 text-green-700"
                       : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
                 >
                   <span className="block text-xl mb-1">{team1Flag}</span>
-                  <span className="block text-xs font-semibold truncate">{team1Name}</span>
+                  <span className="block text-xs font-semibold truncate max-w-full">{team1Name}</span>
+                  {selectedMatch?.team1Odds != null && (
+                    <span className="mt-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded">
+                      {selectedMatch.team1Odds.toFixed(2)}x
+                    </span>
+                  )}
                 </button>
                 <button
                   type="button"
                   onClick={() => setChallengerTeamSide(2)}
-                  className={`flex-1 rounded-lg border p-3 text-center transition-all ${
+                  className={`flex-1 rounded-lg border p-3 text-center transition-all flex flex-col items-center justify-center ${
                     challengerTeamSide === 2
                       ? "border-green-500 bg-green-50 text-green-700"
                       : "border-gray-200 text-gray-700 hover:border-gray-300"
                   }`}
                 >
                   <span className="block text-xl mb-1">{team2Flag}</span>
-                  <span className="block text-xs font-semibold truncate">{team2Name}</span>
+                  <span className="block text-xs font-semibold truncate max-w-full">{team2Name}</span>
+                  {selectedMatch?.team2Odds != null && (
+                    <span className="mt-1 px-1.5 py-0.5 text-[10px] font-bold bg-amber-100 text-amber-800 rounded">
+                      {selectedMatch.team2Odds.toFixed(2)}x
+                    </span>
+                  )}
                 </button>
               </div>
             </div>

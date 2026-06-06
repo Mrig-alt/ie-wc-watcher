@@ -1,8 +1,8 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { predictions, matches } from "@/db/schema";
-import { eq, and } from "drizzle-orm";
+import { predictions, matches, predictionHistory } from "@/db/schema";
+import { eq, and, count } from "drizzle-orm";
 import { predictionSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
@@ -21,36 +21,100 @@ export async function POST(req: Request) {
 
   const { matchId, predictedScore1, predictedScore2 } = parsed.data;
 
-  const [match] = await db
-    .select()
-    .from(matches)
-    .where(eq(matches.id, matchId))
-    .limit(1);
+  try {
+    const pred = await db.transaction(async (tx) => {
+      const [match] = await tx
+        .select()
+        .from(matches)
+        .where(eq(matches.id, matchId))
+        .for("update")
+        .limit(1);
 
-  if (!match) return NextResponse.json({ error: "Match not found" }, { status: 404 });
-  const cutoffTime = new Date(match.matchDatetime.getTime() - 60 * 60 * 1000); // 1 hour before
-  if (new Date() >= cutoffTime) {
-    return NextResponse.json({ error: "Predictions are locked — lineups are out!" }, { status: 403 });
+      if (!match) throw new Error("MATCH_NOT_FOUND");
+      const cutoffTime = new Date(match.matchDatetime.getTime() - 30 * 60 * 1000); // 30 minutes before
+      if (new Date() >= cutoffTime) {
+        throw new Error("LOCKED_TIME_LIMIT");
+      }
+      if (match.status !== "upcoming") {
+        throw new Error("LOCKED_STATUS");
+      }
+
+      // Get existing prediction if any
+      const [existingPrediction] = await tx
+        .select()
+        .from(predictions)
+        .where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, matchId)))
+        .limit(1);
+
+      const isUpdate = !!existingPrediction;
+      const isChanged =
+        isUpdate &&
+        (existingPrediction.predictedScore1 !== predictedScore1 ||
+          existingPrediction.predictedScore2 !== predictedScore2);
+
+      if (isChanged) {
+        // Check prediction history count
+        const [historyResult] = await tx
+          .select({ value: count() })
+          .from(predictionHistory)
+          .where(
+            and(
+              eq(predictionHistory.studentId, session.user.id),
+              eq(predictionHistory.matchId, matchId)
+            )
+          );
+
+        const historyCount = historyResult?.value ?? 0;
+        if (historyCount >= 10) {
+          throw new Error("TOO_MANY_EDITS");
+        }
+      }
+
+      const [predRow] = await tx
+        .insert(predictions)
+        .values({
+          studentId: session.user.id,
+          matchId,
+          predictedScore1,
+          predictedScore2,
+        })
+        .onConflictDoUpdate({
+          target: [predictions.studentId, predictions.matchId],
+          set: { predictedScore1, predictedScore2, updatedAt: new Date() },
+        })
+        .returning();
+
+      if (isChanged) {
+        await tx.insert(predictionHistory).values({
+          predictionId: predRow.id,
+          studentId: session.user.id,
+          matchId,
+          oldScore1: existingPrediction.predictedScore1,
+          oldScore2: existingPrediction.predictedScore2,
+          newScore1: predictedScore1,
+          newScore2: predictedScore2,
+        });
+      }
+
+      return predRow;
+    });
+
+    return NextResponse.json({ prediction: pred }, { status: 201 });
+  } catch (e: any) {
+    if (e.message === "MATCH_NOT_FOUND") {
+      return NextResponse.json({ error: "Match not found" }, { status: 404 });
+    }
+    if (e.message === "LOCKED_TIME_LIMIT") {
+      return NextResponse.json({ error: "Predictions are locked — 30-minute lockout reached!" }, { status: 403 });
+    }
+    if (e.message === "LOCKED_STATUS") {
+      return NextResponse.json({ error: "Predictions locked" }, { status: 403 });
+    }
+    if (e.message === "TOO_MANY_EDITS") {
+      return NextResponse.json({ error: "Too many edits for this match. Limit is 10 edits." }, { status: 429 });
+    }
+    throw e;
   }
-  if (match.status !== "upcoming") {
-    return NextResponse.json({ error: "Predictions locked" }, { status: 403 });
-  }
-
-  const [pred] = await db
-    .insert(predictions)
-    .values({
-      studentId: session.user.id,
-      matchId,
-      predictedScore1,
-      predictedScore2,
-    })
-    .onConflictDoUpdate({
-      target: [predictions.studentId, predictions.matchId],
-      set: { predictedScore1, predictedScore2 },
-    })
-    .returning();
-
-  return NextResponse.json({ prediction: pred }, { status: 201 });
 }
 
 export async function GET(req: Request) {

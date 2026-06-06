@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections } from "@/db/schema";
-import { eq, desc, and, or } from "drizzle-orm";
+import { eq, desc, and, or, isNull } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
@@ -45,7 +45,7 @@ export default async function LeaderboardPage() {
       })
       .from(students)
       .leftJoin(teams, eq(students.teamId, teams.id))
-      .where(and(eq(students.flagged, false), eq(students.isGuest, false)))
+      .where(and(eq(students.flagged, false), eq(students.isGuest, false), isNull(students.deletedAt)))
       .orderBy(desc(students.tokenBalance));
 
     return (

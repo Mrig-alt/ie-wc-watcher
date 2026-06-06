@@ -83,6 +83,8 @@ export const students = pgTable("students", {
   hasBoughtIn: boolean("has_bought_in").notNull().default(false),
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
+  deletedAt: timestamp("deleted_at"),
+  lastFloorReplenishedAt: timestamp("last_floor_replenished_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
@@ -189,7 +191,10 @@ export const predictions = pgTable(
     predictedScore1: integer("predicted_score1").notNull(),
     predictedScore2: integer("predicted_score2").notNull(),
     tokensEarned: integer("tokens_earned"),
+    settled: boolean("settled").notNull().default(false),
+    isEarly: boolean("is_early").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
   (t) => [
     unique().on(t.studentId, t.matchId),
@@ -304,6 +309,54 @@ export const liveReports = pgTable("live_reports", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
 });
 
+// ─── Survey Responses ─────────────────────────────────────────────────────────
+
+export const surveyResponses = pgTable(
+  "survey_responses",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    questionKey: varchar("question_key", { length: 50 }).notNull(),
+    responseText: text("response_text").notNull(),
+    status: varchar("status", { length: 20 }).notNull().default("pending"),
+    tokensAwarded: integer("tokens_awarded").notNull().default(0),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+    updatedAt: timestamp("updated_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.studentId, t.questionKey),
+  ]
+);
+
+// ─── Token Ledger ─────────────────────────────────────────────────────────────
+
+export const tokenLedger = pgTable("token_ledger", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  studentId: uuid("student_id")
+    .notNull()
+    .references(() => students.id, { onDelete: "cascade" }),
+  amount: integer("amount").notNull(),
+  reason: varchar("reason", { length: 100 }).notNull(),
+  matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+// ─── Prediction History ───────────────────────────────────────────────────────
+
+export const predictionHistory = pgTable("prediction_history", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  predictionId: uuid("prediction_id").notNull().references(() => predictions.id, { onDelete: "cascade" }),
+  studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+  matchId: uuid("match_id").notNull().references(() => matches.id, { onDelete: "cascade" }),
+  oldScore1: integer("old_score1"),
+  oldScore2: integer("old_score2"),
+  newScore1: integer("new_score1").notNull(),
+  newScore2: integer("new_score2").notNull(),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type Team = typeof teams.$inferSelect;
@@ -318,6 +371,9 @@ export type FriendGroup = typeof friendGroups.$inferSelect;
 export type GroupMember = typeof groupMembers.$inferSelect;
 export type Venue = typeof venues.$inferSelect;
 export type LiveReport = typeof liveReports.$inferSelect;
+export type SurveyResponse = typeof surveyResponses.$inferSelect;
+export type TokenLedgerEntry = typeof tokenLedger.$inferSelect;
+export type PredictionHistoryEntry = typeof predictionHistory.$inferSelect;
 export type LiveReportStatus = (typeof liveReportStatusEnum.enumValues)[number];
 
 export type MatchStatus = (typeof matchStatusEnum.enumValues)[number];

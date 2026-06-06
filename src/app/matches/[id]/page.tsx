@@ -104,7 +104,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   const t2Name = team2?.name ?? match.team2Placeholder ?? "TBD";
 
   const existingPrediction = (myPrediction as Array<typeof myPrediction[0]>)[0] ?? null;
-  const cutoffTime = new Date(new Date(match.matchDatetime).getTime() - 60 * 60 * 1000);
+  const cutoffTime = new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000);
   const canPredict = !!session?.user?.id && isUpcoming && !!team1 && !!team2 && new Date() < cutoffTime;
   const loginReturnUrl = `/join?next=/matches/${id}`;
 

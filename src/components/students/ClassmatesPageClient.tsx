@@ -29,6 +29,8 @@ type MatchOption = {
   team1Placeholder: string | null;
   team2Placeholder: string | null;
   matchDatetime: Date | string;
+  team1Odds: number | null;
+  team2Odds: number | null;
 };
 
 type TeamInfo = { id: string; name: string; flagEmoji: string };

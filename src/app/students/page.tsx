@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections, matches } from "@/db/schema";
-import { eq, and, asc } from "drizzle-orm";
+import { eq, and, asc, isNull } from "drizzle-orm";
 import ClassmatesPageClient from "@/components/students/ClassmatesPageClient";
 
 export const dynamic = "force-dynamic";
@@ -47,7 +47,7 @@ export default async function StudentsPage() {
         })
         .from(students)
         .leftJoin(teams, eq(students.teamId, teams.id))
-        .where(and(eq(students.flagged, false), eq(students.isGuest, false)))
+        .where(and(eq(students.flagged, false), eq(students.isGuest, false), isNull(students.deletedAt)))
         .orderBy(students.name),
 
       db

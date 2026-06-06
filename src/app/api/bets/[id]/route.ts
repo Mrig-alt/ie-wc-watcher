@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { bets, students, groupMembers, matches } from "@/db/schema";
+import { bets, students, groupMembers, matches, tokenLedger } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
 
@@ -120,6 +120,13 @@ export async function PATCH(
             .update(students)
             .set({ tokenBalance: sql`${students.tokenBalance} - ${bet.stakeTokens}` })
             .where(eq(students.id, opponentId));
+
+          await tx.insert(tokenLedger).values({
+            studentId: opponentId,
+            amount: -bet.stakeTokens,
+            reason: "bet_accepted",
+            matchId: bet.matchId,
+          });
         }
 
         const updates: Partial<typeof bets.$inferInsert> = { status: "accepted" };
@@ -147,6 +154,13 @@ export async function PATCH(
             .update(students)
             .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
             .where(eq(students.id, challengerId));
+
+          await tx.insert(tokenLedger).values({
+            studentId: challengerId,
+            amount: bet.stakeTokens,
+            reason: "bet_refund_decline",
+            matchId: bet.matchId,
+          });
         }
 
         const [declinedBet] = await tx
@@ -189,6 +203,7 @@ export async function DELETE(
   const [bet] = await db
     .select({
       id: bets.id,
+      matchId: bets.matchId,
       student1Id: bets.student1Id,
       student2Id: bets.student2Id,
       groupId: bets.groupId,
@@ -232,6 +247,13 @@ export async function DELETE(
         .update(students)
         .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
         .where(eq(students.id, challengerId));
+
+      await tx.insert(tokenLedger).values({
+        studentId: challengerId,
+        amount: bet.stakeTokens,
+        reason: "bet_refund_cancel",
+        matchId: bet.matchId,
+      });
     }
 
     await tx.delete(bets).where(eq(bets.id, id));

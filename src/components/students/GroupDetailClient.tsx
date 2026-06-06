@@ -34,6 +34,8 @@ type GroupBet = {
   team2Id: string | null;
   team1Placeholder: string | null;
   team2Placeholder: string | null;
+  team1Odds: number | null;
+  team2Odds: number | null;
 };
 
 type TeamInfo = { id: string; name: string; flagEmoji: string };
@@ -121,8 +123,10 @@ export default function GroupDetailClient({
   const matchLabel = (bet: GroupBet) => {
     const t1 = bet.team1Id ? teamMap.get(bet.team1Id) : null;
     const t2 = bet.team2Id ? teamMap.get(bet.team2Id) : null;
-    const n1 = t1 ? `${t1.flagEmoji} ${t1.name}` : (bet.team1Placeholder ?? "TBD");
-    const n2 = t2 ? `${t2.flagEmoji} ${t2.name}` : (bet.team2Placeholder ?? "TBD");
+    const o1 = bet.team1Odds ? ` (${bet.team1Odds.toFixed(2)}x)` : "";
+    const o2 = bet.team2Odds ? ` (${bet.team2Odds.toFixed(2)}x)` : "";
+    const n1 = t1 ? `${t1.flagEmoji} ${t1.name}${o1}` : (bet.team1Placeholder ?? "TBD");
+    const n2 = t2 ? `${t2.flagEmoji} ${t2.name}${o2}` : (bet.team2Placeholder ?? "TBD");
     return `${n1} vs ${n2}`;
   };
 

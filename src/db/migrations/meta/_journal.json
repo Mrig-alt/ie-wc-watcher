@@ -43,6 +43,13 @@
       "when": 1780712229986,
       "tag": "0005_numerous_katie_power",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1780747680915,
+      "tag": "0006_pretty_joseph",
+      "breakpoints": true
     }
   ]
 }

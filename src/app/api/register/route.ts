@@ -159,7 +159,7 @@ export async function POST(req: Request) {
     }
 
     return { created, groupToJoin };
-  });
+  }, { isolationLevel: "serializable" });
 
   if (student.groupToJoin) {
     sendGroupJoinNotification(student.groupToJoin.id, student.created.name, student.created.id).catch(console.error);
