@@ -41,6 +41,7 @@ export default async function LeaderboardPage() {
         leaderboardVisibility: students.leaderboardVisibility,
         teamName: teams.name,
         teamFlag: teams.flagEmoji,
+        hasBoughtIn: students.hasBoughtIn,
       })
       .from(students)
       .leftJoin(teams, eq(students.teamId, teams.id))
@@ -71,6 +72,7 @@ export default async function LeaderboardPage() {
                       name: displayName,
                       tokenBalance: s.tokenBalance,
                       isHonoraryFan: s.isHonoraryFan,
+                      hasBoughtIn: s.hasBoughtIn,
                       team: isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),
                     }}
                     isCurrentUser={s.id === session?.user?.id}

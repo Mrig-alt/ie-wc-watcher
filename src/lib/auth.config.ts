@@ -36,6 +36,7 @@ export const authConfig = {
         session.user.visibility = (token.visibility as string) ?? "public";
         session.user.tokenBalance = (token.tokenBalance as number) ?? 100;
         session.user.isGuest = (token.isGuest as boolean) ?? false;
+        session.user.hasBoughtIn = (token.hasBoughtIn as boolean) ?? false;
       }
       return session;
     },

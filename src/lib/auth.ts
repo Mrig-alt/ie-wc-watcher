@@ -38,6 +38,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           visibility: student.visibility,
           tokenBalance: student.tokenBalance,
           isGuest: student.isGuest,
+          hasBoughtIn: student.hasBoughtIn,
         };
       },
     }),
@@ -61,6 +62,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.tokenBalance = (user as { tokenBalance?: number }).tokenBalance ?? 100;
         token.email = (user as { email?: string }).email ?? null;
         token.isGuest = (user as { isGuest?: boolean }).isGuest ?? false;
+        token.hasBoughtIn = (user as { hasBoughtIn?: boolean }).hasBoughtIn ?? false;
       }
 
       if (!token.id && token.sub) token.id = token.sub;
@@ -71,6 +73,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (session.teamId !== undefined) token.teamId = session.teamId;
         if (session.visibility !== undefined) token.visibility = session.visibility;
         if (session.isGuest !== undefined) token.isGuest = session.isGuest;
+        if (session.hasBoughtIn !== undefined) token.hasBoughtIn = session.hasBoughtIn;
       }
 
       return token;
@@ -84,6 +87,7 @@ declare module "next-auth" {
     visibility?: string;
     tokenBalance?: number;
     isGuest?: boolean;
+    hasBoughtIn?: boolean;
   }
   interface Session {
     user: {
@@ -94,6 +98,7 @@ declare module "next-auth" {
       visibility: string;
       tokenBalance: number;
       isGuest: boolean;
+      hasBoughtIn: boolean;
     };
   }
 }

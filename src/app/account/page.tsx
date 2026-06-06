@@ -52,6 +52,33 @@ export default function AccountPage() {
     }
   };
 
+  // Guest buy/refill tokens states
+  const [buying, setBuying] = useState(false);
+
+  const handleBuyTokens = async () => {
+    if (!session) return;
+    setBuying(true);
+    try {
+      const res = await fetch("/api/students/buy-tokens", {
+        method: "POST",
+      });
+      const data = await res.json();
+      if (res.ok) {
+        await update({
+          tokenBalance: data.tokenBalance,
+          hasBoughtIn: data.hasBoughtIn,
+        });
+        router.refresh();
+      } else {
+        alert(data.error || "Failed to refill tokens");
+      }
+    } catch {
+      alert("Network error. Please try again.");
+    } finally {
+      setBuying(false);
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/join");
@@ -145,6 +172,35 @@ export default function AccountPage() {
           {verificationError && (
             <p className="text-xs text-red-600 font-medium">{verificationError}</p>
           )}
+        </div>
+      )}
+
+      {!session.user.isGuest && (
+        <div className="rounded-xl border border-amber-200 bg-amber-50/30 p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
+              <span>🪙 Refill Tokens</span>
+              <span className="text-[10px] font-medium text-amber-800 bg-amber-100 px-2 py-0.5 rounded-full">Buy-In</span>
+            </h2>
+            <p className="text-xs text-gray-600 mt-1">
+              Out of tokens or want to play high-stakes? Get an instant refill of <strong className="text-amber-700">+100 tokens</strong> to challenge classmates.
+            </p>
+          </div>
+
+          <div className="rounded-lg bg-amber-50/80 border border-amber-100 p-3 text-xs text-amber-800 space-y-1">
+            <p className="font-semibold text-amber-900">⚠️ Leaderboard Dilution Tag</p>
+            <p className="text-amber-750 leading-relaxed">
+              To preserve competitive integrity, your account will be permanently tagged with a <strong className="text-amber-950">"Refilled 🧪"</strong> badge on the leaderboard. You will not be considered a "legit" first-place winner.
+            </p>
+          </div>
+
+          <Button
+            onClick={handleBuyTokens}
+            disabled={buying}
+            className="w-full bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-600 hover:to-amber-700 text-white font-medium shadow-sm transition-all"
+          >
+            {buying ? "Refilling..." : "Refill Balance (+100 🪙)"}
+          </Button>
         </div>
       )}
 

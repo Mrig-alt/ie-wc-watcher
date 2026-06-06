@@ -5,6 +5,7 @@ interface LeaderboardRowProps {
     tokenBalance: number;
     team: { flagEmoji: string; name: string } | null;
     isHonoraryFan: boolean;
+    hasBoughtIn?: boolean;
   };
   isCurrentUser?: boolean;
 }
@@ -27,6 +28,14 @@ export default function LeaderboardRow({ rank, student, isCurrentUser }: Leaderb
           {student.name}
           {isCurrentUser && <span className="ml-1.5 text-xs text-green-600">(you)</span>}
           {student.isHonoraryFan && <span className="ml-1.5 text-xs text-blue-500">🤝</span>}
+          {student.hasBoughtIn && (
+            <span
+              className="ml-1.5 inline-flex items-center rounded-full bg-yellow-50 px-1.5 py-0.5 text-[10px] font-medium text-yellow-800 ring-1 ring-inset ring-yellow-600/20"
+              title="This user has refilled their tokens and is playing for fun (diluted)"
+            >
+              Refilled 🧪
+            </span>
+          )}
         </p>
         <p className="text-xs text-gray-400">{student.team?.name ?? "No team"}</p>
       </div>
