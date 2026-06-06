@@ -91,7 +91,7 @@ function JoinPageInner() {
     setMode("checking");
     checkTimer.current = setTimeout(async () => {
       try {
-        const res = await fetch(`/api/check-email?email=${encodeURIComponent(trimmed)}`);
+        const res = await fetch(`/api/lookup-user?email=${encodeURIComponent(trimmed)}`);
         const data = await res.json();
         setMode(data.exists ? "returning" : "new");
         setFirstName(data.firstName ?? null);
