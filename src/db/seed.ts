@@ -128,11 +128,11 @@ const FRIENDLIES: MatchSeed[] = [
   { team1Code: "ESP", team2Code: "IRQ", datetime: "2026-06-04T20:00:00Z", venue: "TBD", city: "Spain", stage: "friendly" },
   { team1Code: "MEX", team2Code: "SRB", datetime: "2026-06-04T01:00:00Z", venue: "TBD", city: "Mexico", stage: "friendly" },
   // June 6
-  { team1Code: "GER", team2Code: "USA", datetime: "2026-06-06T23:00:00Z", venue: "Soldier Field", city: "Chicago", stage: "friendly" },
-  { team1Code: "ENG", team2Code: "NZL", datetime: "2026-06-06T22:00:00Z", venue: "Hard Rock Stadium", city: "Miami", stage: "friendly" },
-  { team1Code: "ARG", team2Code: "HON", datetime: "2026-06-06T22:00:00Z", venue: "TBD", city: "USA", stage: "friendly" },
-  { team1Code: "BRA", team2Code: "EGY", datetime: "2026-06-06T22:00:00Z", venue: "TBD", city: "USA", stage: "friendly" },
-  { team1Code: "POR", team2Code: "CHI", datetime: "2026-06-06T22:00:00Z", venue: "TBD", city: "USA", stage: "friendly" },
+  { team1Code: "GER", team2Code: "USA", datetime: "2026-06-06T19:00:00Z", venue: "Soldier Field", city: "Chicago", stage: "friendly" },
+  { team1Code: "ENG", team2Code: "NZL", datetime: "2026-06-06T18:00:00Z", venue: "Hard Rock Stadium", city: "Miami", stage: "friendly" },
+  { team1Code: "ARG", team2Code: "HON", datetime: "2026-06-06T18:00:00Z", venue: "TBD", city: "USA", stage: "friendly" },
+  { team1Code: "BRA", team2Code: "EGY", datetime: "2026-06-06T18:00:00Z", venue: "TBD", city: "USA", stage: "friendly" },
+  { team1Code: "POR", team2Code: "CHI", datetime: "2026-06-06T18:00:00Z", venue: "TBD", city: "USA", stage: "friendly" },
   // June 8
   { team1Code: "FRA", team2Code: "NIR", datetime: "2026-06-08T18:45:00Z", venue: "TBD", city: "France", stage: "friendly" },
   { team1Code: "ESP", team2Code: "PER", datetime: "2026-06-08T20:00:00Z", venue: "TBD", city: "Spain", stage: "friendly" },
