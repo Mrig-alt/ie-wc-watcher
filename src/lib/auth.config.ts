@@ -35,6 +35,7 @@ export const authConfig = {
         session.user.teamId = (token.teamId as string | null) ?? null;
         session.user.visibility = (token.visibility as string) ?? "public";
         session.user.tokenBalance = (token.tokenBalance as number) ?? 100;
+        session.user.isGuest = (token.isGuest as boolean) ?? false;
       }
       return session;
     },

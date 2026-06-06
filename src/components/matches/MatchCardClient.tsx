@@ -30,6 +30,7 @@ export default function MatchCardClient(props: Omit<MatchCardProps, "currentUser
       {...props}
       currentUserId={session?.user?.id ?? null}
       currentUserTeamId={liveTeamId}
+      currentUserIsGuest={session?.user?.isGuest}
     />
   );
 }

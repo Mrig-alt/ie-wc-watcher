@@ -1,9 +1,15 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { formatKickoff, formatKickoffFull } from "@/lib/utils";
+import { formatKickoff, formatKickoffFull, formatMatchDate } from "@/lib/utils";
 
-export default function LocalTime({ datetime, full = false }: { datetime: string | Date; full?: boolean }) {
+export default function LocalTime({
+  datetime,
+  mode = "time"
+}: {
+  datetime: string | Date;
+  mode?: "time" | "date" | "full";
+}) {
   const [mounted, setMounted] = useState(false);
   
   useEffect(() => {
@@ -12,11 +18,15 @@ export default function LocalTime({ datetime, full = false }: { datetime: string
 
   const dt = new Date(datetime);
 
+  const renderValue = () => {
+    if (mode === "date") return formatMatchDate(dt);
+    if (mode === "full") return formatKickoffFull(dt);
+    return formatKickoff(dt);
+  };
+
   if (!mounted) {
-    // Return a placeholder or server-rendered time (will cause hydration mismatch if not suppressed)
-    // To avoid mismatch, we can render the UTC time but it's better to just suppress hydration warning
-    return <span suppressHydrationWarning>{full ? formatKickoffFull(dt) : formatKickoff(dt)}</span>;
+    return <span suppressHydrationWarning>{renderValue()}</span>;
   }
 
-  return <span>{full ? formatKickoffFull(dt) : formatKickoff(dt)}</span>;
+  return <span>{renderValue()}</span>;
 }

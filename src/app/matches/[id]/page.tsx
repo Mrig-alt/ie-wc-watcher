@@ -118,7 +118,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           <span className="text-xs text-gray-400">{stageLabel(match.stage)}{match.groupName && ` · Group ${match.groupName}`}</span>
           <div className="flex items-center gap-2">
             {isLive && <Badge variant="live">LIVE</Badge>}
-            <span className="text-xs text-gray-400"><LocalTime datetime={match.matchDatetime} full /></span>
+            <span className="text-xs text-gray-400"><LocalTime datetime={match.matchDatetime} mode="full" /></span>
           </div>
         </div>
         <div className="flex items-center justify-between gap-4">

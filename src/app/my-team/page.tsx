@@ -142,6 +142,8 @@ export default async function MyTeamPage() {
       team2Score: matches.team2Score,
       team1Placeholder: matches.team1Placeholder,
       team2Placeholder: matches.team2Placeholder,
+      team1Odds: matches.team1Odds,
+      team2Odds: matches.team2Odds,
     })
     .from(matches)
     .where(or(eq(matches.team1Id, selectedTeam.id), eq(matches.team2Id, selectedTeam.id)))
@@ -184,6 +186,8 @@ export default async function MyTeamPage() {
       team2Score: m.team2Score,
       team1Placeholder: m.team1Placeholder,
       team2Placeholder: m.team2Placeholder,
+      team1Odds: m.team1Odds,
+      team2Odds: m.team2Odds,
     };
   });
 

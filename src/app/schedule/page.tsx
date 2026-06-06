@@ -3,11 +3,11 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { matches, teams, students, predictions, watchInvites } from "@/db/schema";
 import { eq, asc, inArray, gte, or, and } from "drizzle-orm";
-import MatchCard from "@/components/matches/MatchCard";
 import { stageLabel, formatMatchDate } from "@/lib/utils";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { calculateGroupStandings } from "@/lib/standings";
 import GroupStandingsTable from "@/components/standings/GroupStandingsTable";
+import ScheduleMatchesList from "@/components/matches/ScheduleMatchesList";
 
 export const dynamic = "force-dynamic";
 
@@ -75,6 +75,10 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
       if (!grouped.has(day)) grouped.set(day, []);
       grouped.get(day)!.push(m);
     }
+    const initialGrouped = Array.from(grouped.entries()).map(([day, matches]) => ({
+      day,
+      matches,
+    }));
 
     return (
       <div className="space-y-6">
@@ -102,65 +106,15 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             })}
           </div>
         ) : (
-          <div className="space-y-8">
-            {Array.from(grouped.entries()).map(([day, dayMatches]) => (
-              <section key={day}>
-                <h2 className="text-base font-semibold text-gray-700 mb-3 sticky top-14 bg-gray-50 py-1">{day}</h2>
-                <div className="space-y-3">
-                  {dayMatches.map((match) => {
-                    const t1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;
-                    const t2 = match.team2Id ? teamMap.get(match.team2Id) ?? null : null;
-
-                    const team1Supporters = match.team1Id !== null
-                      ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility !== "stealth")
-                      : [];
-                    const team2Supporters = match.team2Id !== null
-                      ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility !== "stealth")
-                      : [];
-                    const isOnTeam1 = validSession?.user.teamId === match.team1Id;
-                    const isOnTeam2 = validSession?.user.teamId === match.team2Id;
-
-                    const myInvite = validSession
-                      ? allInvites.find((i) => i.matchId === match.id && i.inviterId === validSession.user.id)
-                      : null;
-                    const myPred = myPredictions.find((p) => p.matchId === match.id);
-
-                    const opponentTeamSupporters = isOnTeam1 ? team2Supporters : isOnTeam2 ? team1Supporters : [];
-                    const opponentInviteRaw = allInvites.find(
-                      (i) => i.matchId === match.id && opponentTeamSupporters.map((s) => s.id).includes(i.inviterId)
-                    );
-                    const opponentInviter = opponentInviteRaw
-                      ? allStudents.find((s) => s.id === opponentInviteRaw.inviterId)
-                      : null;
-
-                    const fullMatch = {
-                      ...match,
-                      team1: t1 ? { id: t1.id, name: t1.name, flagEmoji: t1.flagEmoji } : null,
-                      team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
-                    };
-
-                    return (
-                      <MatchCard
-                        key={match.id}
-                        match={fullMatch as Parameters<typeof MatchCard>[0]["match"]}
-                        team1Supporters={team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
-                        team2Supporters={team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
-                        currentUserId={validSession?.user.id}
-                        currentUserTeamId={validSession?.user.teamId}
-                        prediction={myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null}
-                        myWatchInvite={myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null}
-                        opponentWatchInvite={
-                          opponentInviteRaw && opponentInviter
-                            ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
-                            : null
-                        }
-                      />
-                    );
-                  })}
-                </div>
-              </section>
-            ))}
-          </div>
+          <ScheduleMatchesList
+            allMatches={allMatches}
+            allStudents={allStudents}
+            allTeams={allTeams}
+            validSession={validSession}
+            myPredictions={myPredictions}
+            allInvites={allInvites}
+            initialGrouped={initialGrouped}
+          />
         )}
       </div>
     );

@@ -1,7 +1,7 @@
 import { unstable_cache } from "next/cache";
 import { db } from "@/db";
 import { teams, students, matches } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, and } from "drizzle-orm";
 
 export const getCachedTeams = unstable_cache(
   async () => {
@@ -30,7 +30,7 @@ export const getCachedActiveStudents = unstable_cache(
         lastSeenAt: students.lastSeenAt,
       })
       .from(students)
-      .where(eq(students.flagged, false));
+      .where(and(eq(students.flagged, false), eq(students.isGuest, false)));
   },
   ["active-students"],
   { revalidate: 60, tags: ["students"] }
@@ -47,7 +47,7 @@ export const getCachedTeamSupportersMap = unstable_cache(
         lastSeenAt: students.lastSeenAt,
       })
       .from(students)
-      .where(eq(students.flagged, false));
+      .where(and(eq(students.flagged, false), eq(students.isGuest, false)));
 
     const map: Record<string, typeof active> = {};
     for (const s of active) {

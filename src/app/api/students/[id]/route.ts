@@ -2,8 +2,13 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { eq, count, sql } from "drizzle-orm";
 import { updateStudentSchema } from "@/lib/validations";
+import {
+  PUBLIC_BONUS_TOKENS,
+  EARLY_BIRD_BONUS_TOKENS,
+  EARLY_BIRD_LIMIT,
+} from "@/lib/tokens";
 
 export async function PATCH(
   req: Request,
@@ -30,13 +35,80 @@ export async function PATCH(
     );
   }
 
-  const { teamId, isHonoraryFan, visibility } = parsed.data;
+  const { teamId, isHonoraryFan, visibility, pin } = parsed.data;
 
   if (teamId !== undefined && new Date() > lockAt) {
     return NextResponse.json(
       { error: "Team selection is locked" },
       { status: 403 }
     );
+  }
+
+  // Fetch current student record
+  const [currentStudent] = await db
+    .select()
+    .from(students)
+    .where(eq(students.id, id))
+    .limit(1);
+
+  if (!currentStudent) {
+    return NextResponse.json({ error: "Student not found" }, { status: 404 });
+  }
+
+  const joinPin = process.env.JOIN_PIN;
+  const upgradingFromGuest = currentStudent.isGuest && pin !== undefined;
+
+  if (upgradingFromGuest) {
+    if (joinPin && pin !== joinPin) {
+      return NextResponse.json({ error: "Incorrect class PIN" }, { status: 400 });
+    }
+
+    const updated = await db.transaction(async (tx) => {
+      const [{ value: totalActiveStudents }] = await tx
+        .select({ value: count() })
+        .from(students)
+        .where(eq(students.isGuest, false));
+
+      let tokenBalance = 100;
+      const effectiveVisibility = visibility !== undefined ? visibility : currentStudent.visibility;
+      if (effectiveVisibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
+      const earlyBirdAwarded = totalActiveStudents < EARLY_BIRD_LIMIT;
+      if (earlyBirdAwarded) tokenBalance += EARLY_BIRD_BONUS_TOKENS;
+
+      const updates: Partial<typeof students.$inferInsert> = {
+        isGuest: false,
+        tokenBalance: tokenBalance,
+      };
+      if (teamId !== undefined) updates.teamId = teamId;
+      if (isHonoraryFan !== undefined) updates.isHonoraryFan = isHonoraryFan;
+      if (visibility !== undefined) updates.visibility = visibility;
+
+      const [res] = await tx
+        .update(students)
+        .set(updates)
+        .where(eq(students.id, id))
+        .returning();
+
+      if (earlyBirdAwarded) {
+        const [{ value: postInsertCount }] = await tx
+          .select({ value: count() })
+          .from(students)
+          .where(eq(students.isGuest, false));
+
+        if (postInsertCount > EARLY_BIRD_LIMIT) {
+          await tx
+            .update(students)
+            .set({
+              tokenBalance: sql`${students.tokenBalance} - ${EARLY_BIRD_BONUS_TOKENS}`,
+            })
+            .where(eq(students.id, id));
+          res.tokenBalance -= EARLY_BIRD_BONUS_TOKENS;
+        }
+      }
+      return res;
+    });
+
+    return NextResponse.json({ student: updated });
   }
 
   const updates: Partial<typeof students.$inferInsert> = {};

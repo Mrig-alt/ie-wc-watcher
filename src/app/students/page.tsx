@@ -47,7 +47,7 @@ export default async function StudentsPage() {
         })
         .from(students)
         .leftJoin(teams, eq(students.teamId, teams.id))
-        .where(eq(students.flagged, false))
+        .where(and(eq(students.flagged, false), eq(students.isGuest, false)))
         .orderBy(students.name),
 
       db
@@ -62,6 +62,8 @@ export default async function StudentsPage() {
           team1Placeholder: matches.team1Placeholder,
           team2Placeholder: matches.team2Placeholder,
           matchDatetime: matches.matchDatetime,
+          team1Odds: matches.team1Odds,
+          team2Odds: matches.team2Odds,
         })
         .from(matches)
         .where(eq(matches.status, "upcoming"))

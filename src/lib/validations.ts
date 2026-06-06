@@ -25,6 +25,7 @@ export const registerSchema = z.object({
   leaderboardVisibility: z.boolean().default(true),
   // PIN is now optional — if JOIN_PIN env var is not set, any value (or none) is accepted
   pin: z.string().optional(),
+  isGuest: z.boolean().optional(),
   groupPin: z.string().length(8, "Group PIN must be exactly 8 characters").optional().or(z.literal("")),
 });
 
@@ -38,6 +39,7 @@ export const updateStudentSchema = z.object({
   teamId: z.string().uuid().optional().nullable(),
   isHonoraryFan: z.boolean().optional(),
   visibility: z.enum(["public", "friends", "stealth"]).optional(),
+  pin: z.string().optional(),
 });
 
 export const predictionSchema = z.object({

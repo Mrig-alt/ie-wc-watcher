@@ -72,6 +72,8 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
       team2Id: matches.team2Id,
       team1Placeholder: matches.team1Placeholder,
       team2Placeholder: matches.team2Placeholder,
+      team1Odds: matches.team1Odds,
+      team2Odds: matches.team2Odds,
     })
     .from(bets)
     .innerJoin(matches, eq(matches.id, bets.matchId))

@@ -19,6 +19,39 @@ export default function AccountPage() {
   const [loading, setLoading] = useState(false);
   const [saved, setSaved] = useState(false);
 
+  // Guest upgrade states
+  const [pin, setPin] = useState("");
+  const [verifying, setVerifying] = useState(false);
+  const [verificationError, setVerificationError] = useState("");
+
+  const handleVerify = async () => {
+    if (!session) return;
+    setVerifying(true);
+    setVerificationError("");
+    try {
+      const res = await fetch(`/api/students/${session.user.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ pin }),
+      });
+      const data = await res.json();
+      if (!res.ok) {
+        setVerificationError(data.error || "Incorrect class PIN");
+        return;
+      }
+      await update({
+        isGuest: false,
+        tokenBalance: data.student.tokenBalance,
+      });
+      setPin("");
+      router.refresh();
+    } catch {
+      setVerificationError("Network error. Please try again.");
+    } finally {
+      setVerifying(false);
+    }
+  };
+
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/join");
@@ -83,6 +116,37 @@ export default function AccountPage() {
           <a href="/leaderboard" className="text-xs text-green-600 hover:underline">See leaderboard →</a>
         </div>
       </div>
+
+      {session.user.isGuest && (
+        <div className="rounded-xl border border-yellow-200 bg-yellow-50/50 p-6 shadow-sm space-y-4">
+          <div>
+            <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
+              <span>🔒 Upgrade Account</span>
+              <span className="text-[10px] font-medium text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded-full">Guest</span>
+            </h2>
+            <p className="text-xs text-gray-600 mt-1">
+              You are currently browsing as a guest. Enter your class PIN below to verify your account, unlock predicting and betting, and get your starting 100+ tokens!
+            </p>
+          </div>
+
+          <div className="flex gap-2 max-w-sm">
+            <input
+              type="password"
+              value={pin}
+              onChange={(e) => { setPin(e.target.value); setVerificationError(""); }}
+              placeholder="Enter class PIN"
+              className="flex h-9 w-full rounded-md border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50"
+              onKeyDown={(e) => e.key === "Enter" && pin.trim() && !verifying && handleVerify()}
+            />
+            <Button size="sm" onClick={handleVerify} disabled={verifying || !pin.trim()}>
+              {verifying ? "Verifying..." : "Verify"}
+            </Button>
+          </div>
+          {verificationError && (
+            <p className="text-xs text-red-600 font-medium">{verificationError}</p>
+          )}
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
         <h2 className="font-semibold text-gray-900">Privacy mode</h2>

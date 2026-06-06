@@ -79,6 +79,7 @@ export const students = pgTable("students", {
   leaderboardVisibility: boolean("leaderboard_visibility").notNull().default(true),
   tokenBalance: integer("token_balance").notNull().default(100),
   flagged: boolean("flagged").notNull().default(false),
+  isGuest: boolean("is_guest").notNull().default(false),
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

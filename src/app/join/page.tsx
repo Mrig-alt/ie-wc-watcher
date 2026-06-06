@@ -68,6 +68,7 @@ function JoinPageInner() {
 
   const [pinRequired, setPinRequired] = useState(false);
   const [pin, setPin] = useState("");
+  const [isGuest, setIsGuest] = useState(false);
 
   useEffect(() => {
     fetch("/api/register")
@@ -94,6 +95,7 @@ function JoinPageInner() {
         const data = await res.json();
         setMode(data.exists ? "returning" : "new");
         setFirstName(data.firstName ?? null);
+        setIsGuest(data.isGuest ?? false);
       } catch {
         setMode("idle");
       }
@@ -111,14 +113,14 @@ function JoinPageInner() {
     setError("");
     const result = await signIn("credentials", {
       email: email.trim().toLowerCase(),
-      pin: pin || "",
+      pin: isGuest ? "" : (pin || ""),
       redirect: false,
     });
     setLoading(false);
     if (result?.ok) {
       router.push(next);
     } else {
-      setError("Wrong PIN \u2014 ask whoever set up the app for the class PIN.");
+      setError(isGuest ? "Sign in failed" : "Wrong PIN \u2014 ask whoever set up the app for the class PIN.");
     }
   };
 
@@ -133,19 +135,20 @@ function JoinPageInner() {
           name,
           email: email.trim().toLowerCase(),
           nationality: nationality.trim() || undefined,
-          ...(pinRequired && pin ? { pin } : {}),
+          ...(pinRequired && pin && !isGuest ? { pin } : {}),
           teamId: teamId || undefined,
           isHonoraryFan,
           visibility,
           leaderboardVisibility,
           groupPin: groupPin.trim() || undefined,
+          isGuest,
         }),
       });
       const data = await res.json();
       if (!res.ok) { setError(formatError(data.error)); return; }
       const result = await signIn("credentials", {
         email: email.trim().toLowerCase(),
-        pin: pin || "",
+        pin: isGuest ? "" : (pin || ""),
         redirect: false,
       });
       if (result?.ok) router.push(next);
@@ -253,24 +256,43 @@ function JoinPageInner() {
             </div>
             {pinRequired && (
               <div className="grid gap-1.5">
-                <Label htmlFor="pin-new">Class PIN *</Label>
-                <Input
-                  id="pin-new"
-                  type="password"
-                  value={pin}
-                  onChange={(e) => setPin(e.target.value)}
-                  placeholder="Enter class PIN"
-                  autoComplete="off"
-                />
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="pin-new">{isGuest ? "Class PIN (Optional)" : "Class PIN *"}</Label>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setIsGuest(!isGuest);
+                      setPin("");
+                    }}
+                    className="text-xs text-green-600 hover:text-green-700 font-medium transition-colors cursor-pointer"
+                  >
+                    {isGuest ? "Verify class member instead" : "Don't have a PIN? Browse as Guest"}
+                  </button>
+                </div>
+                {!isGuest ? (
+                  <Input
+                    id="pin-new"
+                    type="password"
+                    value={pin}
+                    onChange={(e) => setPin(e.target.value)}
+                    placeholder="Enter class PIN"
+                    autoComplete="off"
+                  />
+                ) : (
+                  <div className="rounded-lg bg-yellow-50 border border-yellow-100 p-3 text-xs text-yellow-800 space-y-1 leading-relaxed">
+                    <p className="font-semibold">👉 Registering as Guest</p>
+                    <p>You can browse matches and locations, but you won&apos;t be on the leaderboard or get tokens. You can upgrade with a PIN later in your account page!</p>
+                  </div>
+                )}
               </div>
             )}
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button
               className="w-full"
-              disabled={!name.trim() || (pinRequired && !pin.trim())}
+              disabled={!name.trim() || (pinRequired && !isGuest && !pin.trim())}
               onClick={() => setStep("team")}
             >
-              Continue \u2192 Pick your team
+              Continue &rarr; Pick your team
             </Button>
           </div>
         )}

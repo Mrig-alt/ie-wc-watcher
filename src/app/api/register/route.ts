@@ -44,7 +44,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin, groupPin } = parsed.data;
+  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin, groupPin, isGuest } = parsed.data;
 
   // If a groupPin is provided, verify the group exists before proceeding
   let groupToJoin = null;
@@ -63,8 +63,9 @@ export async function POST(req: Request) {
 
   // PIN check: if JOIN_PIN is set, the supplied pin MUST match regardless of whether
   // the client sent a pin field. Omitting pin is not a bypass.
+  // Exception: Guest users registering without a pin do not get verified yet.
   const joinPin = process.env.JOIN_PIN;
-  if (joinPin && pin !== joinPin) {
+  if (!isGuest && joinPin && pin !== joinPin) {
     return NextResponse.json({ error: "Incorrect class PIN" }, { status: 403 });
   }
 
@@ -108,10 +109,14 @@ export async function POST(req: Request) {
       .select({ value: count() })
       .from(students);
 
-    let tokenBalance = 100;
-    if (visibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
-    const earlyBirdAwarded = totalStudents < EARLY_BIRD_LIMIT;
-    if (earlyBirdAwarded) tokenBalance += EARLY_BIRD_BONUS_TOKENS;
+    let tokenBalance = 0;
+    let earlyBirdAwarded = false;
+    if (!isGuest) {
+      tokenBalance = 100;
+      if (visibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
+      earlyBirdAwarded = totalStudents < EARLY_BIRD_LIMIT;
+      if (earlyBirdAwarded) tokenBalance += EARLY_BIRD_BONUS_TOKENS;
+    }
 
     const [created] = await tx
       .insert(students)
@@ -124,10 +129,11 @@ export async function POST(req: Request) {
         visibility,
         leaderboardVisibility,
         tokenBalance,
+        isGuest: isGuest ?? false,
       })
       .returning();
 
-    if (earlyBirdAwarded) {
+    if (!isGuest && earlyBirdAwarded) {
       const [{ value: postInsertCount }] = await tx
         .select({ value: count() })
         .from(students);

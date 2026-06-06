@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
+import LocalTime from "@/components/ui/LocalTime";
 
 type SelectableTeam = {
   id: string;
@@ -34,6 +35,8 @@ type FormattedMatch = {
   team2Score: number | null;
   team1Placeholder: string | null;
   team2Placeholder: string | null;
+  team1Odds?: number | null;
+  team2Odds?: number | null;
 };
 
 type StandingsRow = {
@@ -380,12 +383,6 @@ export default function MyTeamClient({
             </CardHeader>
             <CardContent className="space-y-4">
               {matches.map((m) => {
-                const dateStr = new Date(m.matchDatetime).toLocaleDateString("en-GB", {
-                  day: "numeric",
-                  month: "short",
-                  hour: "2-digit",
-                  minute: "2-digit",
-                });
                 const t1 = m.team1;
                 const t2 = m.team2;
                 const isT1Current = t1?.id === team?.id;
@@ -400,11 +397,16 @@ export default function MyTeamClient({
                       <span className="text-[10px] font-bold text-gray-400 uppercase tracking-wider bg-gray-100 rounded px-2 py-0.5">
                         {getStageLabel(m.stage)}
                       </span>
-                      <span className="text-xs text-gray-400 block">{dateStr}</span>
+                      <span className="text-xs text-gray-400 block"><LocalTime datetime={m.matchDatetime} mode="full" /></span>
                     </div>
 
                     <div className="flex items-center justify-center gap-3 w-full sm:w-auto">
                       <div className="flex items-center gap-2 flex-1 justify-end">
+                        {m.team1Odds != null && (
+                          <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1 rounded shrink-0">
+                            {m.team1Odds.toFixed(2)}x
+                          </span>
+                        )}
                         <span className={`text-sm font-semibold truncate ${isT1Current ? "text-green-800 font-extrabold" : "text-gray-700"}`}>
                           {t1?.name ?? m.team1Placeholder ?? "TBD"}
                         </span>
@@ -433,6 +435,11 @@ export default function MyTeamClient({
                         <span className={`text-sm font-semibold truncate ${isT2Current ? "text-green-800 font-extrabold" : "text-gray-700"}`}>
                           {t2?.name ?? m.team2Placeholder ?? "TBD"}
                         </span>
+                        {m.team2Odds != null && (
+                          <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1 rounded shrink-0">
+                            {m.team2Odds.toFixed(2)}x
+                          </span>
+                        )}
                       </div>
                     </div>
                   </div>

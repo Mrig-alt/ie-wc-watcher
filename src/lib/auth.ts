@@ -19,9 +19,6 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const { email, pin } = credentials as { email: string; pin?: string };
         if (!email) return null;
 
-        const joinPin = process.env.JOIN_PIN;
-        if (joinPin && pin !== joinPin) return null;
-
         const [student] = await db
           .select()
           .from(students)
@@ -30,6 +27,9 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
         if (!student || student.flagged) return null;
 
+        const joinPin = process.env.JOIN_PIN;
+        if (!student.isGuest && joinPin && pin !== joinPin) return null;
+
         return {
           id: student.id,
           email: student.email,
@@ -37,6 +37,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           teamId: student.teamId,
           visibility: student.visibility,
           tokenBalance: student.tokenBalance,
+          isGuest: student.isGuest,
         };
       },
     }),
@@ -59,6 +60,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.visibility = (user as { visibility?: string }).visibility ?? "public";
         token.tokenBalance = (user as { tokenBalance?: number }).tokenBalance ?? 100;
         token.email = (user as { email?: string }).email ?? null;
+        token.isGuest = (user as { isGuest?: boolean }).isGuest ?? false;
       }
 
       if (!token.id && token.sub) token.id = token.sub;
@@ -68,6 +70,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         if (session.tokenBalance !== undefined) token.tokenBalance = session.tokenBalance;
         if (session.teamId !== undefined) token.teamId = session.teamId;
         if (session.visibility !== undefined) token.visibility = session.visibility;
+        if (session.isGuest !== undefined) token.isGuest = session.isGuest;
       }
 
       return token;
@@ -80,6 +83,7 @@ declare module "next-auth" {
     teamId?: string | null;
     visibility?: string;
     tokenBalance?: number;
+    isGuest?: boolean;
   }
   interface Session {
     user: {
@@ -89,6 +93,7 @@ declare module "next-auth" {
       teamId: string | null;
       visibility: string;
       tokenBalance: number;
+      isGuest: boolean;
     };
   }
 }

@@ -67,6 +67,8 @@ export default async function WatchMapPage() {
       team1Placeholder: matches.team1Placeholder,
       team2Placeholder: matches.team2Placeholder,
       status: matches.status,
+      team1Odds: matches.team1Odds,
+      team2Odds: matches.team2Odds,
     })
     .from(matches)
     .orderBy(asc(matches.matchDatetime));

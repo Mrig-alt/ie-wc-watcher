@@ -11,7 +11,7 @@ export async function GET(req: Request) {
   if (!email) return NextResponse.json({ exists: false });
 
   const [student] = await db
-    .select({ name: students.name })
+    .select({ name: students.name, isGuest: students.isGuest })
     .from(students)
     .where(eq(students.email, email))
     .limit(1);
@@ -19,5 +19,6 @@ export async function GET(req: Request) {
   return NextResponse.json({
     exists: !!student,
     firstName: student ? student.name.split(" ")[0] : null,
+    isGuest: student ? student.isGuest : false,
   });
 }

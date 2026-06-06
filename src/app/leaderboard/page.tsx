@@ -44,7 +44,7 @@ export default async function LeaderboardPage() {
       })
       .from(students)
       .leftJoin(teams, eq(students.teamId, teams.id))
-      .where(eq(students.flagged, false))
+      .where(and(eq(students.flagged, false), eq(students.isGuest, false)))
       .orderBy(desc(students.tokenBalance));
 
     return (

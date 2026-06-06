@@ -43,6 +43,7 @@ interface MatchCardProps {
   team2Supporters: Supporter[];
   currentUserId?: string | null;
   currentUserTeamId?: string | null;
+  currentUserIsGuest?: boolean;
   prediction?: { predictedScore1: number; predictedScore2: number } | null;
   myWatchInvite?: { locationName: string; locationUrl: string | null } | null;
   opponentWatchInvite?: { locationName: string; locationUrl: string | null; inviterName: string } | null;
@@ -54,6 +55,7 @@ export default function MatchCard({
   team2Supporters,
   currentUserId,
   currentUserTeamId,
+  currentUserIsGuest,
   prediction,
   myWatchInvite,
   opponentWatchInvite,
@@ -129,7 +131,14 @@ export default function MatchCard({
         {/* Prediction callout — show for all logged-in users on upcoming matches with known teams */}
         {canPredict && (
           <div className="mt-3">
-            {prediction && !showPredict ? (
+            {currentUserIsGuest ? (
+              <button
+                onClick={() => alert("Verification Required: Upgrade your account in your Account Page settings using the class PIN to make predictions and bets!")}
+                className="flex items-center gap-1.5 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors w-full justify-center cursor-pointer"
+              >
+                🔒 Verify PIN to Predict
+              </button>
+            ) : prediction && !showPredict ? (
               // Already predicted — show summary chip, tap to edit
               <button
                 onClick={() => setShowPredict(true)}
