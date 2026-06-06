@@ -36,6 +36,13 @@
       "when": 1780676278101,
       "tag": "0004_solid_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "7",
+      "when": 1780712229986,
+      "tag": "0005_numerous_katie_power",
+      "breakpoints": true
     }
   ]
 }

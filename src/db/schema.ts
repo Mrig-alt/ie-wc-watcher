@@ -10,6 +10,7 @@ import {
   unique,
   index,
   decimal,
+  real,
 } from "drizzle-orm/pg-core";
 
 // ─── Enums ────────────────────────────────────────────────────────────────────
@@ -167,6 +168,8 @@ export const matches = pgTable("matches", {
   status: matchStatusEnum("status").notNull().default("upcoming"),
   team1Placeholder: varchar("team1_placeholder", { length: 60 }),
   team2Placeholder: varchar("team2_placeholder", { length: 60 }),
+  team1Odds: real("team1_odds"),
+  team2Odds: real("team2_odds"),
 });
 
 // ─── Predictions ──────────────────────────────────────────────────────────────
