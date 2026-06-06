@@ -57,6 +57,23 @@ export default async function LeaderboardPage() {
           </p>
         </div>
 
+        {session?.user && !session.user.isGuest && (
+          <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4 text-xs text-amber-800 flex items-center justify-between gap-4 shadow-sm">
+            <div>
+              <p className="font-semibold text-amber-900">🪙 Low on tokens or playing high-stakes?</p>
+              <p className="text-amber-700 mt-0.5">
+                You can refill your balance with +100 tokens. (Note: Doing so will permanently tag you as "Refilled 🧪" on the leaderboard to preserve competitive integrity).
+              </p>
+            </div>
+            <a
+              href="/account"
+              className="shrink-0 bg-amber-600 hover:bg-amber-700 text-white font-medium px-3 py-1.5 rounded-lg transition-colors shadow-sm"
+            >
+              Refill tokens
+            </a>
+          </div>
+        )}
+
         <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
           <div className="divide-y divide-gray-50">
             {(() => {

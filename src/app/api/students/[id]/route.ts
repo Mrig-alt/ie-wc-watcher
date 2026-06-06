@@ -58,6 +58,13 @@ export async function PATCH(
   const joinPin = process.env.JOIN_PIN;
   const upgradingFromGuest = currentStudent.isGuest && pin !== undefined;
 
+  if (currentStudent.isGuest && !upgradingFromGuest) {
+    return NextResponse.json(
+      { error: "Guests cannot update profile settings. Verify your class PIN first." },
+      { status: 403 }
+    );
+  }
+
   if (upgradingFromGuest) {
     if (joinPin && pin !== joinPin) {
       return NextResponse.json({ error: "Incorrect class PIN" }, { status: 400 });

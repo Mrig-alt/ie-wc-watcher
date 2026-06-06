@@ -12,7 +12,11 @@ const joinSchema = z.object({
 
 export async function POST(req: Request) {
   const session = await auth();
-  if (!session) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  if (session.user.isGuest) {
+    return NextResponse.json({ error: "Guests cannot join groups. Verify your class PIN first." }, { status: 403 });
+  }
 
   const body = await req.json();
   const parsed = joinSchema.safeParse(body);

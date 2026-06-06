@@ -204,29 +204,33 @@ export default function AccountPage() {
         </div>
       )}
 
-      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
-        <h2 className="font-semibold text-gray-900">Privacy mode</h2>
-        <VisibilitySelector
-          value={visibility}
-          onChange={(v) => { setVisibility(v); setSaved(false); }}
-        />
-        <Button onClick={handleSave} disabled={loading} className="w-full">
-          {loading ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
-        </Button>
-      </div>
+      {!session.user.isGuest && (
+        <>
+          <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
+            <h2 className="font-semibold text-gray-900">Privacy mode</h2>
+            <VisibilitySelector
+              value={visibility}
+              onChange={(v) => { setVisibility(v); setSaved(false); }}
+            />
+            <Button onClick={handleSave} disabled={loading} className="w-full">
+              {loading ? "Saving..." : saved ? "✓ Saved" : "Save changes"}
+            </Button>
+          </div>
 
-      <PushSettings />
+          <PushSettings />
 
-      <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-3">
-        <h2 className="font-semibold text-gray-900">Your data</h2>
-        <p className="text-sm text-gray-500">Download all your data as JSON (GDPR export).</p>
-        <a
-          href="/account/export"
-          className="inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
-        >
-          Download my data
-        </a>
-      </div>
+          <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-3">
+            <h2 className="font-semibold text-gray-900">Your data</h2>
+            <p className="text-sm text-gray-500">Download all your data as JSON (GDPR export).</p>
+            <a
+              href="/account/export"
+              className="inline-flex items-center rounded-lg border border-gray-200 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            >
+              Download my data
+            </a>
+          </div>
+        </>
+      )}
 
       <Button
         variant="outline"

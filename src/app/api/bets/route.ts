@@ -20,6 +20,10 @@ export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
+  if (session.user.isGuest) {
+    return NextResponse.json({ error: "Guests cannot submit bets. Verify your class PIN first." }, { status: 403 });
+  }
+
   const body = await req.json();
   const parsed = betSchema.safeParse(body);
   if (!parsed.success) {
