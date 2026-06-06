@@ -49,7 +49,7 @@ function JoinPageInner() {
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [step, setStep] = useState<"identity" | "team" | "visibility" | "group">("identity");
-  const [groupPin, setGroupPin] = useState("");
+  const [groupPin, setGroupPin] = useState(searchParams.get("groupPin") ?? searchParams.get("pin") ?? "");
 
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);

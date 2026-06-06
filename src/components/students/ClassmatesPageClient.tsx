@@ -249,7 +249,17 @@ export default function ClassmatesPageClient({
                     <Input value={joinCode} onChange={(e) => setJoinCode(e.target.value.toUpperCase())} placeholder="e.g. AB3X9Z" className="font-mono tracking-widest" maxLength={8} />
                   </div>
                   {joinError && <p className="text-sm text-red-500">{joinError}</p>}
-                  {joinSuccess && <p className="text-sm text-green-600">{joinSuccess}</p>}
+                  {joinSuccess && (
+                    <div className="space-y-2">
+                      <p className="text-sm text-green-600 font-medium">{joinSuccess}</p>
+                      {session?.user && (session.user as any).visibility !== "public" && (
+                        <div className="rounded-md bg-white p-3 border border-green-200 text-sm">
+                          <p className="text-gray-700 font-medium">Want to compete globally?</p>
+                          <p className="text-gray-500 text-xs mt-1">You are currently hidden from the master leaderboard. You can change this in your profile settings anytime!</p>
+                        </div>
+                      )}
+                    </div>
+                  )}
                   <Button className="w-full" disabled={!joinCode.trim() || joinLoading} onClick={handleJoin}>
                     {joinLoading ? "Joining..." : "Join Group"}
                   </Button>
