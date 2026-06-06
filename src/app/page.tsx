@@ -119,7 +119,7 @@ export default async function HomePage() {
 
     const liveCount = todayMatches.filter((m) => m.status === "live").length;
     const upcomingCount = todayMatches.filter((m) => m.status === "upcoming").length;
-    const nextMatchRaw = todayMatches.find((m) => m.status === "upcoming") ?? null;
+    const [nextMatchRaw] = await db.select().from(matches).where(and(gte(matches.matchDatetime, new Date()), eq(matches.status, "upcoming"))).orderBy(asc(matches.matchDatetime)).limit(1);
     const nextMatch = nextMatchRaw
       ? {
           matchDatetime: nextMatchRaw.matchDatetime,
