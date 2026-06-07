@@ -122,6 +122,7 @@ export default function LiveReportsWidget({
     latestStatus: StatusValue; latestTime: string; reports: Report[];
   }> = {};
   for (const r of reports) {
+    if (r.status === "planning") continue;
     const key = r.venueId ?? r.venueName;
     if (!barMap[key]) barMap[key] = { venueName: r.venueName, venueArea: r.venueArea, venueMapsUrl: r.venueMapsUrl, latestStatus: r.status, latestTime: r.createdAt, reports: [] };
     barMap[key].reports.push(r);
@@ -164,6 +165,12 @@ export default function LiveReportsWidget({
             </button>
           ) : (
             <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
+              <textarea
+                placeholder={tab === "planning" ? "Wanna reference a pub? Choose below" : "Add a comment (optional)"}
+                value={comment} onChange={(e) => setComment(e.target.value)}
+                rows={2} maxLength={300}
+                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
+              />
               {tab === "live" && (
                 <>
                   <p className="text-sm font-semibold text-gray-800">What's the situation?</p>
@@ -198,12 +205,6 @@ export default function LiveReportsWidget({
                   <button onClick={() => setSelVenueId(null)} className="text-xs text-gray-400 hover:text-gray-600 mt-1">× Change venue</button>
                 )}
               </div>
-              <textarea
-                placeholder={tab === "planning" ? "Type your message..." : "Add a comment (optional)"}
-                value={comment} onChange={(e) => setComment(e.target.value)}
-                rows={2} maxLength={300}
-                className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
-              />
               {postError && <p className="text-xs text-red-500">{postError}</p>}
               <div className="flex gap-2">
                 <button onClick={handlePost} disabled={posting}

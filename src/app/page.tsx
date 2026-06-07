@@ -112,7 +112,7 @@ export default async function HomePage() {
 
     // Build serializable pending challenges for widget
     const pendingChallengeProps = (pendingChallenges as Array<{
-      id: string; stakeTokens: number; challengerName: string;
+      id: string; stakeTokens: number; opponentName: string; isSender: boolean;
       matchDatetime: Date; team1Id: string | null; team2Id: string | null;
       team1Placeholder: string | null; team2Placeholder: string | null; groupId: string | null;
       student1Score1: number | null; student1Score2: number | null;
@@ -124,7 +124,8 @@ export default async function HomePage() {
       return {
         id: c.id,
         stakeTokens: c.stakeTokens,
-        challengerName: c.challengerName,
+        opponentName: c.opponentName,
+        isSender: c.isSender,
         matchLabel: `${n1} vs ${n2}`,
         matchDatetime: c.matchDatetime.toISOString(),
         groupName: c.groupId ? (groupNameMap.get(c.groupId) ?? null) : null,
