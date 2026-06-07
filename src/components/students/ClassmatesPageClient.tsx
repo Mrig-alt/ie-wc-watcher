@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from "react";
 import { useSession } from "next-auth/react";
-import { Users, Plus, LogIn, Copy, Check, LogOut, Swords, ExternalLink } from "lucide-react";
+import { Users, Plus, LogIn, LogOut, Copy, Check, Swords, ExternalLink, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -56,6 +56,7 @@ export default function ClassmatesPageClient({
 }: Props) {
   const { data: session } = useSession();
   const [tab, setTab] = useState<"classmates" | "groups">("classmates");
+  const [search, setSearch] = useState("");
   const [challengeTarget, setChallengeTarget] = useState<{ id: string; name: string } | null>(null);
   const [challengeOpen, setChallengeOpen] = useState(false);
 
@@ -167,14 +168,25 @@ export default function ClassmatesPageClient({
         ))}
       </div>
 
+      {/* Search Bar */}
+      <div className="relative max-w-xl">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+        <Input
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          placeholder={tab === "classmates" ? "Search classmates..." : "Search groups..."}
+          className="pl-9 bg-white shadow-sm"
+        />
+      </div>
+
       {/* ── Classmates tab ─────────────────────────────────────────────────── */}
       {tab === "classmates" && (
         <>
-          {students.length === 0 ? (
+          {students.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
             <p className="text-center text-sm text-gray-400 py-12">No classmates visible yet. Be the first to join!</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {students.map((s) => (
+              {students.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
                 <div key={s.id} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">
@@ -300,7 +312,7 @@ export default function ClassmatesPageClient({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {groups.map((group) => (
+                  {groups.filter(g => g.name.toLowerCase().includes(search.toLowerCase())).map((group) => (
                     <div key={group.id} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
                       <div className="flex items-start justify-between">
                         <div>

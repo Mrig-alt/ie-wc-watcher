@@ -3,6 +3,8 @@
 import { useEffect, useState } from "react";
 import MatchCard from "@/components/matches/MatchCard";
 import { formatMatchDate } from "@/lib/utils";
+import { Input } from "@/components/ui/input";
+import { Search } from "lucide-react";
 
 type Match = any;
 
@@ -26,6 +28,7 @@ export default function ScheduleMatchesList({
   initialGrouped,
 }: ScheduleMatchesListProps) {
   const [grouped, setGrouped] = useState<{ day: string; matches: Match[] }[]>(initialGrouped);
+  const [search, setSearch] = useState("");
 
   useEffect(() => {
     const clientGrouped = new Map<string, Match[]>();
@@ -45,10 +48,33 @@ export default function ScheduleMatchesList({
   }, [allMatches]);
 
   const teamMap = new Map(allTeams.map((t) => [t.id, t]));
+  const searchLower = search.trim().toLowerCase();
+
+  const filteredGrouped = grouped.map(g => {
+    const matches = g.matches.filter(m => {
+      if (!searchLower) return true;
+      const t1 = m.team1Id ? teamMap.get(m.team1Id)?.name.toLowerCase() ?? "" : "";
+      const t2 = m.team2Id ? teamMap.get(m.team2Id)?.name.toLowerCase() ?? "" : "";
+      return t1.includes(searchLower) || t2.includes(searchLower);
+    });
+    return { ...g, matches };
+  }).filter(g => g.matches.length > 0);
 
   return (
     <div className="space-y-8">
-      {grouped.map(({ day, matches: dayMatches }) => (
+      <div className="sticky top-0 z-10 bg-gray-50 pt-2 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Search by country..."
+            className="pl-9 bg-white shadow-sm"
+          />
+        </div>
+      </div>
+
+      {filteredGrouped.map(({ day, matches: dayMatches }) => (
         <section key={day}>
           <h2 className="text-base font-semibold text-gray-700 mb-3 sticky top-14 bg-gray-50 py-1">{day}</h2>
           <div className="space-y-3">

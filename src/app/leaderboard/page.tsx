@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections } from "@/db/schema";
 import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
-import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
+import LeaderboardClient from "@/components/leaderboard/LeaderboardClient";
 import LeaderboardInfoModal from "@/components/leaderboard/LeaderboardInfoModal";
 import ScoringLogicModal from "@/components/leaderboard/ScoringLogicModal";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
@@ -82,35 +82,7 @@ export default async function LeaderboardPage() {
           </div>
         )}
 
-        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-          <div className="divide-y divide-gray-50">
-            {(() => {
-              let anonymousCounter = 1;
-              return rows.map((s, i) => {
-                const isAnonymous = s.leaderboardVisibility === false && s.id !== session?.user?.id;
-                const displayName = isAnonymous ? `Anonymous ${anonymousCounter++} 🕵️` : s.name;
-                return (
-                  <LeaderboardRow
-                    key={s.id}
-                    rank={i + 1}
-                    student={{
-                      name: displayName,
-                      tokenBalance: s.tokenBalance + s.escrowTokens - s.totalTokensReceived,
-                      isHonoraryFan: s.isHonoraryFan,
-                      hasBoughtIn: s.hasBoughtIn,
-                      team: isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),
-                    }}
-                    isCurrentUser={s.id === session?.user?.id}
-                  />
-                );
-              });
-            })()}
-          </div>
-        </div>
-
-        {rows.length === 0 && (
-          <p className="text-center text-sm text-gray-400 py-12">No students yet.</p>
-        )}
+        <LeaderboardClient rows={rows} currentUserId={session?.user?.id} />
       </div>
     );
   } catch (e) {
