@@ -294,10 +294,12 @@ function JoinPageInner() {
             {error && <p className="text-sm text-red-500">{error}</p>}
             <Button
               className="w-full"
-              disabled={!name.trim() || (pinRequired && !isGuest && !pin.trim())}
-              onClick={() => setStep("team")}
+              disabled={!name.trim() || (pinRequired && !isGuest && !pin.trim()) || loading}
+              onClick={() => isGuest ? handleRegister() : setStep("team")}
             >
-              Continue &rarr; Pick your team
+              {isGuest 
+                ? (loading ? "Registering..." : "Finish Registration \u2192")
+                : "Continue \u2192 Pick your team"}
             </Button>
           </div>
         )}

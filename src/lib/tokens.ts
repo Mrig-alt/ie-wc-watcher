@@ -342,13 +342,14 @@ export async function checkAndReplenishFloor(studentId: string) {
         id: students.id,
         tokenBalance: students.tokenBalance,
         lastFloorReplenishedAt: students.lastFloorReplenishedAt,
+        isGuest: students.isGuest,
       })
       .from(students)
       .where(eq(students.id, studentId))
       .for("update")
       .limit(1);
 
-    if (!student) return null;
+    if (!student || student.isGuest) return null;
 
     const now = new Date();
     const balance = student.tokenBalance;
