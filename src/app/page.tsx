@@ -7,7 +7,7 @@ import TodayHero from "@/components/matches/TodayHero";
 import MatchCardClient from "@/components/matches/MatchCardClient";
 import HomeTabsClient from "@/components/home/HomeTabsClient";
 import JoinBanner from "@/components/home/JoinBanner";
-import PendingChallengesWidget from "@/components/home/PendingChallengesWidget";
+import PendingChallengesModal from "@/components/home/PendingChallengesModal";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
 
@@ -70,6 +70,7 @@ export default async function HomePage() {
               challengedName: challenged.name,
               student1Id: bets.student1Id,
               student2Id: bets.student2Id,
+              challengerTeamSide: bets.challengerTeamSide,
               matchDatetime: matches.matchDatetime,
               team1Id: matches.team1Id,
               team2Id: matches.team2Id,
@@ -94,14 +95,8 @@ export default async function HomePage() {
         : Promise.resolve([]),
     ]);
 
-    const pendingChallenges = pendingChallengesRaw.map(c => ({
-      ...c,
-      isSender: c.student1Id === validSession?.user.id,
-      opponentName: c.student1Id === validSession?.user.id ? c.challengedName : c.challengerName
-    }));
-
     // Resolve group names for pending challenges
-    const groupIdsNeeded = [...new Set((pendingChallenges as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];
+    const groupIdsNeeded = [...new Set((pendingChallengesRaw as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];
     const groupNameMap = new Map<string, string>();
     if (groupIdsNeeded.length > 0) {
       const groupRows = await db.select({ id: friendGroups.id, name: friendGroups.name }).from(friendGroups).where(inArray(friendGroups.id, groupIdsNeeded));
@@ -111,8 +106,9 @@ export default async function HomePage() {
     const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
     // Build serializable pending challenges for widget
-    const pendingChallengeProps = (pendingChallenges as Array<{
-      id: string; stakeTokens: number; opponentName: string; isSender: boolean;
+    const pendingChallengeProps = (pendingChallengesRaw as Array<{
+      id: string; stakeTokens: number; challengerName: string; challengedName: string;
+      student1Id: string; student2Id: string; challengerTeamSide: number | null;
       matchDatetime: Date; team1Id: string | null; team2Id: string | null;
       team1Placeholder: string | null; team2Placeholder: string | null; groupId: string | null;
       student1Score1: number | null; student1Score2: number | null;
@@ -121,11 +117,17 @@ export default async function HomePage() {
       const t2 = c.team2Id ? teamMap.get(c.team2Id) : null;
       const n1 = t1 ? `${t1.flagEmoji} ${t1.name}` : (c.team1Placeholder ?? "TBD");
       const n2 = t2 ? `${t2.flagEmoji} ${t2.name}` : (c.team2Placeholder ?? "TBD");
+
+      const isScore = c.student1Score1 !== null;
+      const challengerId = isScore || !c.challengerTeamSide
+        ? c.student1Id
+        : (c.challengerTeamSide === 1 ? c.student1Id : c.student2Id);
+
       return {
         id: c.id,
         stakeTokens: c.stakeTokens,
-        opponentName: c.opponentName,
-        isSender: c.isSender,
+        opponentName: c.student1Id === validSession?.user.id ? c.challengedName : c.challengerName,
+        isSender: challengerId === validSession?.user.id,
         matchLabel: `${n1} vs ${n2}`,
         matchDatetime: c.matchDatetime.toISOString(),
         groupName: c.groupId ? (groupNameMap.get(c.groupId) ?? null) : null,
@@ -153,14 +155,13 @@ export default async function HomePage() {
 
     return (
       <div className="space-y-6">
+        {pendingChallengeProps.length > 0 && (
+          <PendingChallengesModal challenges={pendingChallengeProps} />
+        )}
         <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatch} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
 
         {/* Client component — uses useSession() so it always reflects true auth state */}
         <JoinBanner />
-
-        {pendingChallengeProps.length > 0 && (
-          <PendingChallengesWidget challenges={pendingChallengeProps} />
-        )}
 
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-3">{liveCount > 0 ? "\uD83D\uDD34 Live now" : "Today's matches"}</h2>
