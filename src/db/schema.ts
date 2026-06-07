@@ -32,6 +32,7 @@ export const matchStageEnum = pgEnum("match_stage", [
   "semi_final",
   "third_place",
   "final",
+  "global",
 ]);
 
 export const visibilityEnum = pgEnum("visibility", [

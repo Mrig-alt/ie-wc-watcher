@@ -5,6 +5,7 @@ import { eq, and, gte, lte, asc, inArray, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import TodayHero from "@/components/matches/TodayHero";
 import MatchCardClient from "@/components/matches/MatchCardClient";
+import HomeTabsClient from "@/components/home/HomeTabsClient";
 import JoinBanner from "@/components/home/JoinBanner";
 import PendingChallengesWidget from "@/components/home/PendingChallengesWidget";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
@@ -147,58 +148,48 @@ export default async function HomePage() {
 
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-3">{liveCount > 0 ? "\uD83D\uDD34 Live now" : "Today's matches"}</h2>
-          {todayMatches.length === 0 ? (
-            <p className="text-sm text-gray-400 py-8 text-center">No matches today — check the schedule for upcoming games.</p>
-          ) : (
-            <div className="space-y-3">
-              {todayMatches.map((match) => {
-                const t1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;
-                const t2 = match.team2Id ? teamMap.get(match.team2Id) ?? null : null;
+          {(() => {
+            const compiledMatches = todayMatches.map((match) => {
+              const t1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;
+              const t2 = match.team2Id ? teamMap.get(match.team2Id) ?? null : null;
 
-                const team1Supporters = match.team1Id !== null
-                  ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility !== "stealth")
-                  : [];
-                const team2Supporters = match.team2Id !== null
-                  ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility !== "stealth")
-                  : [];
+              const team1Supporters = match.team1Id !== null
+                ? allStudents.filter((s) => s.teamId === match.team1Id && s.visibility !== "stealth")
+                : [];
+              const team2Supporters = match.team2Id !== null
+                ? allStudents.filter((s) => s.teamId === match.team2Id && s.visibility !== "stealth")
+                : [];
 
-                // Server-side predictions only available if auth() worked;
-                // MatchCardClient will also re-check client-side for personalised actions.
-                const myPred = myPredictions.find((p) => p.matchId === match.id);
-                const myInvite = todayInvites.find((i) => i.matchId === match.id && i.inviterId === validSession?.user.id);
+              const myPred = myPredictions.find((p) => p.matchId === match.id);
+              const myInvite = todayInvites.find((i) => i.matchId === match.id && i.inviterId === validSession?.user.id);
 
-                const myTeamId = validSession?.user.teamId;
-                const isOnTeam1 = myTeamId != null && myTeamId === match.team1Id;
-                const isOnTeam2 = myTeamId != null && myTeamId === match.team2Id;
-                const opponentSupporters = isOnTeam1 ? team2Supporters : isOnTeam2 ? team1Supporters : [];
-                const opponentIds = opponentSupporters.map((s) => s.id);
-                const opponentInviteRaw = todayInvites.find((i) => i.matchId === match.id && opponentIds.includes(i.inviterId));
-                const opponentInviter = opponentInviteRaw ? allStudents.find((s) => s.id === opponentInviteRaw.inviterId) : null;
+              const myTeamId = validSession?.user.teamId;
+              const isOnTeam1 = myTeamId != null && myTeamId === match.team1Id;
+              const isOnTeam2 = myTeamId != null && myTeamId === match.team2Id;
+              const opponentSupporters = isOnTeam1 ? team2Supporters : isOnTeam2 ? team1Supporters : [];
+              const opponentIds = opponentSupporters.map((s) => s.id);
+              const opponentInviteRaw = todayInvites.find((i) => i.matchId === match.id && opponentIds.includes(i.inviterId));
+              const opponentInviter = opponentInviteRaw ? allStudents.find((s) => s.id === opponentInviteRaw.inviterId) : null;
 
-                const fullMatch = {
-                  ...match,
-                  team1: t1 ? { id: t1.id, name: t1.name, flagEmoji: t1.flagEmoji } : null,
-                  team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
-                };
+              const fullMatch = {
+                ...match,
+                team1: t1 ? { id: t1.id, name: t1.name, flagEmoji: t1.flagEmoji } : null,
+                team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
+              };
 
-                return (
-                  <MatchCardClient
-                    key={match.id}
-                    match={fullMatch as Parameters<typeof MatchCardClient>[0]["match"]}
-                    team1Supporters={team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
-                    team2Supporters={team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt }))}
-                    prediction={myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null}
-                    myWatchInvite={myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null}
-                    opponentWatchInvite={
-                      opponentInviteRaw && opponentInviter
-                        ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
-                        : null
-                    }
-                  />
-                );
-              })}
-            </div>
-          )}
+              return {
+                match: fullMatch,
+                team1Supporters: team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt })),
+                team2Supporters: team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt })),
+                prediction: myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null,
+                myWatchInvite: myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null,
+                opponentWatchInvite: opponentInviteRaw && opponentInviter
+                  ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
+                  : null
+              };
+            });
+            return <HomeTabsClient matches={compiledMatches} />;
+          })()}
         </section>
 
         <div className="flex justify-center">

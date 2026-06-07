@@ -22,13 +22,17 @@ export async function POST() {
     }
 
     if (student.hasBoughtIn) {
-      return { status: 400, error: "Already bought in" };
+      return { status: 400, error: "Already used rescue bonus" };
+    }
+
+    if (student.tokenBalance > 0) {
+      return { status: 400, error: "Balance must be 0 to use rescue bonus" };
     }
 
     const [updated] = await tx
       .update(students)
       .set({
-        tokenBalance: sql`${students.tokenBalance} + 100`,
+        tokenBalance: sql`${students.tokenBalance} + 20`,
         hasBoughtIn: true,
       })
       .where(eq(students.id, session.user.id))

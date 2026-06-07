@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { matches, teams } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
-import { fetchWCMatches, mapApiStatus } from "@/lib/football-api";
+import { fetchWCMatches, fetchGlobalMatches, mapApiStatus } from "@/lib/football-api";
 import { settleBetsForMatch, settlePredictionsForMatch } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
@@ -32,7 +32,10 @@ export async function GET(req: Request) {
     return NextResponse.json({ skipped: true, reason: "sync already in progress" }, { status: 200 });
   }
   try {
-    const apiMatches = await fetchWCMatches();
+    const apiMatchesWC = await fetchWCMatches();
+    const apiMatchesGlobal = await fetchGlobalMatches();
+    const apiMatches = [...apiMatchesWC, ...apiMatchesGlobal];
+    
     if (!apiMatches.length) {
       return NextResponse.json({ synced: 0 });
     }
@@ -83,10 +86,24 @@ export async function GET(req: Request) {
 
       const tla1 = am.homeTeam.tla?.toUpperCase();
       const tla2 = am.awayTeam.tla?.toUpperCase();
-      if (!tla1 || !tla2) continue;
-      const team1Id = teamByCode[tla1];
-      const team2Id = teamByCode[tla2];
-      if (!team1Id || !team2Id) continue;
+      const team1Id = tla1 ? teamByCode[tla1] : null;
+      const team2Id = tla2 ? teamByCode[tla2] : null;
+
+      if (!team1Id || !team2Id) {
+        // Global match with teams not in our DB
+        await db.insert(matches).values({
+          externalId: am.id,
+          team1Placeholder: am.homeTeam.name,
+          team2Placeholder: am.awayTeam.name,
+          matchDatetime: new Date(am.utcDate),
+          status: resolvedStatus,
+          stage: "global",
+          team1Score: score1,
+          team2Score: score2,
+        });
+        synced++;
+        continue;
+      }
 
       const [existingByTeams] = await db
         .select()
@@ -111,6 +128,19 @@ export async function GET(req: Request) {
           await settlePredictionsForMatch(existingByTeams.id);
           settled++;
         }
+        synced++;
+      } else {
+        // New WC match
+        await db.insert(matches).values({
+          externalId: am.id,
+          team1Id,
+          team2Id,
+          matchDatetime: new Date(am.utcDate),
+          status: resolvedStatus,
+          stage: "friendly", // Default for new non-group matches
+          team1Score: score1,
+          team2Score: score2,
+        });
         synced++;
       }
     }

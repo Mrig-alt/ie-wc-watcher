@@ -46,7 +46,9 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
           let resultClass = "";
 
           if (item.type === "bet") {
-            title = `Challenge vs ${item.opponentName || "Classmate"}`;
+            const isSender = item.student1Id === currentUserId;
+            title = `Challenge ${isSender ? "Sent to" : "Received from"} ${item.opponentName || "Classmate"}`;
+            
             if (isPending) {
               resultText = `Pending (${item.stakeTokens} 🪙 staked)`;
               resultClass = "text-yellow-600 bg-yellow-50 border-yellow-200";

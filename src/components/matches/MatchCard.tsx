@@ -81,8 +81,8 @@ export default function MatchCard({
 
   const t1Name = match.team1?.name ?? match.team1Placeholder ?? "TBD";
   const t2Name = match.team2?.name ?? match.team2Placeholder ?? "TBD";
-  const t1Flag = match.team1?.flagEmoji ?? "\uD83C\uDFF3\uFE0F";
-  const t2Flag = match.team2?.flagEmoji ?? "\uD83C\uDFF3\uFE0F";
+  const t1Flag = match.team1?.flagEmoji ?? (match.stage === 'global' ? "⚽" : "🏳️");
+  const t2Flag = match.team2?.flagEmoji ?? (match.stage === 'global' ? "⚽" : "🏳️");
 
   // Can predict if logged in, match is upcoming, both teams known, and it's >30min before kickoff
   const cutoffTime = new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000);
@@ -189,11 +189,11 @@ export default function MatchCard({
           <div className="mt-3">
             <button
               onClick={() => setShowWatchCard((v) => !v)}
-              className="flex items-center gap-1.5 text-xs text-gray-400 hover:text-green-600 transition-colors"
+              className="flex items-center justify-center w-full gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
             >
-              <MapPin className="h-3.5 w-3.5" />
-              Who&apos;s watching where
-              {showWatchCard ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+              <MapPin className="h-4 w-4 shrink-0 text-indigo-500" />
+              Wanna watch the match together? Find a group!
+              {showWatchCard ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
             {showWatchCard && (
               <div className="mt-2">
