@@ -37,6 +37,7 @@ export default async function LeaderboardPage() {
         id: students.id,
         name: students.name,
         tokenBalance: students.tokenBalance,
+        escrowTokens: students.escrowTokens,
         isHonoraryFan: students.isHonoraryFan,
         visibility: students.visibility,
         leaderboardVisibility: students.leaderboardVisibility,
@@ -48,7 +49,7 @@ export default async function LeaderboardPage() {
       .from(students)
       .leftJoin(teams, eq(students.teamId, teams.id))
       .where(and(eq(students.flagged, false), eq(students.isGuest, false), isNull(students.deletedAt)))
-      .orderBy(desc(sql`${students.tokenBalance} - ${students.totalTokensReceived}`));
+      .orderBy(desc(sql`${students.tokenBalance} + ${students.escrowTokens} - ${students.totalTokensReceived}`));
 
     return (
       <div className="space-y-6">
@@ -92,7 +93,7 @@ export default async function LeaderboardPage() {
                     rank={i + 1}
                     student={{
                       name: displayName,
-                      tokenBalance: s.tokenBalance - s.totalTokensReceived,
+                      tokenBalance: s.tokenBalance + s.escrowTokens - s.totalTokensReceived,
                       isHonoraryFan: s.isHonoraryFan,
                       hasBoughtIn: s.hasBoughtIn,
                       team: isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),

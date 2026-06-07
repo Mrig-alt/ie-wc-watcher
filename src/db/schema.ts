@@ -88,6 +88,7 @@ export const students = pgTable("students", {
   isGuest: boolean("is_guest").notNull().default(false),
   hasBoughtIn: boolean("has_bought_in").notNull().default(false),
   totalTokensReceived: integer("total_tokens_received").notNull().default(0),
+  escrowTokens: integer("escrow_tokens").notNull().default(0),
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
   deletedAt: timestamp("deleted_at"),

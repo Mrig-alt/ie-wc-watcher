@@ -1,6 +1,6 @@
 import { db } from "@/db";
 import { students, bets, predictions, matches, groupMembers, tokenLedger } from "@/db/schema";
-import { eq, and, isNull, sql, inArray } from "drizzle-orm";
+import { eq, and, or, isNull, sql, inArray } from "drizzle-orm";
 
 export const STAKE_TOKENS = 10;
 export const PREDICTION_CORRECT_TOKENS = 5;
@@ -128,6 +128,14 @@ export async function settleBetsForMatch(matchId: string) {
         .where(and(eq(bets.id, bet.id), eq(bets.settled, false)))
         .returning({ id: bets.id });
       if (updated.length === 0) return;
+
+      if (!bet.groupId) {
+        // Decrease escrowTokens for both participants globally
+        await tx
+          .update(students)
+          .set({ escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}` })
+          .where(or(eq(students.id, bet.student1Id), eq(students.id, bet.student2Id)));
+      }
 
       // Execute payouts
       if (payoutType === "full" && winnerId) {
@@ -286,6 +294,13 @@ export async function settlePredictionsForMatch(matchId: string) {
         .returning({ id: predictions.id });
       
       if (updated.length === 0) return;
+
+      if (stake > 0) {
+        await tx
+          .update(students)
+          .set({ escrowTokens: sql`${students.escrowTokens} - ${stake}` })
+          .where(eq(students.id, pred.studentId));
+      }
 
       if (earned > 0) {
         // Award globally

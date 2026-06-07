@@ -147,7 +147,10 @@ export async function POST(req: Request) {
         // Deduct stake ONLY from challenger upfront in global balance
         await tx
           .update(students)
-          .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeTokens}` })
+          .set({ 
+            tokenBalance: sql`${students.tokenBalance} - ${stakeTokens}`,
+            escrowTokens: sql`${students.escrowTokens} + ${stakeTokens}`
+          })
           .where(eq(students.id, session.user.id));
 
         // Log in token ledger

@@ -98,7 +98,10 @@ export async function POST(req: Request) {
       if (stakeDelta !== 0) {
         await tx
           .update(students)
-          .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeDelta}` })
+          .set({ 
+            tokenBalance: sql`${students.tokenBalance} - ${stakeDelta}`,
+            escrowTokens: sql`${students.escrowTokens} + ${stakeDelta}`
+          })
           .where(eq(students.id, session.user.id));
       }
 

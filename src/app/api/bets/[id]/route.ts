@@ -120,7 +120,10 @@ export async function PATCH(
           // Deduct from opponent's global balance
           await tx
             .update(students)
-            .set({ tokenBalance: sql`${students.tokenBalance} - ${bet.stakeTokens}` })
+            .set({ 
+              tokenBalance: sql`${students.tokenBalance} - ${bet.stakeTokens}`,
+              escrowTokens: sql`${students.escrowTokens} + ${bet.stakeTokens}`
+            })
             .where(eq(students.id, opponentId));
 
           await tx.insert(tokenLedger).values({
@@ -154,7 +157,10 @@ export async function PATCH(
         } else {
           await tx
             .update(students)
-            .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+            .set({ 
+              tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}`,
+              escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}`
+            })
             .where(eq(students.id, challengerId));
 
           await tx.insert(tokenLedger).values({
@@ -245,7 +251,10 @@ export async function DELETE(
       } else {
         await tx
           .update(students)
-          .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+          .set({ 
+            tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}`,
+            escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}`
+          })
           .where(eq(students.id, challengerId));
 
         await tx.insert(tokenLedger).values({
