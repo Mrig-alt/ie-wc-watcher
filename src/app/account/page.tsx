@@ -53,32 +53,7 @@ export default function AccountPage() {
     }
   };
 
-  // Rescue Bonus state
-  const [rescuing, setRescuing] = useState(false);
 
-  const handleRescueBonus = async () => {
-    if (!session) return;
-    setRescuing(true);
-    try {
-      const res = await fetch("/api/students/buy-tokens", {
-        method: "POST",
-      });
-      const data = await res.json();
-      if (res.ok) {
-        await update({
-          tokenBalance: data.tokenBalance,
-          hasBoughtIn: data.hasBoughtIn,
-        });
-        router.refresh();
-      } else {
-        alert(data.error || "Failed to claim rescue bonus");
-      }
-    } catch {
-      alert("Network error. Please try again.");
-    } finally {
-      setRescuing(false);
-    }
-  };
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -176,24 +151,33 @@ export default function AccountPage() {
         </div>
       )}
 
-      {!session.user.isGuest && session.user.tokenBalance <= 0 && !(session as any).user.hasBoughtIn && (
-        <div className="rounded-xl border border-emerald-200 bg-emerald-50/30 p-6 shadow-sm space-y-4">
+      {/* Out of tokens state */}
+      {!session.user.isGuest && session.user.tokenBalance <= 0 && (
+        <div className="rounded-xl border border-red-200 bg-red-50/30 p-6 shadow-sm space-y-4">
           <div>
             <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
-              <span>🛟 Rescue Bonus</span>
-              <span className="text-[10px] font-medium text-emerald-800 bg-emerald-100 px-2 py-0.5 rounded-full">One-Time</span>
+              <span>⚠️ Out of Tokens</span>
             </h2>
-            <p className="text-xs text-gray-600 mt-1">
-              You're out of tokens! Claim your one-time rescue bonus of <strong className="text-emerald-700">+20 tokens</strong> to get back in the game. You also receive 10 tokens weekly.
+            <p className="text-sm text-gray-600 mt-2">
+              You've exhausted your token balance! But don't worry, you have two options to get back in the game:
             </p>
+            <ul className="mt-3 space-y-2 text-sm text-gray-700">
+              <li className="flex gap-2">
+                <span>🕒</span> 
+                <span><strong>Wait for Monday:</strong> Every student receives a free stipend of 10 tokens at the start of the week.</span>
+              </li>
+              <li className="flex gap-2">
+                <span>💶</span> 
+                <span><strong>Top up now:</strong> Want tokens immediately? You can buy a bundle of 50 tokens for €10. Contact Mrigank to process your payment and credit your account.</span>
+              </li>
+            </ul>
           </div>
 
           <Button
-            onClick={handleRescueBonus}
-            disabled={rescuing}
-            className="w-full bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white font-medium shadow-sm transition-all"
+            onClick={() => alert("Please contact Mrigank directly via WhatsApp or your class group to arrange the €10 payment and he will manually add tokens to your account!")}
+            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm transition-all"
           >
-            {rescuing ? "Claiming..." : "Claim Rescue Bonus (+20 🪙)"}
+            Buy 50 Tokens (€10)
           </Button>
         </div>
       )}
