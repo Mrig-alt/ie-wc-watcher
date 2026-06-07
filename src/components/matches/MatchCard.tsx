@@ -258,14 +258,16 @@ function TeamSide({
     <div className={`flex flex-col ${right ? "items-end" : "items-start"} gap-1 flex-1 min-w-0`}>
       <div className={`flex items-center gap-2 ${right ? "flex-row-reverse" : ""}`}>
         <span className="text-2xl">{flag}</span>
-        <span className={`text-sm font-semibold truncate ${highlight ? "text-green-700" : "text-gray-900"}`}>
-          {name}
-        </span>
-        {odds != null && (
-          <span className="text-[10px] font-medium text-gray-500 bg-gray-100 px-1.5 py-0.5 rounded-sm">
-            {odds.toFixed(2)}x
+        <div className={`flex flex-col ${right ? "items-end" : "items-start"}`}>
+          <span className={`text-sm font-semibold truncate ${highlight ? "text-green-700" : "text-gray-900"}`}>
+            {name}
           </span>
-        )}
+          {odds != null && (
+            <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+              Odds: {odds.toFixed(2)}x
+            </span>
+          )}
+        </div>
       </div>
       {supporters.length > 0 && (
         <div className={`flex flex-wrap gap-1 ${right ? "justify-end" : ""}`}>
