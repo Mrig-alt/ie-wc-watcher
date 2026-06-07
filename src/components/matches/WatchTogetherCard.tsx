@@ -93,7 +93,6 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
     setCustomName("");
     setCustomUrl("");
     setIsCustom(false);
-    setSearch("");
     await fetchLocations();
     setLoading(false);
   };
@@ -212,7 +211,7 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
             >
               {loading ? "Saving..." : "I'm watching here \u2713"}
             </Button>
-            <Button size="sm" variant="outline" onClick={() => { setShowing(false); setSelectedVenue(null); setSearch(""); setIsCustom(false); }}>
+            <Button size="sm" variant="outline" onClick={() => { setShowing(false); setSelectedVenue(null); setIsCustom(false); }}>
               Cancel
             </Button>
           </div>

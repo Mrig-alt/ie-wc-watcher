@@ -19,7 +19,7 @@ type Venue = {
   id: string;
   name: string;
   area: string | null;
-  address: string | null;
+  address?: string | null;
   mapsUrl: string | null;
   popularity?: number;
 };
