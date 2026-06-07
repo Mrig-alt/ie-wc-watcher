@@ -5,7 +5,6 @@ import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
 import LeaderboardInfoModal from "@/components/leaderboard/LeaderboardInfoModal";
 import ScoringLogicModal from "@/components/leaderboard/ScoringLogicModal";
-import GroupSelector from "@/components/leaderboard/GroupSelector";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
