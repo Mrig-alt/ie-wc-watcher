@@ -61,6 +61,7 @@ export function formatKickoffFull(dt: Date, timezone?: string): string {
 
 export function stageLabel(stage: MatchStage): string {
   const labels: Record<MatchStage, string> = {
+    global: "Global Match",
     friendly: "Warm-up Friendly",
     group: "Group Stage",
     round_of_32: "Round of 32",
