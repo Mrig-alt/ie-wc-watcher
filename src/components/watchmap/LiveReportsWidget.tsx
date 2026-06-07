@@ -90,9 +90,9 @@ export default function LiveReportsWidget({
   }, [fetchReports]);
 
   const handlePost = async () => {
-    if (!isPlanningMode && !selStatus) { setPostError("Pick a status"); return; }
-    if (!isPlanningMode && !selVenueId && !freeVenue.trim()) { setPostError("Enter a venue"); return; }
-    if (isPlanningMode && !comment.trim()) { setPostError("Enter a message to post"); return; }
+    if (tab === "live" && !selStatus) { setPostError("Pick a status"); return; }
+    if (tab === "live" && !selVenueId && !freeVenue.trim()) { setPostError("Enter a venue"); return; }
+    if (tab === "planning" && !comment.trim()) { setPostError("Enter a message to post"); return; }
     setPosting(true);
     setPostError("");
     try {

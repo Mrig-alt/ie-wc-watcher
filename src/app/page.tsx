@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { matches, teams, students, predictions, watchInvites, bets, friendGroups } from "@/db/schema";
-import { eq, and, gte, lte, asc, inArray, desc } from "drizzle-orm";
+import { eq, and, or, gte, lte, asc, inArray, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import TodayHero from "@/components/matches/TodayHero";
 import MatchCardClient from "@/components/matches/MatchCardClient";
@@ -31,8 +31,12 @@ export default async function HomePage() {
         team1Id: matches.team1Id, team2Id: matches.team2Id,
       })
       .from(matches)
-      .where(and(gte(matches.matchDatetime, todayStart), lte(matches.matchDatetime, todayEnd)))
-      .orderBy(asc(matches.matchDatetime));
+      .where(or(
+        and(gte(matches.matchDatetime, todayStart), lte(matches.matchDatetime, todayEnd)), // Today's matches
+        and(gte(matches.matchDatetime, todayStart), eq(matches.status, "upcoming")) // Or any future upcoming matches
+      ))
+      .orderBy(asc(matches.matchDatetime))
+      .limit(30);
 
     const todayMatchIds = todayMatches.map((m) => m.id);
 
