@@ -235,6 +235,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
         <LiveReportsWidget
           currentUserId={session?.user?.id ?? null}
           matchId={id}
+          matchDatetime={match.matchDatetime}
           knownVenues={allVenues.map((v) => ({ id: v.id, name: v.name, area: v.area }))}
         />
       </div>

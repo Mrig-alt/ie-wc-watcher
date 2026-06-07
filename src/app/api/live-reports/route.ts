@@ -6,7 +6,7 @@ import { auth } from "@/lib/auth";
 import { z } from "zod";
 
 const liveReportSchema = z.object({
-  status: z.enum(["buzzing", "getting_busy", "packed", "queue_outside", "entry_fee", "good_screens", "quiet_now"]),
+  status: z.enum(["buzzing", "getting_busy", "packed", "queue_outside", "entry_fee", "good_screens", "quiet_now", "planning"]),
   venueId: z.string().uuid().optional().nullable(),
   venueName: z.string().min(1).max(200).optional().nullable(),
   matchId: z.string().uuid().optional().nullable(),
@@ -72,8 +72,8 @@ export async function POST(req: Request) {
 
   const { status, venueId, venueName, matchId, comment } = parsed.data;
 
-  // Must have at least a venue (linked or free text)
-  if (!venueId && !venueName) {
+  // Must have at least a venue (linked or free text) unless planning
+  if (status !== "planning" && !venueId && !venueName) {
     return NextResponse.json({ error: "Venue is required" }, { status: 400 });
   }
 

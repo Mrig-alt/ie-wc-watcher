@@ -79,7 +79,7 @@ export default function GroupDetailClient({
   };
 
   const shareGroup = () => {
-    const text = `Join my "${groupName}" group on IE World Cup 2026!\nInvite code: ${inviteCode}\n${window.location.origin}/students`;
+    const text = `Join my "${groupName}" group on IE World Cup 2026!\nInvite code: ${inviteCode}\n${window.location.origin}/join?pin=${inviteCode}`;
     if (navigator.share) navigator.share({ title: "IE World Cup Group", text });
     else {
       navigator.clipboard.writeText(text);

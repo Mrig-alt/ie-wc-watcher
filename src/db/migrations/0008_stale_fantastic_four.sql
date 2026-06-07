@@ -1,0 +1,1 @@
+ALTER TYPE "public"."live_report_status" ADD VALUE 'planning';

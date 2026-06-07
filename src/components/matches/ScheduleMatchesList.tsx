@@ -29,9 +29,10 @@ export default function ScheduleMatchesList({
 
   useEffect(() => {
     const clientGrouped = new Map<string, Match[]>();
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone;
     for (const m of allMatches) {
       const dt = new Date(m.matchDatetime);
-      const day = formatMatchDate(dt);
+      const day = formatMatchDate(dt, tz);
       if (!clientGrouped.has(day)) clientGrouped.set(day, []);
       clientGrouped.get(day)!.push(m);
     }

@@ -1,11 +1,11 @@
 import { NextResponse } from "next/server";
-import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students } from "@/db/schema";
+import { auth } from "@/lib/auth";
 import { eq } from "drizzle-orm";
 import { z } from "zod";
 
-const pushSubscriptionSchema = z.object({
+const subscribeSchema = z.object({
   endpoint: z.string().url(),
   keys: z.object({
     p256dh: z.string(),
@@ -16,23 +16,43 @@ const pushSubscriptionSchema = z.object({
 export async function POST(req: Request) {
   try {
     const session = await auth();
-    if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
 
     const body = await req.json();
-    const parsed = pushSubscriptionSchema.safeParse(body);
+    const parsed = subscribeSchema.safeParse(body);
+    
     if (!parsed.success) {
-      return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
+      return NextResponse.json({ error: "Invalid subscription payload" }, { status: 400 });
     }
-    const subscription = parsed.data;
 
-    await db
-      .update(students)
-      .set({ pushSubscription: JSON.stringify(subscription) })
+    const { endpoint, keys } = parsed.data;
+
+    await db.update(students)
+      .set({ pushSubscription: JSON.stringify(body) })
+      .where(eq(students.id, session.user.id));
+
+    return NextResponse.json({ success: true }, { status: 201 });
+  } catch (error: any) {
+    console.error("Push subscribe error:", error);
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+}
+
+export async function DELETE(req: Request) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await db.update(students)
+      .set({ pushSubscription: null })
       .where(eq(students.id, session.user.id));
 
     return NextResponse.json({ success: true });
-  } catch (error) {
-    console.error("Failed to save push subscription:", error);
-    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  } catch (error: any) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

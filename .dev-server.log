@@ -1,0 +1,13 @@
+
+> world-cup-pairing@0.1.0 dev
+> next dev
+
+▲ Next.js 16.2.3 (Turbopack)
+- Local:         http://localhost:3000
+- Network:       http://10.73.78.125:3000
+- Environments: .env.local
+✓ Ready in 333ms
+⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+
+ GET /api/check-email?email=idontexist@gmail.com 200 in 997ms (next.js: 97ms, application-code: 900ms)
+[?25h

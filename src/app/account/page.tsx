@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/button";
 import VisibilitySelector from "@/components/profile/VisibilitySelector";
 import PushSettings from "@/components/profile/PushSettings";
+import BetsHistory from "@/components/profile/BetsHistory";
 
 type Visibility = "public" | "friends" | "stealth";
 
@@ -206,6 +207,8 @@ export default function AccountPage() {
 
       {!session.user.isGuest && (
         <>
+          <BetsHistory currentUserId={session.user.id} />
+
           <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
             <h2 className="font-semibold text-gray-900">Privacy mode</h2>
             <VisibilitySelector

@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections, matches } from "@/db/schema";
@@ -90,13 +91,15 @@ export default async function StudentsPage() {
     }));
 
     return (
-      <ClassmatesPageClient
-        students={mappedStudents}
-        upcomingMatches={upcomingMatches}
-        teams={allTeams}
-        currentUserId={validSession?.user.id ?? null}
-        currentUserTokenBalance={validSession?.user.tokenBalance ?? 0}
-      />
+      <Suspense fallback={<div className="p-4 text-center text-sm text-gray-500">Loading classmates...</div>}>
+        <ClassmatesPageClient
+          students={mappedStudents}
+          upcomingMatches={upcomingMatches}
+          teams={allTeams}
+          currentUserId={validSession?.user.id ?? null}
+          currentUserTokenBalance={validSession?.user.tokenBalance ?? 0}
+        />
+      </Suspense>
     );
   } catch (e) {
     console.error("[students] render error", e);

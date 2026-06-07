@@ -11,6 +11,7 @@ import PresenceDot from "@/components/students/PresenceDot";
 import ChallengeModal from "@/components/students/ChallengeModal";
 import { getInitials } from "@/lib/utils";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 
 type StudentProp = {
   id: string;
@@ -73,6 +74,17 @@ export default function ClassmatesPageClient({
   const [joinError, setJoinError] = useState("");
   const [joinSuccess, setJoinSuccess] = useState("");
   const [copied, setCopied] = useState<string | null>(null);
+
+  const searchParams = useSearchParams();
+
+  useEffect(() => {
+    const pin = searchParams.get("pin");
+    if (pin) {
+      setTab("groups");
+      setJoining(true);
+      setJoinCode(pin);
+    }
+  }, [searchParams]);
 
   const fetchGroups = useCallback(async () => {
     setGroupsLoading(true);
@@ -252,14 +264,24 @@ export default function ClassmatesPageClient({
                   </div>
                   {joinError && <p className="text-sm text-red-500">{joinError}</p>}
                   {joinSuccess && (
-                    <div className="space-y-2">
-                      <p className="text-sm text-green-600 font-medium">{joinSuccess}</p>
-                      {session?.user && (session.user as any).visibility !== "public" && (
-                        <div className="rounded-md bg-white p-3 border border-green-200 text-sm">
-                          <p className="text-gray-700 font-medium">Want to compete globally?</p>
-                          <p className="text-gray-500 text-xs mt-1">You are currently hidden from the master leaderboard. You can change this in your profile settings anytime!</p>
-                        </div>
-                      )}
+                    <div className="space-y-3">
+                      <p className="text-sm text-green-600 font-medium flex items-center gap-1.5"><Check className="h-4 w-4" /> {joinSuccess}</p>
+                      <div className="rounded-md bg-white p-3 border border-green-200 text-sm space-y-2">
+                        {session?.user && (session.user as any).visibility !== "public" ? (
+                          <>
+                            <p className="text-gray-700 font-medium">Want to compete globally?</p>
+                            <p className="text-gray-500 text-xs mt-1">You are currently hidden from the master leaderboard. Change your privacy in <Link href="/account" className="underline text-green-600">Account settings</Link>.</p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="text-gray-700 font-medium">Check the Master Leaderboard</p>
+                            <p className="text-gray-500 text-xs mt-1">See where you stand against the entire class!</p>
+                          </>
+                        )}
+                        <Button asChild variant="outline" size="sm" className="w-full mt-2 border-green-200 hover:bg-green-50 text-green-700">
+                          <Link href="/leaderboard">View Master Leaderboard →</Link>
+                        </Button>
+                      </div>
                     </div>
                   )}
                   <Button className="w-full" disabled={!joinCode.trim() || joinLoading} onClick={handleJoin}>

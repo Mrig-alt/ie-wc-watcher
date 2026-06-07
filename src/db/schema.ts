@@ -53,6 +53,7 @@ export const liveReportStatusEnum = pgEnum("live_report_status", [
   "entry_fee",
   "good_screens",
   "quiet_now",
+  "planning",
 ]);
 
 export const betStatusEnum = pgEnum("bet_status", ["pending", "accepted", "declined", "expired"]);
@@ -360,9 +361,6 @@ export const predictionHistory = pgTable("prediction_history", {
   oldScore2: integer("old_score2"),
   newScore1: integer("new_score1").notNull(),
   newScore2: integer("new_score2").notNull(),
-  createdAt: timestamp("created_at").notNull().defaultNow(),
-});
-
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type Team = typeof teams.$inferSelect;

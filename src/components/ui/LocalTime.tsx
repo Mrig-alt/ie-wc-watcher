@@ -11,17 +11,19 @@ export default function LocalTime({
   mode?: "time" | "date" | "full";
 }) {
   const [mounted, setMounted] = useState(false);
+  const [tz, setTz] = useState("Europe/Madrid");
   
   useEffect(() => {
+    setTz(Intl.DateTimeFormat().resolvedOptions().timeZone);
     setMounted(true);
   }, []);
 
   const dt = new Date(datetime);
 
   const renderValue = () => {
-    if (mode === "date") return formatMatchDate(dt);
-    if (mode === "full") return formatKickoffFull(dt);
-    return formatKickoff(dt);
+    if (mode === "date") return formatMatchDate(dt, tz);
+    if (mode === "full") return formatKickoffFull(dt, tz);
+    return formatKickoff(dt, tz);
   };
 
   if (!mounted) {

@@ -50,12 +50,15 @@ function StatusBadge({ status }: { status: StatusValue }) {
 export default function LiveReportsWidget({
   currentUserId,
   matchId,
+  matchDatetime,
   knownVenues,
 }: {
   currentUserId: string | null;
   matchId?: string | null;
+  matchDatetime?: Date | string | null;
   knownVenues: { id: string; name: string; area: string | null }[];
 }) {
+  const isPlanningMode = matchDatetime ? (new Date(matchDatetime).getTime() - Date.now() > 6 * 60 * 60 * 1000) : false;
   const [tab, setTab] = useState<"live" | "bars">("live");
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,8 +89,9 @@ export default function LiveReportsWidget({
   }, [fetchReports]);
 
   const handlePost = async () => {
-    if (!selStatus) { setPostError("Pick a status"); return; }
-    if (!selVenueId && !freeVenue.trim()) { setPostError("Enter a venue"); return; }
+    if (!isPlanningMode && !selStatus) { setPostError("Pick a status"); return; }
+    if (!isPlanningMode && !selVenueId && !freeVenue.trim()) { setPostError("Enter a venue"); return; }
+    if (isPlanningMode && !comment.trim()) { setPostError("Enter a message to post"); return; }
     setPosting(true);
     setPostError("");
     try {
@@ -95,9 +99,9 @@ export default function LiveReportsWidget({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: selStatus,
+          status: isPlanningMode ? "planning" : selStatus,
           venueId: selVenueId || null,
-          venueName: selVenueId ? null : freeVenue.trim(),
+          venueName: selVenueId ? null : (freeVenue.trim() || null),
           matchId: matchId ?? null,
           comment: comment.trim() || null,
         }),
@@ -127,8 +131,12 @@ export default function LiveReportsWidget({
     <div className="space-y-3">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-gray-900">🔴 Live Reports</h2>
-          <p className="text-xs text-gray-400">Updates from the last 3 hours · refreshes every 30s</p>
+          <h2 className="text-lg font-bold text-gray-900">
+            {isPlanningMode ? "💬 Match Planning" : "🔴 Live Reports"}
+          </h2>
+          <p className="text-xs text-gray-400">
+            {isPlanningMode ? "Coordinate watch parties with classmates!" : "Updates from the last 3 hours · refreshes every 30s"}
+          </p>
         </div>
         <button onClick={fetchReports} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Refresh">
           <RefreshCw className="h-4 w-4" />
@@ -137,7 +145,7 @@ export default function LiveReportsWidget({
 
       <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
         <button onClick={() => setTab("live")} className={cn("flex-1 rounded-lg py-2 text-sm font-semibold transition-all", tab === "live" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
-          🔥 Live Now
+          {isPlanningMode ? "💬 Chat" : "🔥 Live Now"}
         </button>
         <button onClick={() => setTab("bars")} className={cn("flex-1 rounded-lg py-2 text-sm font-semibold transition-all", tab === "bars" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
           🍺 Bar Reports
@@ -148,22 +156,26 @@ export default function LiveReportsWidget({
         <div>
           {!showForm ? (
             <button onClick={() => setShowForm(true)} className="w-full rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-green-300 hover:text-green-600 transition-colors font-medium">
-              + Report from where you are
+              {isPlanningMode ? "+ Send a message to coordinate" : "+ Report from where you are"}
             </button>
           ) : (
             <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
-              <p className="text-sm font-semibold text-gray-800">What's the situation?</p>
-              <div className="flex flex-wrap gap-2">
-                {STATUS_OPTIONS.map((s) => (
-                  <button key={s.value} onClick={() => setSelStatus(s.value)}
-                    className={cn("text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
-                      selStatus === s.value ? s.color + " ring-2 ring-offset-1 ring-current" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100")}>
-                    {s.label}
-                  </button>
-                ))}
-              </div>
+              {!isPlanningMode && (
+                <>
+                  <p className="text-sm font-semibold text-gray-800">What's the situation?</p>
+                  <div className="flex flex-wrap gap-2">
+                    {STATUS_OPTIONS.filter(s => s.value !== "planning").map((s) => (
+                      <button key={s.value} onClick={() => setSelStatus(s.value)}
+                        className={cn("text-xs font-semibold px-3 py-1.5 rounded-full border transition-all",
+                          selStatus === s.value ? s.color + " ring-2 ring-offset-1 ring-current" : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100")}>
+                        {s.label}
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
               <div>
-                <p className="text-xs text-gray-500 mb-1.5 font-medium">Which bar / venue?</p>
+                <p className="text-xs text-gray-500 mb-1.5 font-medium">{isPlanningMode ? "Any specific venue? (Optional)" : "Which bar / venue?"}</p>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {knownVenues.map((v) => (
                     <button key={v.id} onClick={() => { setSelVenueId(v.id); setFreeVenue(""); }}
@@ -183,7 +195,7 @@ export default function LiveReportsWidget({
                 )}
               </div>
               <textarea
-                placeholder="Add a comment (optional)"
+                placeholder={isPlanningMode ? "Type your message..." : "Add a comment (optional)"}
                 value={comment} onChange={(e) => setComment(e.target.value)}
                 rows={2} maxLength={300}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
@@ -192,7 +204,7 @@ export default function LiveReportsWidget({
               <div className="flex gap-2">
                 <button onClick={handlePost} disabled={posting}
                   className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors disabled:opacity-50">
-                  <Send className="h-3.5 w-3.5" />{posting ? "Posting…" : "Post report"}
+                  <Send className="h-3.5 w-3.5" />{posting ? "Sending…" : (isPlanningMode ? "Send message" : "Post report")}
                 </button>
                 <button onClick={() => { setShowForm(false); setPostError(""); }} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">Cancel</button>
               </div>
@@ -208,7 +220,7 @@ export default function LiveReportsWidget({
           {!loading && reports.length === 0 && (
             <div className="text-center py-10 text-gray-400">
               <Flame className="h-7 w-7 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">No live reports yet — be the first!</p>
+              <p className="text-sm">{isPlanningMode ? "No messages yet — start the planning!" : "No live reports yet — be the first!"}</p>
             </div>
           )}
           {reports.map((r) => (
@@ -216,15 +228,19 @@ export default function LiveReportsWidget({
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    <StatusBadge status={r.status} />
+                    {r.status !== "planning" && <StatusBadge status={r.status} />}
                     <span className="text-xs text-gray-400">{timeAgo(r.createdAt)}</span>
                   </div>
-                  <div className="flex items-center gap-1 text-sm text-gray-700">
-                    <MapPin className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                    <span className="font-medium">{r.venueName}</span>
-                    {r.venueArea && <span className="text-gray-400 text-xs">· {r.venueArea}</span>}
-                  </div>
-                  {r.comment && <p className="text-sm text-gray-600 italic">&ldquo;{r.comment}&rdquo;</p>}
+                  {r.venueName && r.venueName !== "Unknown venue" && (
+                    <div className="flex items-center gap-1 text-sm text-gray-700">
+                      <MapPin className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                      <span className="font-medium">{r.venueName}</span>
+                      {r.venueArea && <span className="text-gray-400 text-xs">· {r.venueArea}</span>}
+                    </div>
+                  )}
+                  {r.comment && <p className={cn("text-sm text-gray-600", r.status === "planning" ? "" : "italic")}>
+                    {r.status === "planning" ? r.comment : `"${r.comment}"`}
+                  </p>}
                 </div>
                 <span className="text-xs text-gray-400 shrink-0">{r.studentName}</span>
               </div>

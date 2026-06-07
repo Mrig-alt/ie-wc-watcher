@@ -93,18 +93,32 @@ export async function settleBetsForMatch(matchId: string) {
         }
       } else {
         // Standard outcome-based challenge
+        let matchWinner: 1 | 2 | null = null;
         if (match.team1Score! > match.team2Score!) {
-          winnerId = bet.student1Id;
+          matchWinner = 1;
         } else if (match.team2Score! > match.team1Score!) {
-          winnerId = bet.student2Id;
+          matchWinner = 2;
         } else if (match.team1Penalties !== null && match.team2Penalties !== null) {
           if (match.team1Penalties > match.team2Penalties) {
-            winnerId = bet.student1Id;
+            matchWinner = 1;
           } else if (match.team2Penalties > match.team1Penalties) {
-            winnerId = bet.student2Id;
+            matchWinner = 2;
           }
         }
+
+        let winnerOdds = 2.0;
+        if (matchWinner === 1) {
+          winnerId = bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id;
+          winnerOdds = match.team1Odds ?? 2.0;
+        } else if (matchWinner === 2) {
+          winnerId = bet.challengerTeamSide === 2 ? bet.student1Id : bet.student2Id;
+          winnerOdds = match.team2Odds ?? 2.0;
+        } else {
+          winnerId = null;
+        }
+        
         payoutType = winnerId ? "full" : "refund";
+        bet.winnerOdds = winnerOdds; // store locally for payout calculation
       }
 
       // CAS guard: only update if still unsettled
@@ -117,20 +131,21 @@ export async function settleBetsForMatch(matchId: string) {
 
       // Execute payouts
       if (payoutType === "full" && winnerId) {
+        const payoutAmount = Math.round(bet.stakeTokens * ((bet as any).winnerOdds ?? 2.0));
         if (bet.groupId) {
           await tx
             .update(groupMembers)
-            .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens * 2}` })
+            .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${payoutAmount}` })
             .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, winnerId)));
         } else {
           await tx
             .update(students)
-            .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens * 2}` })
+            .set({ tokenBalance: sql`${students.tokenBalance} + ${payoutAmount}` })
             .where(eq(students.id, winnerId));
 
           await tx.insert(tokenLedger).values({
             studentId: winnerId,
-            amount: bet.stakeTokens * 2,
+            amount: payoutAmount,
             reason: "bet_payout_win",
             matchId,
           });
@@ -224,9 +239,19 @@ export async function settlePredictionsForMatch(matchId: string) {
 
   for (const pred of unsettled) {
     let earned = 0;
-    const actualWinner =
+    let actualWinner =
       match.team1Score > match.team2Score ? "home" :
       match.team2Score > match.team1Score ? "away" : "draw";
+
+    // Factor in penalties for knockout stage matches
+    if (actualWinner === "draw" && match.team1Penalties !== null && match.team2Penalties !== null) {
+      if (match.team1Penalties > match.team2Penalties) {
+        actualWinner = "home";
+      } else if (match.team2Penalties > match.team1Penalties) {
+        actualWinner = "away";
+      }
+    }
+
     const predWinner =
       pred.predictedScore1 > pred.predictedScore2 ? "home" :
       pred.predictedScore2 > pred.predictedScore1 ? "away" : "draw";

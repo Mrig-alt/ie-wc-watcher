@@ -43,9 +43,14 @@ function JoinPageInner() {
   // If already logged in, skip the join form entirely
   useEffect(() => {
     if (status === "authenticated") {
-      router.replace(next);
+      const pinParam = searchParams.get("groupPin") ?? searchParams.get("pin");
+      if (pinParam) {
+        router.replace(`/students?pin=${pinParam}`);
+      } else {
+        router.replace(next);
+      }
     }
-  }, [status, router, next]);
+  }, [status, router, next, searchParams]);
 
   const [teams, setTeams] = useState<Team[]>([]);
   const [step, setStep] = useState<"identity" | "team" | "visibility" | "group">("identity");

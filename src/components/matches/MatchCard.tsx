@@ -65,7 +65,7 @@ export default function MatchCard({
   const isUpcoming = match.status === "upcoming";
   const isFriendly = match.stage === "friendly";
   const [showWatchCard, setShowWatchCard] = useState(false);
-  const [showPredict, setShowPredict] = useState(!!prediction);
+  const [showPredict, setShowPredict] = useState(false);
 
   const myTeamSide =
     currentUserTeamId === match.team1?.id
