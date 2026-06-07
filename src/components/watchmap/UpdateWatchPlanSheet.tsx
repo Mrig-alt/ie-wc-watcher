@@ -112,7 +112,7 @@ export default function UpdateWatchPlanSheet({
               {step === "match" && (
                 <>
                   <p className="text-xs text-gray-400">Pick a match to update your watch plan</p>
-                  {matches.map((m) => {
+                  {matches.filter(m => new Date(m.matchDatetime) > new Date()).map((m) => {
                     const existing = existingPlans.find((p) => p.matchId === m.id);
                     return (
                       <button
