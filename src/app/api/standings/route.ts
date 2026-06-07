@@ -37,7 +37,7 @@ export async function GET() {
         standings[m.groupName][t2] = { teamId: t2, mp: 0, w: 0, d: 0, l: 0, gf: 0, ga: 0, gd: 0, pts: 0 };
       }
 
-      if (m.status === "finished" && m.team1Score !== null && m.team2Score !== null) {
+      if (m.status === "completed" && m.team1Score !== null && m.team2Score !== null) {
         if (t1) {
           const s = standings[m.groupName][t1];
           s.mp++;

@@ -118,7 +118,7 @@ export async function settleBetsForMatch(matchId: string) {
         }
         
         payoutType = winnerId ? "full" : "refund";
-        bet.winnerOdds = winnerOdds; // store locally for payout calculation
+        (bet as any).winnerOdds = winnerOdds; // store locally for payout calculation
       }
 
       // CAS guard: only update if still unsettled

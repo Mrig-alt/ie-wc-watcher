@@ -20,7 +20,6 @@ export async function GET(req: Request) {
         winnerId: bets.winnerId,
         student1Id: bets.student1Id,
         student2Id: bets.student2Id,
-        createdAt: bets.createdAt,
         matchDatetime: matches.matchDatetime,
         team1Score: matches.team1Score,
         team2Score: matches.team2Score,
@@ -31,8 +30,7 @@ export async function GET(req: Request) {
       .leftJoin(students, eq(students.id, 
         sql`CASE WHEN ${bets.student1Id} = ${userId} THEN ${bets.student2Id} ELSE ${bets.student1Id} END`
       ))
-      .where(or(eq(bets.student1Id, userId), eq(bets.student2Id, userId)))
-      .orderBy(desc(bets.createdAt));
+      .where(or(eq(bets.student1Id, userId), eq(bets.student2Id, userId)));
 
     const userPredictions = await db
       .select({

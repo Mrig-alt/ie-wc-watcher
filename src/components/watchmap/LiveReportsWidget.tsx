@@ -12,6 +12,7 @@ const STATUS_OPTIONS = [
   { value: "entry_fee",     label: "Entry fee 💰",      color: "bg-purple-100 text-purple-800 border-purple-200" },
   { value: "good_screens",  label: "Great screens 📺",  color: "bg-blue-100 text-blue-800 border-blue-200" },
   { value: "quiet_now",     label: "Quiet now 🙊",      color: "bg-gray-100 text-gray-700 border-gray-200" },
+  { value: "planning",      label: "Planning 💭",       color: "bg-slate-100 text-slate-800 border-slate-200" },
 ] as const;
 
 type StatusValue = typeof STATUS_OPTIONS[number]["value"];
