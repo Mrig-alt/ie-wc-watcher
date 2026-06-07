@@ -3,6 +3,7 @@ import { db } from "@/db";
 import { students, teams, connections } from "@/db/schema";
 import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
+import LeaderboardInfoModal from "@/components/leaderboard/LeaderboardInfoModal";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
 export const dynamic = "force-dynamic";
@@ -52,7 +53,10 @@ export default async function LeaderboardPage() {
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Net Profit Leaderboard 🏆</h1>
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold text-gray-900">Net Profit Leaderboard 🏆</h1>
+            <LeaderboardInfoModal />
+          </div>
           <p className="text-sm text-gray-500 mt-1">
             Ranked by profit: (Total Tokens) - (Total Bought/Given). 
           </p>
