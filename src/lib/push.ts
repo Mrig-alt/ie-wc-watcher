@@ -65,3 +65,34 @@ export async function sendGroupJoinNotification(groupId: string, newUserName: st
     console.error("Failed to broadcast group join notification", error);
   }
 }
+
+export async function sendChallengeNotification(opponentId: string, challengerName: string, stakeTokens: number) {
+  try {
+    const [opponent] = await db
+      .select({ pushSubscription: students.pushSubscription })
+      .from(students)
+      .where(eq(students.id, opponentId))
+      .limit(1);
+
+    if (!opponent?.pushSubscription) return;
+
+    const payload = JSON.stringify({
+      title: "⚔️ You've been challenged!",
+      body: `${challengerName} has challenged you for ${stakeTokens} tokens!`,
+      url: `/`,
+    });
+
+    try {
+      const sub = JSON.parse(opponent.pushSubscription);
+      await webpush.sendNotification(sub, payload);
+    } catch (error: any) {
+      if (error?.statusCode === 404 || error?.statusCode === 410) {
+        await db.update(students).set({ pushSubscription: null }).where(eq(students.id, opponentId));
+      } else {
+        console.error("Error sending push to", opponentId, error);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to send challenge notification", error);
+  }
+}

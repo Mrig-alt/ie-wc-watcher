@@ -5,6 +5,7 @@ import { bets, students, matches, groupMembers, tokenLedger } from "@/db/schema"
 import { eq, and, or, sql, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { STAKE_TOKENS } from "@/lib/tokens";
+import { sendChallengeNotification } from "@/lib/push";
 
 const betSchema = z.object({
   matchId: z.string().uuid(),
@@ -209,6 +210,11 @@ export async function POST(req: Request) {
       }
     }
     throw e;
+  }
+
+  // Send push notification asynchronously
+  if (session.user.name) {
+    sendChallengeNotification(opponentId, session.user.name, stakeTokens).catch(console.error);
   }
 
   return NextResponse.json({ bet }, { status: 201 });
