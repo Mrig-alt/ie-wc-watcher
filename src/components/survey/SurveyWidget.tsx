@@ -85,13 +85,14 @@ export default function SurveyWidget() {
       {!isOpen && (
         <button
           onClick={() => setIsOpen(true)}
-          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-green-600 text-white px-4 py-3 text-sm font-semibold shadow-lg hover:from-emerald-700 hover:to-green-700 hover:scale-105 active:scale-95 transition-all duration-200 ease-out border border-green-500/20"
+          className="fixed bottom-20 right-4 md:bottom-6 md:right-6 z-50 flex items-center gap-2 rounded-full bg-gradient-to-r from-emerald-600 to-green-600 text-white px-3 py-2 text-xs md:px-4 md:py-3 md:text-sm font-semibold shadow-lg hover:from-emerald-700 hover:to-green-700 hover:scale-105 active:scale-95 transition-all duration-200 ease-out border border-green-500/20"
         >
           <span className="relative flex h-2 w-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
           </span>
-          💬 Wanna help a brother out?
+          <span className="hidden sm:inline">💬 Wanna help a brother out?</span>
+          <span className="sm:hidden">💬 Feedback</span>
         </button>
       )}
 

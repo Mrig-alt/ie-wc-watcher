@@ -125,7 +125,9 @@ export default function ChallengeModal({
               className="w-full rounded-lg border border-gray-200 bg-white px-3 py-2 text-sm text-gray-900 focus:border-green-500 focus:outline-none"
             >
               <option value="">-- Choose a match --</option>
-              {upcomingMatches.map((m) => {
+              {upcomingMatches
+                .filter(m => new Date(m.matchDatetime) > new Date())
+                .map((m) => {
                 const matchT1 = m.team1Id ? teamMap.get(m.team1Id) : null;
                 const matchT2 = m.team2Id ? teamMap.get(m.team2Id) : null;
                 const label1 = matchT1?.name ?? m.team1Placeholder ?? "TBD";
