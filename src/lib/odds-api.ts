@@ -2,6 +2,27 @@ import { db } from "@/db";
 import { matches, teams } from "@/db/schema";
 import { eq, isNotNull, inArray, and } from "drizzle-orm";
 
+const ALIASES: Record<string, string[]> = {
+  "United States": ["usa", "us"],
+  "Türkiye": ["turkey", "turkiye"],
+  "Korea Republic": ["south korea", "korea"],
+  "IR Iran": ["iran"],
+  "Netherlands": ["holland"],
+  "Cabo Verde": ["cape verde"],
+  "Czech Republic": ["czechia"],
+  "Saudi Arabia": ["ksa"],
+  "United Arab Emirates": ["uae"]
+};
+
+function matchesTeam(apiName: string, dbName: string) {
+  const apiLower = apiName.toLowerCase();
+  const dbLower = dbName.toLowerCase();
+  if (apiLower.includes(dbLower) || dbLower.includes(apiLower)) return true;
+  
+  const aliases = ALIASES[dbName] || [];
+  return aliases.some(alias => apiLower.includes(alias));
+}
+
 export async function fetchAndSyncOdds() {
   const apiKey = process.env.ODDS_API_KEY;
 
@@ -49,11 +70,12 @@ export async function fetchAndSyncOdds() {
     if (!match.team1Id || !match.team2Id) continue;
     const t1Name = teamMap.get(match.team1Id);
     const t2Name = teamMap.get(match.team2Id);
+    if (!t1Name || !t2Name) continue;
 
     // Look for this match in Polymarket events
     let matchedEvent = polymarketEvents.find((e) => {
-      const title = (e.title || "").toLowerCase();
-      return title.includes(t1Name?.toLowerCase() || "") && title.includes(t2Name?.toLowerCase() || "");
+      const title = (e.title || "");
+      return matchesTeam(title, t1Name) && matchesTeam(title, t2Name);
     });
 
     if (matchedEvent && matchedEvent.markets && matchedEvent.markets.length > 0) {
@@ -64,13 +86,13 @@ export async function fetchAndSyncOdds() {
         let t1Odds = null;
         let t2Odds = null;
         for (let i = 0; i < market.tokens.length; i++) {
-          const token = market.tokens[i].name?.toLowerCase() || "";
+          const token = market.tokens[i].name || "";
           const price = market.outcomePrices[i];
-          if (token.includes(t1Name?.toLowerCase() || "") || token === "yes") {
+          if (matchesTeam(token, t1Name) || token.toLowerCase() === "yes") {
             // "Yes" usually implies the first team in the title if it's a binary market
             t1Odds = priceToOdds(price);
           }
-          if (token.includes(t2Name?.toLowerCase() || "") || token === "no") {
+          if (matchesTeam(token, t2Name) || token.toLowerCase() === "no") {
             t2Odds = priceToOdds(price);
           }
         }
@@ -99,19 +121,20 @@ export async function fetchAndSyncOdds() {
         for (const match of matchesToFallback) {
           const t1Name = teamMap.get(match.team1Id!);
           const t2Name = teamMap.get(match.team2Id!);
+          if (!t1Name || !t2Name) continue;
+
           const oddsMatch = oddsData.find((o: any) => {
-            const home = o.home_team.toLowerCase();
-            const away = o.away_team.toLowerCase();
-            const ourT1 = t1Name?.toLowerCase() || "";
-            const ourT2 = t2Name?.toLowerCase() || "";
-            return (home.includes(ourT1) && away.includes(ourT2)) || (home.includes(ourT2) && away.includes(ourT1));
+            const home = o.home_team;
+            const away = o.away_team;
+            return (matchesTeam(home, t1Name) && matchesTeam(away, t2Name)) || 
+                   (matchesTeam(home, t2Name) && matchesTeam(away, t1Name));
           });
 
           if (oddsMatch && oddsMatch.bookmakers && oddsMatch.bookmakers.length > 0) {
             const h2h = oddsMatch.bookmakers[0].markets.find((m: any) => m.key === "h2h");
             if (h2h && h2h.outcomes) {
-              const t1Outcome = h2h.outcomes.find((out: any) => out.name.toLowerCase().includes(t1Name?.toLowerCase() || ""));
-              const t2Outcome = h2h.outcomes.find((out: any) => out.name.toLowerCase().includes(t2Name?.toLowerCase() || ""));
+              const t1Outcome = h2h.outcomes.find((out: any) => matchesTeam(out.name, t1Name));
+              const t2Outcome = h2h.outcomes.find((out: any) => matchesTeam(out.name, t2Name));
               if (t1Outcome && t2Outcome) {
                 await db
                   .update(matches)

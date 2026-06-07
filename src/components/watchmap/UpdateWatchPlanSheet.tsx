@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { X, MapPin, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
+import PlacesAutocompleteInput from "../matches/PlacesAutocompleteInput";
 
 type Match = {
   id: string;
@@ -182,11 +183,15 @@ export default function UpdateWatchPlanSheet({
 
                   <div>
                     <p className="text-xs text-gray-400 mb-1.5">Or enter your own</p>
-                    <input
-                      type="text"
-                      placeholder="Venue name"
+                    <PlacesAutocompleteInput
                       value={selVenueId ? "" : freeVenue}
-                      onChange={(e) => { setFreeVenue(e.target.value); setSelVenueId(null); }}
+                      onChange={(val) => { setFreeVenue(val); setSelVenueId(null); }}
+                      onPlaceSelect={(name, url) => {
+                        setFreeVenue(name);
+                        setSelVenueId(null);
+                        if (url) setFreeUrl(url);
+                      }}
+                      placeholder="Venue name"
                       className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 mb-2"
                     />
                     <input

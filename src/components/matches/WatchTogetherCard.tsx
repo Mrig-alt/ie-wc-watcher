@@ -5,6 +5,7 @@ import { MapPin, Plus, X, Search } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useSession } from "next-auth/react";
+import PlacesAutocompleteInput from "./PlacesAutocompleteInput";
 
 type Venue = {
   id: string;
@@ -182,9 +183,13 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
               <button onClick={() => setIsCustom(false)} className="text-xs text-gray-400 hover:text-gray-600 flex items-center gap-1">
                 \u2190 Back to list
               </button>
-              <Input
+              <PlacesAutocompleteInput
                 value={customName}
-                onChange={(e) => setCustomName(e.target.value)}
+                onChange={setCustomName}
+                onPlaceSelect={(name, url) => {
+                  setCustomName(name);
+                  if (url) setCustomUrl(url);
+                }}
                 placeholder="Bar name or location"
                 className="h-8 text-sm"
               />

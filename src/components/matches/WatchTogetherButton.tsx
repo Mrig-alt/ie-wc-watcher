@@ -11,6 +11,7 @@ import {
   DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import PlacesAutocompleteInput from "./PlacesAutocompleteInput";
 
 type Venue = {
   id: string;
@@ -172,7 +173,15 @@ export default function WatchTogetherButton({ matchId, existingInvite }: WatchTo
           ) : (
             <div className="space-y-3">
               <button onClick={() => setIsCustom(false)} className="text-sm text-gray-400 hover:text-gray-600">← Back to list</button>
-              <Input value={customName} onChange={(e) => setCustomName(e.target.value)} placeholder="Bar or location name" />
+              <PlacesAutocompleteInput 
+                value={customName} 
+                onChange={setCustomName} 
+                onPlaceSelect={(name, url) => {
+                  setCustomName(name);
+                  if (url) setCustomUrl(url);
+                }}
+                placeholder="Bar or location name" 
+              />
               <Input value={customUrl} onChange={(e) => setCustomUrl(e.target.value)} placeholder="Google Maps link (optional)" />
               <Button className="w-full" disabled={!customName.trim() || loading} onClick={handleSave}>
                 {loading ? "Saving..." : "Save location"}
