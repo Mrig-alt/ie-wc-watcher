@@ -40,10 +40,11 @@ export default async function HomePage() {
 
     const todayMatchIds = todayMatches.map((m) => m.id);
 
-    // Alias students for pending bet challenger names
+    // Alias students for pending bet names
     const challenger = alias(students, "challenger");
+    const challenged = alias(students, "challenged");
 
-    const [allTeams, allStudents, myPredictions, todayInvites, pendingChallenges] = await Promise.all([
+    const [allTeams, allStudents, myPredictions, todayInvites, pendingChallengesRaw] = await Promise.all([
       getCachedTeams(),
       getCachedActiveStudents(),
       validSession
@@ -66,6 +67,9 @@ export default async function HomePage() {
               id: bets.id,
               stakeTokens: bets.stakeTokens,
               challengerName: challenger.name,
+              challengedName: challenged.name,
+              student1Id: bets.student1Id,
+              student2Id: bets.student2Id,
               matchDatetime: matches.matchDatetime,
               team1Id: matches.team1Id,
               team2Id: matches.team2Id,
@@ -78,9 +82,10 @@ export default async function HomePage() {
             .from(bets)
             .innerJoin(matches, eq(matches.id, bets.matchId))
             .innerJoin(challenger, eq(challenger.id, bets.student1Id))
+            .innerJoin(challenged, eq(challenged.id, bets.student2Id))
             .where(
               and(
-                eq(bets.student2Id, validSession.user.id),
+                or(eq(bets.student1Id, validSession.user.id), eq(bets.student2Id, validSession.user.id)),
                 eq(bets.status, "pending"),
                 eq(bets.settled, false)
               )
@@ -88,6 +93,12 @@ export default async function HomePage() {
             .orderBy(desc(matches.matchDatetime))
         : Promise.resolve([]),
     ]);
+
+    const pendingChallenges = pendingChallengesRaw.map(c => ({
+      ...c,
+      isSender: c.student1Id === validSession?.user.id,
+      opponentName: c.student1Id === validSession?.user.id ? c.challengedName : c.challengerName
+    }));
 
     // Resolve group names for pending challenges
     const groupIdsNeeded = [...new Set((pendingChallenges as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];

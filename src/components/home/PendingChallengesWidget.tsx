@@ -8,7 +8,8 @@ import { Input } from "@/components/ui/input";
 type PendingChallenge = {
   id: string;
   stakeTokens: number;
-  challengerName: string;
+  opponentName: string;
+  isSender: boolean;
   matchLabel: string;
   matchDatetime: string;
   groupName: string | null;
@@ -34,15 +35,16 @@ export default function PendingChallengesWidget({ challenges }: Props) {
   const visible = challenges.filter((c) => !dismissed.has(c.id));
   if (visible.length === 0) return null;
 
-  const handle = async (id: string, action: "accept" | "decline", s2_1?: number, s2_2?: number) => {
+  const handle = async (id: string, action: "accept" | "decline" | "cancel", s2_1?: number, s2_2?: number) => {
     setActioning(id);
     setErrors((prev) => ({ ...prev, [id]: "" }));
     try {
+      // If action is cancel, we might not have a backend for it, so we'll just dismiss it visually for now or handle decline as cancel
       const res = await fetch(`/api/bets/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          action,
+          action: action === "cancel" ? "decline" : action, // If we don't have a cancel action in backend, decline refunds it
           student2Score1: s2_1 !== undefined ? s2_1 : null,
           student2Score2: s2_2 !== undefined ? s2_2 : null,
         }),
@@ -75,7 +77,11 @@ export default function PendingChallengesWidget({ challenges }: Props) {
             <div className="flex items-start justify-between gap-2">
               <div className="space-y-0.5">
                 <p className="text-sm font-medium text-gray-900">
-                  <span className="text-orange-600">{c.challengerName}</span> challenged you
+                  {c.isSender ? (
+                    <>You challenged <span className="text-orange-600">{c.opponentName}</span></>
+                  ) : (
+                    <><span className="text-orange-600">{c.opponentName}</span> challenged you</>
+                  )}
                 </p>
                 <p className="text-xs text-gray-500">
                   {c.matchLabel} ·{" "}
@@ -95,11 +101,12 @@ export default function PendingChallengesWidget({ challenges }: Props) {
 
             {c.student1Score1 !== null && c.student1Score2 !== null && (
               <p className="text-xs text-orange-700 bg-orange-100/50 rounded px-2 py-1 inline-block">
-                Challenger predicts: <span className="font-semibold">{c.student1Score1} - {c.student1Score2}</span>
+                {c.isSender ? "You predict: " : "Challenger predicts: "}
+                <span className="font-semibold">{c.student1Score1} - {c.student1Score2}</span>
               </p>
             )}
 
-            {acceptingScoreId === c.id && (
+            {acceptingScoreId === c.id && !c.isSender && (
               <div className="flex items-center gap-2 p-2 border border-gray-100 rounded-lg bg-gray-50/50">
                 <span className="text-xs text-gray-500 font-medium shrink-0">Your prediction:</span>
                 <Input
@@ -125,42 +132,53 @@ export default function PendingChallengesWidget({ challenges }: Props) {
             {errors[c.id] && <p className="text-xs text-red-500">{errors[c.id]}</p>}
 
             <div className="flex gap-2 justify-end">
-              <button
-                disabled={actioning === c.id}
-                onClick={() => {
-                  setAcceptingScoreId(null);
-                  handle(c.id, "decline");
-                }}
-                className="text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-3 py-1 bg-white"
-              >
-                Decline
-              </button>
-              {c.student1Score1 !== null && acceptingScoreId !== c.id ? (
-                <button
-                  disabled={actioning === c.id}
-                  onClick={() => {
-                    setAcceptingScoreId(c.id);
-                    setPred1(0);
-                    setPred2(0);
-                  }}
-                  className="text-xs font-medium text-green-700 hover:text-green-900 border border-green-300 bg-green-50 rounded px-3 py-1"
-                >
-                  Accept...
-                </button>
+              {c.isSender ? (
+                <>
+                  <span className="text-xs font-medium text-orange-500/80 mr-auto flex items-center">
+                    ⏳ Waiting for them to accept...
+                  </span>
+                  {/* We omit Cancel button to prevent API permission issues, as they can't decline their own bet in current API */}
+                </>
               ) : (
-                <button
-                  disabled={actioning === c.id}
-                  onClick={() => {
-                    if (acceptingScoreId === c.id) {
-                      handle(c.id, "accept", pred1, pred2);
-                    } else {
-                      handle(c.id, "accept");
-                    }
-                  }}
-                  className="text-xs font-medium text-green-700 hover:text-green-900 border border-green-300 bg-green-50 rounded px-3 py-1 bg-white"
-                >
-                  {actioning === c.id ? "..." : "Accept ✓"}
-                </button>
+                <>
+                  <button
+                    disabled={actioning === c.id}
+                    onClick={() => {
+                      setAcceptingScoreId(null);
+                      handle(c.id, "decline");
+                    }}
+                    className="text-xs font-medium text-gray-500 hover:text-gray-700 border border-gray-200 rounded px-3 py-1 bg-white"
+                  >
+                    Decline
+                  </button>
+                  {c.student1Score1 !== null && acceptingScoreId !== c.id ? (
+                    <button
+                      disabled={actioning === c.id}
+                      onClick={() => {
+                        setAcceptingScoreId(c.id);
+                        setPred1(0);
+                        setPred2(0);
+                      }}
+                      className="text-xs font-medium text-green-700 hover:text-green-900 border border-green-300 bg-green-50 rounded px-3 py-1"
+                    >
+                      Accept...
+                    </button>
+                  ) : (
+                    <button
+                      disabled={actioning === c.id}
+                      onClick={() => {
+                        if (acceptingScoreId === c.id) {
+                          handle(c.id, "accept", pred1, pred2);
+                        } else {
+                          handle(c.id, "accept");
+                        }
+                      }}
+                      className="text-xs font-medium text-green-700 hover:text-green-900 border border-green-300 bg-green-50 rounded px-3 py-1 bg-white"
+                    >
+                      {actioning === c.id ? "..." : "Accept ✓"}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
