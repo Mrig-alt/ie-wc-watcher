@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { watchInvites, students, connections } from "@/db/schema";
+import { watchInvites, students, connections, venues } from "@/db/schema";
 import { eq, and, or, isNull } from "drizzle-orm";
 import { watchTogetherSchema } from "@/lib/validations";
 
@@ -99,6 +99,31 @@ export async function POST(req: Request) {
 
   const { matchId, venueId, locationName, locationUrl } = parsed.data;
 
+  let finalVenueId = venueId ?? null;
+
+  if (!finalVenueId && locationName) {
+    const existingVenue = await db
+      .select({ id: venues.id })
+      .from(venues)
+      .where(eq(venues.name, locationName))
+      .limit(1);
+
+    if (existingVenue.length > 0) {
+      finalVenueId = existingVenue[0].id;
+    } else {
+      const [newVenue] = await db
+        .insert(venues)
+        .values({
+          name: locationName,
+          mapsUrl: locationUrl || null,
+          isCustom: true,
+          addedBy: session.user.id,
+        })
+        .returning({ id: venues.id });
+      finalVenueId = newVenue.id;
+    }
+  }
+
   const existing = await db
     .select({ id: watchInvites.id })
     .from(watchInvites)
@@ -109,7 +134,7 @@ export async function POST(req: Request) {
     const [updated] = await db
       .update(watchInvites)
       .set({
-        venueId: venueId ?? null,
+        venueId: finalVenueId,
         locationName,
         locationUrl: locationUrl || null,
       })
@@ -123,7 +148,7 @@ export async function POST(req: Request) {
     .values({
       inviterId: session.user.id,
       matchId,
-      venueId: venueId ?? null,
+      venueId: finalVenueId,
       locationName,
       locationUrl: locationUrl || null,
     })

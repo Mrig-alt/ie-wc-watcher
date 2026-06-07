@@ -19,6 +19,7 @@ type Venue = {
   area: string | null;
   address: string | null;
   mapsUrl: string | null;
+  popularity?: number;
 };
 
 interface WatchTogetherButtonProps {
@@ -29,7 +30,6 @@ interface WatchTogetherButtonProps {
 export default function WatchTogetherButton({ matchId, existingInvite }: WatchTogetherButtonProps) {
   const [open, setOpen] = useState(false);
   const [venues, setVenues] = useState<Venue[]>([]);
-  const [search, setSearch] = useState("");
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [isCustom, setIsCustom] = useState(false);
   const [customName, setCustomName] = useState(existingInvite?.locationName ?? "");
@@ -44,19 +44,24 @@ export default function WatchTogetherButton({ matchId, existingInvite }: WatchTo
     }
   }, [open]);
 
-  const filteredVenues = search.trim()
-    ? venues.filter(v =>
-        v.name.toLowerCase().includes(search.toLowerCase()) ||
-        (v.area ?? "").toLowerCase().includes(search.toLowerCase())
-      )
-    : venues;
+  const trending = venues.filter(v => (v.popularity ?? 0) > 0).slice(0, 3);
+  const trendingIds = new Set(trending.map(v => v.id));
 
-  const byArea = filteredVenues.reduce<Record<string, Venue[]>>((acc, v) => {
+  const byArea = venues.reduce<Record<string, Venue[]>>((acc, v) => {
+    if (trendingIds.has(v.id)) return acc;
     const area = v.area ?? "Other";
     if (!acc[area]) acc[area] = [];
     acc[area].push(v);
     return acc;
   }, {});
+
+  const groupedVenues: Record<string, Venue[]> = {};
+  if (trending.length > 0) {
+    groupedVenues["🔥 Trending"] = trending;
+  }
+  for (const area of Object.keys(byArea).sort()) {
+    groupedVenues[area] = byArea[area];
+  }
 
   const handleSave = async () => {
     const name = selectedVenue ? selectedVenue.name : customName.trim();
@@ -119,16 +124,6 @@ export default function WatchTogetherButton({ matchId, existingInvite }: WatchTo
 
           {!isCustom ? (
             <div className="space-y-3">
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-gray-400" />
-                <Input
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setSelectedVenue(null); }}
-                  placeholder="Search bars & pubs…"
-                  className="pl-9"
-                />
-              </div>
-
               {selectedVenue && (
                 <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
                   <MapPin className="h-4 w-4 text-green-600 shrink-0" />
@@ -142,7 +137,7 @@ export default function WatchTogetherButton({ matchId, existingInvite }: WatchTo
 
               {!selectedVenue && (
                 <div className="max-h-64 overflow-y-auto space-y-3">
-                  {Object.entries(byArea).map(([area, areaVenues]) => (
+                  {Object.entries(groupedVenues).map(([area, areaVenues]) => (
                     <div key={area}>
                       <p className="text-xs font-semibold text-gray-400 uppercase tracking-wide mb-1">{area}</p>
                       <div className="space-y-1">
@@ -150,10 +145,17 @@ export default function WatchTogetherButton({ matchId, existingInvite }: WatchTo
                           <button
                             key={v.id}
                             onClick={() => setSelectedVenue(v)}
-                            className="w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all"
+                            className="w-full text-left rounded-lg px-3 py-2 text-sm hover:bg-gray-50 border border-transparent hover:border-gray-200 transition-all flex items-center justify-between"
                           >
-                            <span className="font-medium">{v.name}</span>
-                            {v.address && <span className="text-xs text-gray-400 ml-2">{v.address}</span>}
+                            <div>
+                              <span className="font-medium">{v.name}</span>
+                              {v.address && <span className="text-xs text-gray-400 ml-2">{v.address}</span>}
+                            </div>
+                            {(v.popularity ?? 0) > 0 && (
+                              <span className="text-xs font-medium text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full shrink-0 ml-2">
+                                {v.popularity} 🍻
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>

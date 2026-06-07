@@ -13,6 +13,7 @@ type Venue = {
   area: string | null;
   address: string | null;
   mapsUrl: string | null;
+  popularity?: number;
 };
 
 type WatchLocation = {
@@ -28,7 +29,6 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
   const [locations, setLocations] = useState<WatchLocation[]>([]);
   const [venues, setVenues] = useState<Venue[]>([]);
   const [showing, setShowing] = useState(false);
-  const [search, setSearch] = useState("");
   const [selectedVenue, setSelectedVenue] = useState<Venue | null>(null);
   const [customName, setCustomName] = useState("");
   const [customUrl, setCustomUrl] = useState("");
@@ -40,7 +40,6 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
     const res = await fetch(`/api/watch-together?matchId=${matchId}`);
     const data = await res.json();
     setLocations(data.locations ?? []);
-    // Guard on user.id — session.user alone can be a truthy empty object before id is populated
     if (session?.user?.id) {
       const mine = (data.locations ?? []).find((l: WatchLocation) =>
         l.inviterIds.includes(session.user.id)
@@ -57,19 +56,24 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
 
   useEffect(() => { fetchLocations(); fetchVenues(); }, [matchId]);
 
-  const filteredVenues = search.trim()
-    ? venues.filter(v =>
-        v.name.toLowerCase().includes(search.toLowerCase()) ||
-        (v.area ?? "").toLowerCase().includes(search.toLowerCase())
-      )
-    : venues;
+  const trending = venues.filter(v => (v.popularity ?? 0) > 0).slice(0, 3);
+  const trendingIds = new Set(trending.map(v => v.id));
 
-  const byArea = filteredVenues.reduce<Record<string, Venue[]>>((acc, v) => {
+  const byArea = venues.reduce<Record<string, Venue[]>>((acc, v) => {
+    if (trendingIds.has(v.id)) return acc;
     const area = v.area ?? "Other";
     if (!acc[area]) acc[area] = [];
     acc[area].push(v);
     return acc;
   }, {});
+
+  const groupedVenues: Record<string, Venue[]> = {};
+  if (trending.length > 0) {
+    groupedVenues["🔥 Trending"] = trending;
+  }
+  for (const area of Object.keys(byArea).sort()) {
+    groupedVenues[area] = byArea[area];
+  }
 
   const handlePost = async () => {
     if (!selectedVenue && !customName.trim()) return;
@@ -124,16 +128,6 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
         <div className="space-y-3 rounded-lg bg-gray-50 p-3">
           {!isCustom ? (
             <>
-              <div className="relative">
-                <Search className="absolute left-2.5 top-2 h-3.5 w-3.5 text-gray-400" />
-                <Input
-                  value={search}
-                  onChange={(e) => { setSearch(e.target.value); setSelectedVenue(null); }}
-                  placeholder="Search bars & pubs\u2026"
-                  className="h-8 text-sm pl-8"
-                />
-              </div>
-
               {selectedVenue && (
                 <div className="flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2">
                   <MapPin className="h-3.5 w-3.5 text-green-600 shrink-0" />
@@ -149,7 +143,7 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
 
               {!selectedVenue && (
                 <div className="max-h-52 overflow-y-auto space-y-2 -mx-1 px-1">
-                  {Object.entries(byArea).map(([area, areaVenues]) => (
+                  {Object.entries(groupedVenues).map(([area, areaVenues]) => (
                     <div key={area}>
                       <p className="text-[10px] font-semibold text-gray-400 uppercase tracking-wide px-1 mb-1">{area}</p>
                       <div className="space-y-1">
@@ -157,10 +151,17 @@ export default function WatchTogetherCard({ matchId }: { matchId: string }) {
                           <button
                             key={v.id}
                             onClick={() => setSelectedVenue(v)}
-                            className="w-full text-left rounded-lg px-2.5 py-1.5 text-sm hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100"
+                            className="w-full text-left rounded-lg px-2.5 py-1.5 text-sm hover:bg-white hover:shadow-sm transition-all border border-transparent hover:border-gray-100 flex items-center justify-between"
                           >
-                            <span className="font-medium text-gray-800">{v.name}</span>
-                            {v.address && <span className="text-xs text-gray-400 ml-2">{v.address}</span>}
+                            <div>
+                              <span className="font-medium text-gray-800">{v.name}</span>
+                              {v.address && <span className="text-xs text-gray-400 ml-2">{v.address}</span>}
+                            </div>
+                            {(v.popularity ?? 0) > 0 && (
+                              <span className="text-xs font-medium text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
+                                {v.popularity} 🍻
+                              </span>
+                            )}
                           </button>
                         ))}
                       </div>

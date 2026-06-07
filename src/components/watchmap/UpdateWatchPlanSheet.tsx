@@ -19,7 +19,9 @@ type Venue = {
   id: string;
   name: string;
   area: string | null;
+  address: string | null;
   mapsUrl: string | null;
+  popularity?: number;
 };
 
 function formatMatchTime(iso: string) {
@@ -166,14 +168,21 @@ export default function UpdateWatchPlanSheet({
                                 <span className="text-sm font-medium text-gray-900">{v.name}</span>
                                 {v.area && <span className="text-xs text-gray-400 ml-1.5">{v.area}</span>}
                               </div>
-                              {v.mapsUrl && (
-                                <a href={v.mapsUrl} target="_blank" rel="noopener noreferrer"
-                                  onClick={(e) => e.stopPropagation()}
-                                  className="text-gray-400 hover:text-green-600"
-                                >
-                                  <ExternalLink className="h-3.5 w-3.5" />
-                                </a>
-                              )}
+                              <div className="flex items-center gap-2">
+                                {(v.popularity ?? 0) > 0 && (
+                                  <span className="text-xs font-medium text-orange-500 bg-orange-50 px-1.5 py-0.5 rounded-full">
+                                    {v.popularity} 🍻
+                                  </span>
+                                )}
+                                {v.mapsUrl && (
+                                  <a href={v.mapsUrl} target="_blank" rel="noopener noreferrer"
+                                    onClick={(e) => e.stopPropagation()}
+                                    className="text-gray-400 hover:text-green-600"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" />
+                                  </a>
+                                )}
+                              </div>
                             </div>
                           </button>
                         ))}

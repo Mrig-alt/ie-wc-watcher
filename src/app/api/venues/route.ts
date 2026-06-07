@@ -17,14 +17,46 @@ const venueSchema = z.object({
     .nullable(),
 });
 
-// GET /api/venues — returns all curated venues + user's custom ones
+import { watchInvites } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
+
+// GET /api/venues — returns all venues with popularity counts
 export async function GET() {
   const rows = await db
     .select()
     .from(venues)
-    .where(eq(venues.isCustom, false))
     .orderBy(venues.area, venues.name);
-  return NextResponse.json({ venues: rows });
+
+  const inviteCounts = await db
+    .select({
+      venueId: watchInvites.venueId,
+      count: sql<number>`count(*)::int`,
+    })
+    .from(watchInvites)
+    .where(sql`${watchInvites.venueId} IS NOT NULL`)
+    .groupBy(watchInvites.venueId);
+
+  const countMap = new Map(inviteCounts.map(c => [c.venueId, c.count]));
+
+  // Add popularity and sort
+  const withPopularity = rows.map(v => ({
+    ...v,
+    popularity: countMap.get(v.id) || 0,
+  }));
+
+  // Filter out custom venues that have 0 popularity
+  const filtered = withPopularity.filter(v => !v.isCustom || v.popularity > 0);
+
+  // Global sort: highest popularity first, then by area, then name
+  filtered.sort((a, b) => {
+    if (b.popularity !== a.popularity) return b.popularity - a.popularity;
+    const areaA = a.area || "Other";
+    const areaB = b.area || "Other";
+    if (areaA !== areaB) return areaA.localeCompare(areaB);
+    return a.name.localeCompare(b.name);
+  });
+
+  return NextResponse.json({ venues: filtered });
 }
 
 // POST /api/venues — add a custom venue (user-submitted, not in curated list)
