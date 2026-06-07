@@ -256,26 +256,27 @@ export async function settlePredictionsForMatch(matchId: string) {
       pred.predictedScore1 > pred.predictedScore2 ? "home" :
       pred.predictedScore2 > pred.predictedScore1 ? "away" : "draw";
 
-    if (actualWinner === predWinner) {
-      if (actualWinner === "home" && match.team1Odds) {
-        earned += Math.round(10 * match.team1Odds);
-      } else if (actualWinner === "away" && match.team2Odds) {
-        earned += Math.round(10 * match.team2Odds);
-      } else if (actualWinner === "draw") {
-        earned += 30; // standard draw odds are usually ~3.0
-      } else {
-        earned += PREDICTION_CORRECT_TOKENS;
-      }
-    }
-    if (
-      pred.predictedScore1 === match.team1Score &&
-      pred.predictedScore2 === match.team2Score
-    ) {
-      earned += PREDICTION_EXACT_TOKENS;
-    }
+    const stake = pred.stakeTokens ?? 0;
+    let applicableOdds = 2.0; // fallback multiplier
+    if (actualWinner === "home" && match.team1Odds) applicableOdds = match.team1Odds;
+    if (actualWinner === "away" && match.team2Odds) applicableOdds = match.team2Odds;
+    if (actualWinner === "draw" && match.drawOdds) applicableOdds = match.drawOdds;
+    else if (actualWinner === "draw") applicableOdds = 3.0; // fallback draw odds
 
-    // Hard cap prediction payouts to 100 tokens
-    earned = Math.min(earned, 100);
+    if (actualWinner === predWinner) {
+      if (
+        pred.predictedScore1 === match.team1Score &&
+        pred.predictedScore2 === match.team2Score
+      ) {
+        // Correct Score Reward
+        earned = Math.round(stake * applicableOdds);
+      } else {
+        // Correct Outcome Reward: Half of the Correct Score Reward
+        earned = Math.round((stake * applicableOdds) / 2);
+      }
+    } else {
+      earned = 0; // Lost the stake
+    }
 
     await db.transaction(async (tx) => {
       const updated = await tx

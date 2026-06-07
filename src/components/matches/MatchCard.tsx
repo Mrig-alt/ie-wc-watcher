@@ -43,6 +43,7 @@ interface MatchCardProps {
   team2Supporters: Supporter[];
   currentUserId?: string | null;
   currentUserTeamId?: string | null;
+  currentUserBalance?: number;
   currentUserIsGuest?: boolean;
   prediction?: { predictedScore1: number; predictedScore2: number } | null;
   myWatchInvite?: { locationName: string; locationUrl: string | null } | null;
@@ -55,6 +56,7 @@ export default function MatchCard({
   team2Supporters,
   currentUserId,
   currentUserTeamId,
+  currentUserBalance,
   currentUserIsGuest,
   prediction,
   myWatchInvite,
@@ -161,6 +163,7 @@ export default function MatchCard({
                 team2={match.team2!}
                 existing={prediction}
                 locked={false}
+                myBalance={currentUserBalance ?? 0}
                 onDone={() => setShowPredict(false)}
               />
             )}

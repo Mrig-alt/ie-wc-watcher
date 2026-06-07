@@ -87,6 +87,7 @@ export const students = pgTable("students", {
   flagged: boolean("flagged").notNull().default(false),
   isGuest: boolean("is_guest").notNull().default(false),
   hasBoughtIn: boolean("has_bought_in").notNull().default(false),
+  totalTokensReceived: integer("total_tokens_received").notNull().default(0),
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
   deletedAt: timestamp("deleted_at"),
@@ -182,6 +183,7 @@ export const matches = pgTable("matches", {
   team2Placeholder: varchar("team2_placeholder", { length: 60 }),
   team1Odds: real("team1_odds"),
   team2Odds: real("team2_odds"),
+  drawOdds: real("draw_odds"),
 });
 
 // ─── Predictions ──────────────────────────────────────────────────────────────
@@ -198,6 +200,7 @@ export const predictions = pgTable(
       .references(() => matches.id, { onDelete: "cascade" }),
     predictedScore1: integer("predicted_score1").notNull(),
     predictedScore2: integer("predicted_score2").notNull(),
+    stakeTokens: integer("stake_tokens").notNull().default(0),
     tokensEarned: integer("tokens_earned"),
     settled: boolean("settled").notNull().default(false),
     isEarly: boolean("is_early").notNull().default(false),

@@ -174,10 +174,10 @@ export default function AccountPage() {
           </div>
 
           <Button
-            onClick={() => alert("Please contact Mrigank directly via WhatsApp or your class group to arrange the €10 payment and he will manually add tokens to your account!")}
-            className="w-full bg-red-600 hover:bg-red-700 text-white font-bold shadow-sm transition-all"
+            disabled
+            className="w-full bg-gray-300 text-gray-500 font-bold shadow-sm cursor-not-allowed"
           >
-            Buy 50 Tokens (€10)
+            Buy Tokens (Coming Soon)
           </Button>
         </div>
       )}

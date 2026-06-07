@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections } from "@/db/schema";
-import { eq, desc, and, or, isNull } from "drizzle-orm";
+import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
 import LeaderboardRow from "@/components/leaderboard/LeaderboardRow";
 import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
 
@@ -42,18 +42,19 @@ export default async function LeaderboardPage() {
         teamName: teams.name,
         teamFlag: teams.flagEmoji,
         hasBoughtIn: students.hasBoughtIn,
+        totalTokensReceived: students.totalTokensReceived,
       })
       .from(students)
       .leftJoin(teams, eq(students.teamId, teams.id))
       .where(and(eq(students.flagged, false), eq(students.isGuest, false), isNull(students.deletedAt)))
-      .orderBy(desc(students.tokenBalance));
+      .orderBy(desc(sql`${students.tokenBalance} - ${students.totalTokensReceived}`));
 
     return (
       <div className="space-y-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-900">Token Leaderboard 🏆</h1>
+          <h1 className="text-2xl font-bold text-gray-900">Net Profit Leaderboard 🏆</h1>
           <p className="text-sm text-gray-500 mt-1">
-            Earn tokens: +{PREDICTION_CORRECT_TOKENS} correct winner · +{PREDICTION_EXACT_TOKENS} exact score · 2× your stake on winning a bet
+            Ranked by profit: (Total Tokens) - (Total Bought/Given). 
           </p>
         </div>
 
@@ -87,7 +88,7 @@ export default async function LeaderboardPage() {
                     rank={i + 1}
                     student={{
                       name: displayName,
-                      tokenBalance: s.tokenBalance,
+                      tokenBalance: s.tokenBalance - s.totalTokensReceived,
                       isHonoraryFan: s.isHonoraryFan,
                       hasBoughtIn: s.hasBoughtIn,
                       team: isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),

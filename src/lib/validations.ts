@@ -46,6 +46,7 @@ export const predictionSchema = z.object({
   matchId: z.string().uuid(),
   predictedScore1: z.number().int().min(0).max(20),
   predictedScore2: z.number().int().min(0).max(20),
+  stakeTokens: z.number().int().min(2),
 });
 
 export const reactionSchema = z.object({

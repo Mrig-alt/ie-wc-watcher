@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { predictions, matches, predictionHistory, students } from "@/db/schema";
-import { eq, and, count, isNull } from "drizzle-orm";
+import { eq, and, count, isNull, sql } from "drizzle-orm";
 import { predictionSchema } from "@/lib/validations";
 
 export async function POST(req: Request) {
@@ -28,7 +28,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { matchId, predictedScore1, predictedScore2 } = parsed.data;
+  const { matchId, predictedScore1, predictedScore2, stakeTokens } = parsed.data;
 
   try {
     const pred = await db.transaction(async (tx) => {
@@ -55,11 +55,27 @@ export async function POST(req: Request) {
         .where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, matchId)))
         .limit(1);
 
+      const oldStake = existingPrediction?.stakeTokens ?? 0;
+      const stakeDelta = stakeTokens - oldStake;
+      
       const isUpdate = !!existingPrediction;
       const isChanged =
         isUpdate &&
         (existingPrediction.predictedScore1 !== predictedScore1 ||
-          existingPrediction.predictedScore2 !== predictedScore2);
+          existingPrediction.predictedScore2 !== predictedScore2 ||
+          existingPrediction.stakeTokens !== stakeTokens);
+
+      if (stakeDelta > 0) {
+        const [liveStudent] = await tx
+          .select({ tokenBalance: students.tokenBalance })
+          .from(students)
+          .where(eq(students.id, session.user.id))
+          .for("update")
+          .limit(1);
+        if (!liveStudent || liveStudent.tokenBalance < stakeDelta) {
+          throw new Error("INSUFFICIENT_FUNDS");
+        }
+      }
 
       if (isChanged) {
         // Check prediction history count
@@ -79,6 +95,13 @@ export async function POST(req: Request) {
         }
       }
 
+      if (stakeDelta !== 0) {
+        await tx
+          .update(students)
+          .set({ tokenBalance: sql`${students.tokenBalance} - ${stakeDelta}` })
+          .where(eq(students.id, session.user.id));
+      }
+
       const [predRow] = await tx
         .insert(predictions)
         .values({
@@ -86,10 +109,11 @@ export async function POST(req: Request) {
           matchId,
           predictedScore1,
           predictedScore2,
+          stakeTokens,
         })
         .onConflictDoUpdate({
           target: [predictions.studentId, predictions.matchId],
-          set: { predictedScore1, predictedScore2, updatedAt: new Date() },
+          set: { predictedScore1, predictedScore2, stakeTokens, updatedAt: new Date() },
         })
         .returning();
 
@@ -110,6 +134,9 @@ export async function POST(req: Request) {
 
     return NextResponse.json({ prediction: pred }, { status: 201 });
   } catch (e: any) {
+    if (e.message === "INSUFFICIENT_FUNDS") {
+      return NextResponse.json({ error: "Insufficient tokens for this stake" }, { status: 400 });
+    }
     if (e.message === "MATCH_NOT_FOUND") {
       return NextResponse.json({ error: "Match not found" }, { status: 404 });
     }
