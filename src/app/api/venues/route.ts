@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { venues } from "@/db/schema";
-import { eq } from "drizzle-orm";
+import { venues, watchInvites } from "@/db/schema";
+import { eq, sql } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import { z } from "zod";
 
@@ -16,9 +16,6 @@ const venueSchema = z.object({
     .optional()
     .nullable(),
 });
-
-import { watchInvites } from "@/db/schema";
-import { eq, sql } from "drizzle-orm";
 
 // GET /api/venues — returns all venues with popularity counts
 export async function GET() {
