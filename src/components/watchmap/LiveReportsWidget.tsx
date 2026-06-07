@@ -60,7 +60,7 @@ export default function LiveReportsWidget({
   knownVenues: { id: string; name: string; area: string | null }[];
 }) {
   const isPlanningMode = matchDatetime ? (new Date(matchDatetime).getTime() - Date.now() > 6 * 60 * 60 * 1000) : false;
-  const [tab, setTab] = useState<"live" | "bars">("live");
+  const [tab, setTab] = useState<"planning" | "live" | "bars">(isPlanningMode ? "planning" : "live");
   const [reports, setReports] = useState<Report[]>([]);
   const [loading, setLoading] = useState(true);
   const [expanded, setExpanded] = useState<string | null>(null);
@@ -100,7 +100,7 @@ export default function LiveReportsWidget({
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          status: isPlanningMode ? "planning" : selStatus,
+          status: tab === "planning" ? "planning" : selStatus,
           venueId: selVenueId || null,
           venueName: selVenueId ? null : (freeVenue.trim() || null),
           matchId: matchId ?? null,
@@ -133,10 +133,10 @@ export default function LiveReportsWidget({
       <div className="flex items-center justify-between">
         <div>
           <h2 className="text-lg font-bold text-gray-900">
-            {isPlanningMode ? "💬 Match Planning" : "🔴 Live Reports"}
+            Reports & Planning
           </h2>
           <p className="text-xs text-gray-400">
-            {isPlanningMode ? "Coordinate watch parties with classmates!" : "Updates from the last 3 hours · refreshes every 30s"}
+            Coordinate watch parties or report live from the ground
           </p>
         </div>
         <button onClick={fetchReports} className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-400" title="Refresh">
@@ -145,23 +145,26 @@ export default function LiveReportsWidget({
       </div>
 
       <div className="flex rounded-xl bg-gray-100 p-1 gap-1">
+        <button onClick={() => setTab("planning")} className={cn("flex-1 rounded-lg py-2 text-sm font-semibold transition-all", tab === "planning" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
+          💬 Planning
+        </button>
         <button onClick={() => setTab("live")} className={cn("flex-1 rounded-lg py-2 text-sm font-semibold transition-all", tab === "live" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
-          {isPlanningMode ? "💬 Chat" : "🔥 Live Now"}
+          🔥 Live Now
         </button>
         <button onClick={() => setTab("bars")} className={cn("flex-1 rounded-lg py-2 text-sm font-semibold transition-all", tab === "bars" ? "bg-white shadow text-gray-900" : "text-gray-500 hover:text-gray-700")}>
           🍺 Bar Reports
         </button>
       </div>
 
-      {currentUserId && (
+      {currentUserId && tab !== "bars" && (
         <div>
           {!showForm ? (
             <button onClick={() => setShowForm(true)} className="w-full rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-green-300 hover:text-green-600 transition-colors font-medium">
-              {isPlanningMode ? "+ Send a message to coordinate" : "+ Report from where you are"}
+              {tab === "planning" ? "+ Send a message to coordinate" : "+ Report from where you are"}
             </button>
           ) : (
             <div className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 space-y-3">
-              {!isPlanningMode && (
+              {tab === "live" && (
                 <>
                   <p className="text-sm font-semibold text-gray-800">What's the situation?</p>
                   <div className="flex flex-wrap gap-2">
@@ -176,7 +179,7 @@ export default function LiveReportsWidget({
                 </>
               )}
               <div>
-                <p className="text-xs text-gray-500 mb-1.5 font-medium">{isPlanningMode ? "Any specific venue? (Optional)" : "Which bar / venue?"}</p>
+                <p className="text-xs text-gray-500 mb-1.5 font-medium">{tab === "planning" ? "Any specific venue? (Optional)" : "Which bar / venue?"}</p>
                 <div className="flex flex-wrap gap-2 mb-2">
                   {knownVenues.map((v) => (
                     <button key={v.id} onClick={() => { setSelVenueId(v.id); setFreeVenue(""); }}
@@ -196,7 +199,7 @@ export default function LiveReportsWidget({
                 )}
               </div>
               <textarea
-                placeholder={isPlanningMode ? "Type your message..." : "Add a comment (optional)"}
+                placeholder={tab === "planning" ? "Type your message..." : "Add a comment (optional)"}
                 value={comment} onChange={(e) => setComment(e.target.value)}
                 rows={2} maxLength={300}
                 className="w-full rounded-lg border border-gray-200 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-green-500 resize-none"
@@ -205,7 +208,7 @@ export default function LiveReportsWidget({
               <div className="flex gap-2">
                 <button onClick={handlePost} disabled={posting}
                   className="flex-1 flex items-center justify-center gap-1.5 bg-green-600 hover:bg-green-700 text-white text-sm font-semibold py-2 rounded-lg transition-colors disabled:opacity-50">
-                  <Send className="h-3.5 w-3.5" />{posting ? "Sending…" : (isPlanningMode ? "Send message" : "Post report")}
+                  <Send className="h-3.5 w-3.5" />{posting ? "Sending…" : (tab === "planning" ? "Send message" : "Post report")}
                 </button>
                 <button onClick={() => { setShowForm(false); setPostError(""); }} className="px-4 py-2 text-sm text-gray-500 hover:text-gray-700 rounded-lg hover:bg-gray-100">Cancel</button>
               </div>
@@ -215,21 +218,20 @@ export default function LiveReportsWidget({
         </div>
       )}
 
-      {tab === "live" && (
+      {tab === "planning" && (
         <div className="space-y-2">
           {loading && <p className="text-center text-sm text-gray-400 py-6">Loading…</p>}
-          {!loading && reports.length === 0 && (
+          {!loading && reports.filter(r => r.status === "planning").length === 0 && (
             <div className="text-center py-10 text-gray-400">
               <Flame className="h-7 w-7 mx-auto mb-2 opacity-30" />
-              <p className="text-sm">{isPlanningMode ? "No messages yet — start the planning!" : "No live reports yet — be the first!"}</p>
+              <p className="text-sm">No messages yet — start the planning!</p>
             </div>
           )}
-          {reports.map((r) => (
+          {reports.filter(r => r.status === "planning").map((r) => (
             <div key={r.id} className="rounded-xl border border-gray-100 bg-white shadow-sm px-4 py-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="space-y-1">
                   <div className="flex items-center gap-1.5 flex-wrap">
-                    {r.status !== "planning" && <StatusBadge status={r.status} />}
                     <span className="text-xs text-gray-400">{timeAgo(r.createdAt)}</span>
                   </div>
                   {r.venueName && r.venueName !== "Unknown venue" && (
@@ -239,8 +241,43 @@ export default function LiveReportsWidget({
                       {r.venueArea && <span className="text-gray-400 text-xs">· {r.venueArea}</span>}
                     </div>
                   )}
-                  {r.comment && <p className={cn("text-sm text-gray-600", r.status === "planning" ? "" : "italic")}>
-                    {r.status === "planning" ? r.comment : `"${r.comment}"`}
+                  {r.comment && <p className="text-sm text-gray-600">
+                    {r.comment}
+                  </p>}
+                </div>
+                <span className="text-xs text-gray-400 shrink-0">{r.studentName}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {tab === "live" && (
+        <div className="space-y-2">
+          {loading && <p className="text-center text-sm text-gray-400 py-6">Loading…</p>}
+          {!loading && reports.filter(r => r.status !== "planning").length === 0 && (
+            <div className="text-center py-10 text-gray-400">
+              <Flame className="h-7 w-7 mx-auto mb-2 opacity-30" />
+              <p className="text-sm">No live reports yet — be the first!</p>
+            </div>
+          )}
+          {reports.filter(r => r.status !== "planning").map((r) => (
+            <div key={r.id} className="rounded-xl border border-gray-100 bg-white shadow-sm px-4 py-3">
+              <div className="flex items-start justify-between gap-2">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-1.5 flex-wrap">
+                    <StatusBadge status={r.status} />
+                    <span className="text-xs text-gray-400">{timeAgo(r.createdAt)}</span>
+                  </div>
+                  {r.venueName && r.venueName !== "Unknown venue" && (
+                    <div className="flex items-center gap-1 text-sm text-gray-700">
+                      <MapPin className="h-3.5 w-3.5 text-green-500 shrink-0" />
+                      <span className="font-medium">{r.venueName}</span>
+                      {r.venueArea && <span className="text-gray-400 text-xs">· {r.venueArea}</span>}
+                    </div>
+                  )}
+                  {r.comment && <p className="text-sm text-gray-600 italic">
+                    "{r.comment}"
                   </p>}
                 </div>
                 <span className="text-xs text-gray-400 shrink-0">{r.studentName}</span>
