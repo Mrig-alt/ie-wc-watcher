@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import VisibilitySelector from "@/components/profile/VisibilitySelector";
 import PushSettings from "@/components/profile/PushSettings";
 import BetsHistory from "@/components/profile/BetsHistory";
+import TeamGrid from "@/components/teams/TeamGrid";
 
 type Visibility = "public" | "friends" | "stealth";
 
@@ -24,6 +25,16 @@ export default function AccountPage() {
   const [pin, setPin] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [verificationError, setVerificationError] = useState("");
+  const [upgradeStep, setUpgradeStep] = useState<"pin" | "team" | "visibility">("pin");
+  const [teams, setTeams] = useState<any[]>([]);
+  const [upgradeTeamId, setUpgradeTeamId] = useState<string | null>(null);
+  const [upgradeVisibility, setUpgradeVisibility] = useState<Visibility>("public");
+
+  useEffect(() => {
+    if (session?.user?.isGuest) {
+      fetch("/api/register").then(r => r.json()).then(d => setTeams(d.teams || []));
+    }
+  }, [session?.user?.isGuest]);
 
   const handleVerify = async () => {
     if (!session) return;
@@ -33,11 +44,12 @@ export default function AccountPage() {
       const res = await fetch(`/api/students/${session.user.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pin }),
+        body: JSON.stringify({ pin, teamId: upgradeTeamId || undefined, visibility: upgradeVisibility }),
       });
       const data = await res.json();
       if (!res.ok) {
         setVerificationError(data.error || "Incorrect class PIN");
+        setUpgradeStep("pin");
         return;
       }
       await update({
@@ -128,25 +140,56 @@ export default function AccountPage() {
               <span className="text-[10px] font-medium text-yellow-800 bg-yellow-100 px-2 py-0.5 rounded-full">Guest</span>
             </h2>
             <p className="text-xs text-gray-600 mt-1">
-              You are currently browsing as a guest. Enter your class PIN below to verify your account, unlock predicting and betting, and get your starting 100+ tokens!
+              You are currently browsing as a guest. Upgrade your account to unlock predicting and betting, and claim your starting tokens!
             </p>
           </div>
 
-          <div className="flex gap-2 max-w-sm">
-            <input
-              type="password"
-              value={pin}
-              onChange={(e) => { setPin(e.target.value); setVerificationError(""); }}
-              placeholder="Enter class PIN"
-              className="flex h-9 w-full rounded-md border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50"
-              onKeyDown={(e) => e.key === "Enter" && pin.trim() && !verifying && handleVerify()}
-            />
-            <Button size="sm" onClick={handleVerify} disabled={verifying || !pin.trim()}>
-              {verifying ? "Verifying..." : "Verify"}
-            </Button>
-          </div>
-          {verificationError && (
-            <p className="text-xs text-red-600 font-medium">{verificationError}</p>
+          {upgradeStep === "pin" && (
+            <div className="space-y-3">
+              <label className="text-sm font-medium text-gray-700">Enter Class PIN</label>
+              <input
+                type="password"
+                value={pin}
+                onChange={(e) => { setPin(e.target.value); setVerificationError(""); }}
+                placeholder="Enter class PIN"
+                className="flex h-9 w-full rounded-md border border-gray-200 bg-white px-3 py-1 text-sm shadow-sm transition-colors placeholder:text-gray-400 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-gray-950 disabled:cursor-not-allowed disabled:opacity-50"
+                onKeyDown={(e) => e.key === "Enter" && pin.trim() && setUpgradeStep("team")}
+              />
+              <Button onClick={() => setUpgradeStep("team")} disabled={!pin.trim()} className="w-full">
+                Continue → Pick your team
+              </Button>
+              {verificationError && <p className="text-xs text-red-600 font-medium">{verificationError}</p>}
+            </div>
+          )}
+
+          {upgradeStep === "team" && (
+            <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <div>
+                <h3 className="font-medium text-gray-900">Pick your team</h3>
+                <p className="text-xs text-gray-500">Optional — you can skip and set it later</p>
+              </div>
+              <TeamGrid teams={teams} selectedTeamId={upgradeTeamId} onSelect={setUpgradeTeamId} />
+              <div className="flex flex-col gap-2 mt-2">
+                <Button className="w-full" onClick={() => setUpgradeStep("visibility")}>
+                  {upgradeTeamId ? "Continue →" : "Continue without a team →"}
+                </Button>
+                <button type="button" onClick={() => setUpgradeStep("pin")} className="text-xs text-gray-500 hover:text-gray-700">← Back</button>
+              </div>
+            </div>
+          )}
+
+          {upgradeStep === "visibility" && (
+            <div className="space-y-4 bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+              <h3 className="font-medium text-gray-900">Privacy mode</h3>
+              <VisibilitySelector value={upgradeVisibility} onChange={setUpgradeVisibility} />
+              
+              <div className="pt-2 flex flex-col gap-2">
+                <Button className="w-full" onClick={handleVerify} disabled={verifying}>
+                  {verifying ? "Verifying & Upgrading..." : "Complete Upgrade"}
+                </Button>
+                <button type="button" disabled={verifying} onClick={() => setUpgradeStep("team")} className="text-xs text-gray-500 hover:text-gray-700">← Back</button>
+              </div>
+            </div>
           )}
         </div>
       )}
