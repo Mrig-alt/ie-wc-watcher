@@ -92,7 +92,7 @@ export default function SurveyWidget() {
             <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-300"></span>
           </span>
           <span className="hidden sm:inline">💬 Wanna help a brother out?</span>
-          <span className="sm:hidden">💬 Feedback</span>
+          <span className="sm:hidden text-lg">💬</span>
         </button>
       )}
 
@@ -104,9 +104,9 @@ export default function SurveyWidget() {
             <div className="p-4 border-b border-gray-100 bg-gray-50 flex items-center justify-between">
               <div>
                 <h3 className="font-bold text-gray-900 text-base flex items-center gap-1.5">
-                  <span>💬 Help Us Improve</span>
+                  <span>💬 Wanna help a brother out?</span>
                 </h3>
-                <p className="text-xs text-gray-500 mt-0.5">Wanna help a brother out? Earn tokens for your feedback.</p>
+                <p className="text-xs text-gray-500 mt-0.5">Earn tokens for your feedback.</p>
               </div>
               <button
                 onClick={() => setIsOpen(false)}
