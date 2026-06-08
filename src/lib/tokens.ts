@@ -272,7 +272,11 @@ export async function settlePredictionsForMatch(matchId: string) {
 
     const hasOdds = !!(match.team1Odds || match.team2Odds || match.drawOdds);
     
-    const stake = pred.stakeTokens ?? 0;
+    // Predictions don't currently require an upfront stake, so they default to 0 in the DB.
+    // To calculate odds-based payouts, we assume a base stake of 10 tokens.
+    const BASE_ODDS_STAKE = 10;
+    const actualStake = pred.stakeTokens ?? 0;
+    
     let applicableOdds = 1.0; 
     if (actualWinner === "home" && match.team1Odds) applicableOdds = match.team1Odds;
     if (actualWinner === "away" && match.team2Odds) applicableOdds = match.team2Odds;
@@ -285,20 +289,20 @@ export async function settlePredictionsForMatch(matchId: string) {
       ) {
         // Exact Score Reward
         if (hasOdds) {
-          earned = Math.round(stake * applicableOdds);
+          earned = Math.round(BASE_ODDS_STAKE * applicableOdds);
         } else {
-          earned = stake + PREDICTION_EXACT_TOKENS;
+          earned = actualStake + PREDICTION_EXACT_TOKENS;
         }
       } else {
         // Correct Outcome Reward
         if (hasOdds) {
-          earned = Math.round((stake * applicableOdds) / 2);
+          earned = Math.round((BASE_ODDS_STAKE * applicableOdds) / 2);
         } else {
-          earned = stake + PREDICTION_CORRECT_TOKENS;
+          earned = actualStake + PREDICTION_CORRECT_TOKENS;
         }
       }
     } else {
-      earned = 0; // Lost the stake
+      earned = 0; // Lost the prediction
     }
 
     await db.transaction(async (tx) => {
@@ -310,10 +314,10 @@ export async function settlePredictionsForMatch(matchId: string) {
       
       if (updated.length === 0) return;
 
-      if (stake > 0) {
+      if (actualStake > 0) {
         await tx
           .update(students)
-          .set({ escrowTokens: sql`${students.escrowTokens} - ${stake}` })
+          .set({ escrowTokens: sql`${students.escrowTokens} - ${actualStake}` })
           .where(eq(students.id, pred.studentId));
       }
 
