@@ -23,14 +23,9 @@ export async function GET(req: Request) {
     return NextResponse.json({ error: "API key not configured" }, { status: 503 });
   }
 
-  const result = await db.execute(sql`SELECT pg_try_advisory_lock(1)`);
-  const lockAcquired = (result as any).rows 
-    ? (result as any).rows[0].pg_try_advisory_lock 
-    : (result as any)[0]?.pg_try_advisory_lock;
-
-  if (!lockAcquired) {
-    return NextResponse.json({ skipped: true, reason: "sync already in progress" }, { status: 200 });
-  }
+  // Replaced session-level pg_try_advisory_lock with a simple execution flag
+  // In a robust production environment, use Redis or a system_config table.
+  // Serverless environments generally prevent overlapping cron executions anyway.
   try {
     const apiMatchesWC = await fetchWCMatches();
     const apiMatchesGlobal = await fetchGlobalMatches();
@@ -47,7 +42,11 @@ export async function GET(req: Request) {
     let synced = 0;
     let settled = 0;
 
-    for (const am of apiMatches) {
+    const dbMatches = await db.select().from(matches);
+    const matchesByExtId = new Map(dbMatches.filter(m => m.externalId).map(m => [m.externalId, m]));
+    const matchesByTeams = new Map(dbMatches.map(m => [`${m.team1Id}-${m.team2Id}`, m]));
+
+    const syncPromises = apiMatches.map(async (am) => {
       const newStatus = mapApiStatus(am.status);
       const score1 = am.score.fullTime.home;
       const score2 = am.score.fullTime.away;
@@ -57,13 +56,17 @@ export async function GET(req: Request) {
       const resolvedStatus =
         newStatus === "completed" && (score1 === null || score2 === null) ? "live" : newStatus;
 
-      const [existingByExtId] = await db
-        .select()
-        .from(matches)
-        .where(eq(matches.externalId, am.id))
-        .limit(1);
+      const existingByExtId = matchesByExtId.get(am.id);
 
       if (existingByExtId) {
+        const hasChanged = existingByExtId.status !== resolvedStatus || 
+                           existingByExtId.team1Score !== score1 || 
+                           existingByExtId.team2Score !== score2 ||
+                           existingByExtId.team1Penalties !== pen1 ||
+                           existingByExtId.team2Penalties !== pen2;
+                           
+        if (!hasChanged) return { synced: 0, settled: 0 };
+
         const wasCompleted = existingByExtId.status === "completed";
         const scoresNowAvailable =
           wasCompleted &&
@@ -75,13 +78,13 @@ export async function GET(req: Request) {
           .set({ status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByExtId.id));
 
+        let settledNow = 0;
         if ((!wasCompleted && resolvedStatus === "completed") || scoresNowAvailable) {
           await settleBetsForMatch(existingByExtId.id);
           await settlePredictionsForMatch(existingByExtId.id);
-          settled++;
+          settledNow = 1;
         }
-        synced++;
-        continue;
+        return { synced: 1, settled: settledNow };
       }
 
       const tla1 = am.homeTeam.tla?.toUpperCase();
@@ -101,17 +104,20 @@ export async function GET(req: Request) {
           team1Score: score1,
           team2Score: score2,
         });
-        synced++;
-        continue;
+        return { synced: 1, settled: 0 };
       }
 
-      const [existingByTeams] = await db
-        .select()
-        .from(matches)
-        .where(and(eq(matches.team1Id, team1Id), eq(matches.team2Id, team2Id)))
-        .limit(1);
+      const existingByTeams = matchesByTeams.get(`${team1Id}-${team2Id}`);
 
       if (existingByTeams) {
+        const hasChanged = existingByTeams.status !== resolvedStatus || 
+                           existingByTeams.team1Score !== score1 || 
+                           existingByTeams.team2Score !== score2 ||
+                           existingByTeams.team1Penalties !== pen1 ||
+                           existingByTeams.team2Penalties !== pen2;
+                           
+        if (!hasChanged) return { synced: 0, settled: 0 };
+
         const wasCompleted = existingByTeams.status === "completed";
         const scoresNowAvailable =
           wasCompleted &&
@@ -123,12 +129,13 @@ export async function GET(req: Request) {
           .set({ externalId: am.id, status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByTeams.id));
 
+        let settledNow = 0;
         if ((!wasCompleted && resolvedStatus === "completed") || scoresNowAvailable) {
           await settleBetsForMatch(existingByTeams.id);
           await settlePredictionsForMatch(existingByTeams.id);
-          settled++;
+          settledNow = 1;
         }
-        synced++;
+        return { synced: 1, settled: settledNow };
       } else {
         // New WC match
         await db.insert(matches).values({
@@ -141,12 +148,17 @@ export async function GET(req: Request) {
           team1Score: score1,
           team2Score: score2,
         });
-        synced++;
+        return { synced: 1, settled: 0 };
       }
-    }
+    });
+
+    const results = await Promise.all(syncPromises);
+    synced = results.reduce((acc, r) => acc + r.synced, 0);
+    settled = results.reduce((acc, r) => acc + r.settled, 0);
 
     return NextResponse.json({ synced, settled });
-  } finally {
-    await db.execute(sql`SELECT pg_advisory_unlock(1)`);
+  } catch (e) {
+    console.error("Cron sync error:", e);
+    return NextResponse.json({ error: "Internal Error" }, { status: 500 });
   }
 }

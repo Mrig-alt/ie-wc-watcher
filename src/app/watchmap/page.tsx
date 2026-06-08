@@ -135,7 +135,8 @@ export default async function WatchMapPage() {
         venueBreakdown: Object.values(venueCounts).sort((a, b) => b.count - a.count),
       };
     })
-    .sort((a, b) => b.totalPeople - a.totalPeople);
+    .sort((a, b) => b.totalPeople - a.totalPeople)
+    .slice(0, 15);
 
   // ── Top bars
   const barCounts: Record<string, {
@@ -175,6 +176,7 @@ export default async function WatchMapPage() {
 
   const topBars = Object.values(barCounts)
     .sort((a, b) => b.totalPeople - a.totalPeople)
+    .slice(0, 15)
     .map((bar) => ({ ...bar, byMatch: bar.byMatch.sort((a, b) => b.people.length - a.people.length) }));
 
   // Shape matches for the update sheet

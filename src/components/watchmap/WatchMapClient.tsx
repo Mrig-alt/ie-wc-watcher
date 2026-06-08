@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import { MapPin, Flame, ExternalLink, ChevronDown, ChevronUp, Users } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -12,6 +12,13 @@ function formatMatchTime(iso: string) {
   return d.toLocaleDateString("en-GB", { weekday: "short", day: "numeric", month: "short" })
     + " · "
     + d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" });
+}
+
+function MountedTime({ iso }: { iso: string }) {
+  const [mounted, setMounted] = useState(false);
+  useEffect(() => setMounted(true), []);
+  if (!mounted) return <span>...</span>;
+  return <span>{formatMatchTime(iso)}</span>;
 }
 
 type HottestMatch = {
@@ -82,7 +89,7 @@ export default function WatchMapClient({
                     <div className="font-semibold text-gray-900 text-sm truncate">
                       {m.team1Flag} {m.team1Name} <span className="text-gray-400">vs</span> {m.team2Flag} {m.team2Name}
                     </div>
-                    <div className="text-xs text-gray-400">{formatMatchTime(m.matchDatetime)}</div>
+                    <div className="text-xs text-gray-400"><MountedTime iso={m.matchDatetime} /></div>
                   </div>
                 </Link>
                 <button onClick={() => setExpandedMatch(expandedMatch === m.matchId ? null : m.matchId)}
@@ -165,7 +172,7 @@ export default function WatchMapClient({
                       <Link href={`/matches/${bm.matchId}`} className="text-sm font-medium text-gray-800 hover:text-green-600 transition-colors">
                         {bm.team1Flag} {bm.team1Name} <span className="text-gray-400">vs</span> {bm.team2Flag} {bm.team2Name}
                       </Link>
-                      <div className="text-xs text-gray-400 mb-1">{formatMatchTime(bm.matchDatetime)}</div>
+                      <div className="text-xs text-gray-400 mb-1"><MountedTime iso={bm.matchDatetime} /></div>
                       <div className="flex flex-wrap gap-1">
                         {bm.people.map((p) => (
                           <span key={p} className="text-xs bg-green-50 text-green-700 px-2 py-0.5 rounded-full font-medium">{p}</span>

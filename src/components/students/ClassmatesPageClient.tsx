@@ -40,7 +40,8 @@ type Member = { studentId: string; name: string; tokenBalance: number; joinedAt:
 type Group = { id: string; name: string; inviteCode: string; isOwner: boolean; members: Member[] };
 
 interface Props {
-  students: StudentProp[];
+  initialStudents: StudentProp[];
+  initialHasNextPage: boolean;
   upcomingMatches: MatchOption[];
   teams: TeamInfo[];
   currentUserId: string | null;
@@ -48,7 +49,8 @@ interface Props {
 }
 
 export default function ClassmatesPageClient({
-  students,
+  initialStudents,
+  initialHasNextPage,
   upcomingMatches,
   teams,
   currentUserId,
@@ -57,6 +59,12 @@ export default function ClassmatesPageClient({
   const { data: session } = useSession();
   const [tab, setTab] = useState<"classmates" | "groups">("classmates");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
+  const [studentsList, setStudentsList] = useState<StudentProp[]>(initialStudents);
+  const [page, setPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
+  const [loadingMore, setLoadingMore] = useState(false);
+  
   const [challengeTarget, setChallengeTarget] = useState<{ id: string; name: string } | null>(null);
   const [challengeOpen, setChallengeOpen] = useState(false);
 
@@ -143,13 +151,65 @@ export default function ClassmatesPageClient({
     else { navigator.clipboard.writeText(text); setCopied(group.inviteCode + "share"); setTimeout(() => setCopied(null), 2000); }
   };
 
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), 300);
+    return () => clearTimeout(timer);
+  }, [search]);
+
+  useEffect(() => {
+    if (tab !== "classmates") return;
+
+    if (debouncedSearch === "") {
+      setStudentsList(initialStudents);
+      setPage(1);
+      setHasNextPage(initialHasNextPage);
+      return;
+    }
+
+    const fetchSearch = async () => {
+      setLoadingMore(true);
+      try {
+        const res = await fetch(`/api/students?search=${encodeURIComponent(debouncedSearch)}&page=1`);
+        const data = await res.json();
+        if (data.students) {
+          setStudentsList(data.students);
+          setHasNextPage(data.hasNextPage);
+          setPage(1);
+        }
+      } catch (e) {
+        console.error(e);
+      }
+      setLoadingMore(false);
+    };
+
+    fetchSearch();
+  }, [debouncedSearch, tab, initialStudents, initialHasNextPage]);
+
+  const loadMoreStudents = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    const nextPage = page + 1;
+    try {
+      const res = await fetch(`/api/students?search=${encodeURIComponent(debouncedSearch)}&page=${nextPage}`);
+      const data = await res.json();
+      if (data.students) {
+        setStudentsList((prev) => [...prev, ...data.students]);
+        setHasNextPage(data.hasNextPage);
+        setPage(nextPage);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+    setLoadingMore(false);
+  };
+
   return (
     <div className="space-y-5">
       {/* Page header */}
       <div>
         <h1 className="text-2xl font-bold text-gray-900">Classmates</h1>
         <p className="text-sm text-gray-500 mt-1">
-          {tab === "classmates" ? `${students.length} visible` : "Your mini-leagues"}
+          {tab === "classmates" ? "Browse all classmates" : "Your mini-leagues"}
         </p>
       </div>
 
@@ -182,11 +242,11 @@ export default function ClassmatesPageClient({
       {/* ── Classmates tab ─────────────────────────────────────────────────── */}
       {tab === "classmates" && (
         <>
-          {students.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).length === 0 ? (
+          {studentsList.length === 0 ? (
             <p className="text-center text-sm text-gray-400 py-12">No classmates visible yet. Be the first to join!</p>
           ) : (
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-              {students.filter(s => s.name.toLowerCase().includes(search.toLowerCase())).map((s) => (
+              {studentsList.map((s) => (
                 <div key={s.id} className="rounded-xl border border-gray-100 bg-white shadow-sm p-4 hover:shadow-md transition-shadow">
                   <div className="flex items-start justify-between gap-2">
                     <div className="flex items-center gap-3 min-w-0">

@@ -90,10 +90,14 @@ export default async function StudentsPage() {
       team: s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag!, countryCode: s.teamCode! } : null,
     }));
 
+    const hasNextPage = mappedStudents.length > 50;
+    const initialStudents = hasNextPage ? mappedStudents.slice(0, 50) : mappedStudents;
+
     return (
       <Suspense fallback={<div className="p-4 text-center text-sm text-gray-500">Loading classmates...</div>}>
         <ClassmatesPageClient
-          students={mappedStudents}
+          initialStudents={initialStudents}
+          initialHasNextPage={hasNextPage}
           upcomingMatches={upcomingMatches}
           teams={allTeams}
           currentUserId={validSession?.user.id ?? null}
