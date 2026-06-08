@@ -9,6 +9,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import PresenceDot from "@/components/students/PresenceDot";
 import ChallengeModal from "@/components/students/ChallengeModal";
+import ShareButton from "@/components/ui/ShareButton";
+import ConnectionButton from "@/components/students/ConnectionButton";
+import PendingConnections from "@/components/students/PendingConnections";
 import { getInitials } from "@/lib/utils";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
@@ -69,6 +72,25 @@ export default function ClassmatesPageClient({
   const [challengeOpen, setChallengeOpen] = useState(false);
 
   const teamMap = new Map(teams.map((t) => [t.id, { name: t.name, flagEmoji: t.flagEmoji }]));
+
+  const [userConnections, setUserConnections] = useState<any[]>([]);
+
+  const fetchUserConnections = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await fetch("/api/connections");
+      if (res.ok) {
+        const data = await res.json();
+        setUserConnections(data.connections || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (currentUserId) fetchUserConnections();
+  }, [currentUserId, fetchUserConnections]);
 
   // ── Groups state ──────────────────────────────────────────────────────────
   const [groups, setGroups] = useState<Group[]>([]);
@@ -242,6 +264,24 @@ export default function ClassmatesPageClient({
       {/* ── Classmates tab ─────────────────────────────────────────────────── */}
       {tab === "classmates" && (
         <>
+          <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div>
+              <h3 className="font-bold text-green-900">Don't see your friends?</h3>
+              <p className="text-sm text-green-700">Invite them to the app and earn a <span className="font-bold text-yellow-600">10 token bonus</span> when they join!</p>
+            </div>
+            {currentUserId && (
+              <ShareButton
+                title="Join IE World Cup 2026"
+                text="Hey! A bunch of us from IE are predicting World Cup scores and betting tokens on this app. Join the cohort and let's see who tops the global leaderboard! 🏆⚽️"
+                url={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?ref=${currentUserId}`}
+                variant="default"
+                className="w-full sm:w-auto bg-green-600 hover:bg-green-700 text-white shrink-0"
+              />
+            )}
+          </div>
+          
+          {currentUserId && <PendingConnections currentUserId={currentUserId} />}
+          
           {studentsList.length === 0 ? (
             <p className="text-center text-sm text-gray-400 py-12">No classmates visible yet. Be the first to join!</p>
           ) : (
@@ -268,14 +308,35 @@ export default function ClassmatesPageClient({
                   </div>
                   <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
                     <span>🪙 {s.tokenBalance} tokens</span>
-                    {currentUserId && s.id !== currentUserId && upcomingMatches.length > 0 && (
-                      <button
-                        onClick={() => { setChallengeTarget({ id: s.id, name: s.name }); setChallengeOpen(true); }}
-                        className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700"
-                      >
-                        <Swords className="h-3 w-3" /> Challenge
-                      </button>
-                    )}
+                    <div className="flex items-center gap-2">
+                      {currentUserId && s.id !== currentUserId && (
+                        <ConnectionButton 
+                          targetUserId={s.id} 
+                          initialStatus={
+                            userConnections.find((c) => 
+                              (c.requesterId === currentUserId && c.requesteeId === s.id && c.status === "pending")
+                            ) ? "pending_sent" :
+                            userConnections.find((c) => 
+                              (c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending")
+                            ) ? "pending_received" :
+                            userConnections.find((c) => 
+                              (c.requesterId === s.id || c.requesteeId === s.id) && c.status === "accepted"
+                            ) ? "accepted" : "none"
+                          }
+                          onStatusChange={(status) => {
+                            if (status === "accepted") fetchUserConnections();
+                          }}
+                        />
+                      )}
+                      {currentUserId && s.id !== currentUserId && upcomingMatches.length > 0 && (
+                        <button
+                          onClick={() => { setChallengeTarget({ id: s.id, name: s.name }); setChallengeOpen(true); }}
+                          className="flex items-center gap-1 text-xs font-medium text-green-600 hover:text-green-700 bg-green-50 px-2 py-1 rounded-md"
+                        >
+                          <Swords className="h-3 w-3" /> Challenge
+                        </button>
+                      )}
+                    </div>
                   </div>
                 </div>
               ))}

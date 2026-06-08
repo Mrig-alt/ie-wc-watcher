@@ -147,6 +147,7 @@ function JoinPageInner() {
           leaderboardVisibility,
           groupPin: groupPin.trim() || undefined,
           isGuest,
+          ref: searchParams.get("ref") || undefined,
         }),
       });
       const data = await res.json();

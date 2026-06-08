@@ -89,3 +89,10 @@ export function getInitials(name: string): string {
     .map((w) => w[0]?.toUpperCase() ?? "")
     .join("");
 }
+
+export function getPayoutText(odds?: number | null): string {
+  if (odds != null) {
+    return `Odds: ${odds.toFixed(2)}x`;
+  }
+  return "Flat Payouts (15/5)";
+}

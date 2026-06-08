@@ -8,6 +8,7 @@ import MatchCardClient from "@/components/matches/MatchCardClient";
 import HomeTabsClient from "@/components/home/HomeTabsClient";
 import JoinBanner from "@/components/home/JoinBanner";
 import PendingChallengesModal from "@/components/home/PendingChallengesModal";
+import NotificationOnboardingModal from "@/components/home/NotificationOnboardingModal";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
 
@@ -162,6 +163,10 @@ export default async function HomePage() {
 
         {/* Client component — uses useSession() so it always reflects true auth state */}
         <JoinBanner />
+
+        {validSession && !validSession.user.isGuest && !(validSession.user as any).notificationsOnboarded && (
+          <NotificationOnboardingModal email={validSession.user.email!} />
+        )}
 
         <section>
           <h2 className="text-lg font-bold text-gray-900 mb-3">{liveCount > 0 ? "\uD83D\uDD34 Live now" : "Today's matches"}</h2>

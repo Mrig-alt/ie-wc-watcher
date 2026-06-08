@@ -85,6 +85,7 @@ export async function PATCH(
       const updates: Partial<typeof students.$inferInsert> = {
         isGuest: false,
         tokenBalance: tokenBalance,
+        totalTokensReceived: tokenBalance,
       };
       if (teamId !== undefined) updates.teamId = teamId;
       if (isHonoraryFan !== undefined) updates.isHonoraryFan = isHonoraryFan;
@@ -107,11 +108,25 @@ export async function PATCH(
             .update(students)
             .set({
               tokenBalance: sql`${students.tokenBalance} - ${EARLY_BIRD_BONUS_TOKENS}`,
+              totalTokensReceived: sql`${students.totalTokensReceived} - ${EARLY_BIRD_BONUS_TOKENS}`
             })
             .where(eq(students.id, id));
           res.tokenBalance -= EARLY_BIRD_BONUS_TOKENS;
+          res.totalTokensReceived -= EARLY_BIRD_BONUS_TOKENS;
         }
       }
+
+      if (currentStudent.referredBy) {
+        // Award 10 tokens to the referrer
+        await tx.update(students)
+          .set({
+            tokenBalance: sql`${students.tokenBalance} + 10`,
+            totalTokensReceived: sql`${students.totalTokensReceived} + 10`,
+            referralTokensEarned: sql`${students.referralTokensEarned} + 10`
+          })
+          .where(eq(students.id, currentStudent.referredBy));
+      }
+
       return res;
     });
 

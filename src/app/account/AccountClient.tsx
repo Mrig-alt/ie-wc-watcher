@@ -8,10 +8,11 @@ import VisibilitySelector from "@/components/profile/VisibilitySelector";
 import PushSettings from "@/components/profile/PushSettings";
 import BetsHistory from "@/components/profile/BetsHistory";
 import TeamGrid from "@/components/teams/TeamGrid";
+import ShareButton from "@/components/ui/ShareButton";
 
 type Visibility = "public" | "friends" | "stealth";
 
-export default function AccountClient({ children }: { children?: React.ReactNode }) {
+export default function AccountClient({ children, dbUser }: { children?: React.ReactNode, dbUser?: any }) {
   const { data: session, status, update } = useSession();
   const router = useRouter();
 
@@ -31,10 +32,10 @@ export default function AccountClient({ children }: { children?: React.ReactNode
   const [upgradeVisibility, setUpgradeVisibility] = useState<Visibility>("public");
 
   useEffect(() => {
-    if (session?.user?.isGuest) {
+    if (dbUser?.isGuest || session?.user?.isGuest) {
       fetch("/api/register").then(r => r.json()).then(d => setTeams(d.teams || []));
     }
-  }, [session?.user?.isGuest]);
+  }, [dbUser?.isGuest, session?.user?.isGuest]);
 
   const handleVerify = async () => {
     if (!session) return;
@@ -90,8 +91,9 @@ export default function AccountClient({ children }: { children?: React.ReactNode
 
   if (!session) return null;
 
-  // JWT is refreshed from DB on every request via auth.ts — this is always live
-  const displayTokens = session.user.tokenBalance ?? 0;
+  const isGuest = dbUser ? dbUser.isGuest : session.user.isGuest;
+  const displayTokens = dbUser ? dbUser.tokenBalance : (session.user.tokenBalance ?? 0);
+  const hasBoughtIn = dbUser ? dbUser.hasBoughtIn : (session.user as any).hasBoughtIn;
 
   const handleSave = async () => {
     setLoading(true);
@@ -131,9 +133,30 @@ export default function AccountClient({ children }: { children?: React.ReactNode
           <a href="/leaderboard" className="text-xs text-green-600 hover:underline">See leaderboard →</a>
         </div>
       </div>
+
+      <div className="rounded-xl border border-blue-100 bg-gradient-to-r from-blue-50 to-indigo-50 p-6 shadow-sm space-y-3">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+          <div>
+            <h2 className="font-semibold text-blue-900">Invite Friends & Earn</h2>
+            <p className="text-xs text-blue-700 mt-1">Get 10 tokens for every friend who joins using your link.</p>
+            {((session.user as any).referralTokensEarned || 0) > 0 && (
+              <p className="text-xs font-bold text-yellow-600 mt-2">
+                You've earned {(session.user as any).referralTokensEarned} tokens from referrals! 🪙
+              </p>
+            )}
+          </div>
+          <ShareButton
+            title="Join IE World Cup 2026"
+            text="Hey! I'm tracking predictions and betting tokens for the World Cup in our IE class app. Join me and see if you can top the global leaderboard! 🏆⚽️"
+            url={`${typeof window !== 'undefined' ? window.location.origin : ''}/join?ref=${session.user.id}`}
+            variant="default"
+            className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shrink-0"
+          />
+        </div>
+      </div>
       {children}
 
-      {session.user.isGuest && (
+      {isGuest && (
         <div className="rounded-xl border border-yellow-200 bg-yellow-50/50 p-6 shadow-sm space-y-4">
           <div>
             <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
@@ -196,7 +219,7 @@ export default function AccountClient({ children }: { children?: React.ReactNode
       )}
 
       {/* Out of tokens state */}
-      {!session.user.isGuest && session.user.tokenBalance <= 0 && (
+      {!isGuest && displayTokens <= 0 && !hasBoughtIn && (
         <div className="rounded-xl border border-red-200 bg-red-50/30 p-6 shadow-sm space-y-4">
           <div>
             <h2 className="font-semibold text-gray-900 flex items-center gap-1.5">
@@ -226,7 +249,7 @@ export default function AccountClient({ children }: { children?: React.ReactNode
         </div>
       )}
 
-      {!session.user.isGuest && (
+      {!isGuest && (
         <>
           <BetsHistory currentUserId={session.user.id} />
 

@@ -97,13 +97,26 @@ export default function MyTeamClient({
   const [error, setError] = useState("");
 
   const activeTeamId = selectedTeamId;
-  const activeTeam = selectableTeams.find((t) => t.id === activeTeamId);
+
+  // Make sure the currently assigned team is always in the list so it can be viewed/selected
+  const allTeams = [...selectableTeams];
+  if (team && !allTeams.find((t) => t.id === team.id)) {
+    allTeams.push({
+      id: team.id,
+      name: team.name,
+      flagEmoji: team.flagEmoji,
+      group: team.group,
+      confederation: team.confederation,
+    });
+  }
+
+  const activeTeam = allTeams.find((t) => t.id === activeTeamId);
 
   // List unique confederations
-  const confederations = ["All", ...new Set(selectableTeams.map((t) => t.confederation))];
+  const confederations = ["All", ...new Set(allTeams.map((t) => t.confederation))];
 
   // Filter selectable teams
-  const filteredTeams = selectableTeams.filter((t) => {
+  const filteredTeams = allTeams.filter((t) => {
     const matchesSearch = t.name.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesConfed = selectedConfed === "All" || t.confederation === selectedConfed;
     return matchesSearch && matchesConfed;

@@ -27,6 +27,7 @@ export const registerSchema = z.object({
   pin: z.string().optional(),
   isGuest: z.boolean().optional(),
   groupPin: z.string().length(8, "Group PIN must be exactly 8 characters").optional().or(z.literal("")),
+  ref: z.string().uuid().optional().or(z.literal("")),
 });
 
 export const loginSchema = z.object({
@@ -40,6 +41,7 @@ export const updateStudentSchema = z.object({
   isHonoraryFan: z.boolean().optional(),
   visibility: z.enum(["public", "friends", "stealth"]).optional(),
   pin: z.string().optional(),
+  ref: z.string().uuid().optional().or(z.literal("")),
 });
 
 export const predictionSchema = z.object({

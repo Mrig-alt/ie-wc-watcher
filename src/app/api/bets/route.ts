@@ -6,6 +6,7 @@ import { eq, and, or, sql, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { STAKE_TOKENS } from "@/lib/tokens";
 import { sendChallengeNotification } from "@/lib/push";
+import { sendEmail } from "@/lib/email";
 
 const betSchema = z.object({
   matchId: z.string().uuid(),
@@ -192,7 +193,7 @@ export async function POST(req: Request) {
         })
         .returning();
 
-      return created;
+      return { created, opponentEmail: opponent.email, opponentEmailEnabled: opponent.emailEnabled };
     });
   } catch (e: unknown) {
     if (e instanceof Error) {
@@ -221,9 +222,36 @@ export async function POST(req: Request) {
   // Send push notification asynchronously
   if (session.user.name) {
     sendChallengeNotification(opponentId, session.user.name, stakeTokens).catch(console.error);
+    
+    // Send email notification if enabled
+    if (bet.opponentEmailEnabled && bet.opponentEmail) {
+      sendEmail({
+        to: bet.opponentEmail,
+        subject: `New Challenge from ${session.user.name}! 🏆`,
+        htmlContent: `
+          <div style="font-family: sans-serif; padding: 20px; background-color: #f8fafc; border-radius: 8px; max-width: 500px; margin: 0 auto;">
+            <h2 style="color: #1e3a8a;">You've been challenged!</h2>
+            <p style="font-size: 16px; color: #334155;">
+              <strong>${session.user.name}</strong> just challenged you to a bet for <strong>${stakeTokens} tokens</strong>!
+            </p>
+            <p style="font-size: 16px; color: #334155;">
+              Head over to the app to accept or decline the challenge.
+            </p>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="https://ie-wc-watcher.vercel.app" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+                Open App
+              </a>
+            </div>
+            <p style="font-size: 12px; color: #94a3b8; margin-top: 30px; text-align: center;">
+              You received this because you enabled email notifications. You can turn this off in your Account settings.
+            </p>
+          </div>
+        `
+      }).catch(console.error);
+    }
   }
 
-  return NextResponse.json({ bet }, { status: 201 });
+  return NextResponse.json({ bet: bet.created }, { status: 201 });
 }
 
 export async function GET(req: Request) {

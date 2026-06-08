@@ -4,6 +4,29 @@ import { db } from "@/db";
 import { connections } from "@/db/schema";
 import { eq, and } from "drizzle-orm";
 import { connectionSchema } from "@/lib/validations";
+import { or } from "drizzle-orm";
+
+export async function GET() {
+  const session = await auth();
+  if (!session?.user?.id) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+  try {
+    const allConnections = await db
+      .select()
+      .from(connections)
+      .where(
+        or(
+          eq(connections.requesterId, session.user.id),
+          eq(connections.requesteeId, session.user.id)
+        )
+      );
+
+    return NextResponse.json({ connections: allConnections });
+  } catch (e) {
+    console.error("Fetch connections error:", e);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
 
 export async function POST(req: Request) {
   const session = await auth();

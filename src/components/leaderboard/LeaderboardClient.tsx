@@ -95,6 +95,25 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
     };
   });
 
+  const [userConnections, setUserConnections] = useState<any[]>([]);
+
+  const fetchUserConnections = useCallback(async () => {
+    if (!currentUserId) return;
+    try {
+      const res = await fetch("/api/connections");
+      if (res.ok) {
+        const data = await res.json();
+        setUserConnections(data.connections || []);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  }, [currentUserId]);
+
+  useEffect(() => {
+    if (currentUserId) fetchUserConnections();
+  }, [currentUserId, fetchUserConnections]);
+
   return (
     <div className="space-y-4">
       <div className="sticky top-0 z-10 bg-gray-50 pt-2 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
@@ -111,20 +130,37 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
 
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="divide-y divide-gray-50">
-          {processedRows.map((s, idx) => (
-            <LeaderboardRow
-              key={s.id + idx}
-              rank={s.rank ?? 0}
-              student={{
-                name: s.displayName,
-                tokenBalance: s.profit,
-                isHonoraryFan: s.isHonoraryFan,
-                hasBoughtIn: s.hasBoughtIn,
-                team: s.isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),
-              }}
-              isCurrentUser={s.isCurrentUser}
-            />
-          ))}
+          {processedRows.map((s, idx) => {
+            const status = userConnections.find((c) => 
+              (c.requesterId === currentUserId && c.requesteeId === s.id && c.status === "pending")
+            ) ? "pending_sent" :
+            userConnections.find((c) => 
+              (c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending")
+            ) ? "pending_received" :
+            userConnections.find((c) => 
+              (c.requesterId === s.id || c.requesteeId === s.id) && c.status === "accepted"
+            ) ? "accepted" : "none";
+
+            return (
+              <LeaderboardRow
+                key={s.id + idx}
+                rank={s.rank ?? 0}
+                student={{
+                  id: s.id,
+                  name: s.displayName,
+                  tokenBalance: s.profit,
+                  isHonoraryFan: s.isHonoraryFan,
+                  hasBoughtIn: s.hasBoughtIn,
+                  team: s.isAnonymous ? null : (s.teamName ? { name: s.teamName, flagEmoji: s.teamFlag! } : null),
+                  isAnonymous: s.isAnonymous,
+                }}
+                isCurrentUser={s.isCurrentUser}
+                currentUserId={currentUserId}
+                connectionStatus={status}
+                onConnectionChange={() => fetchUserConnections()}
+              />
+            );
+          })}
         </div>
       </div>
 

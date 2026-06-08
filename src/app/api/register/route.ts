@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     );
   }
 
-  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin, groupPin, isGuest } = parsed.data;
+  const { name, email, nationality, teamId, isHonoraryFan, visibility, leaderboardVisibility, pin, groupPin, isGuest, ref } = parsed.data;
 
   // If a groupPin is provided, verify the group exists before proceeding
   let groupToJoin = null;
@@ -145,8 +145,20 @@ export async function POST(req: Request) {
         tokenBalance,
         totalTokensReceived: tokenBalance, // Ensures initial net profit is 0
         isGuest: isGuest ?? false,
+        referredBy: ref || null,
       })
       .returning();
+
+    if (!isGuest && ref) {
+      // Award 10 tokens to the referrer
+      await tx.update(students)
+        .set({
+          tokenBalance: sql`${students.tokenBalance} + 10`,
+          totalTokensReceived: sql`${students.totalTokensReceived} + 10`,
+          referralTokensEarned: sql`${students.referralTokensEarned} + 10`
+        })
+        .where(eq(students.id, ref));
+    }
 
     if (!isGuest && earlyBirdAwarded) {
       const [{ value: postInsertCount }] = await tx

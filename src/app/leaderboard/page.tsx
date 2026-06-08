@@ -13,8 +13,16 @@ export default async function LeaderboardPage() {
   try {
     const session = await auth();
 
+    let currentUserRow = null;
     let friendIds = new Set<string>();
     if (session?.user?.id) {
+      const [u] = await db
+        .select({ isGuest: students.isGuest, hasBoughtIn: students.hasBoughtIn })
+        .from(students)
+        .where(eq(students.id, session.user.id))
+        .limit(1);
+      currentUserRow = u;
+
       const myConnections = await db
         .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
         .from(connections)
@@ -90,7 +98,7 @@ export default async function LeaderboardPage() {
           </p>
         </div>
 
-        {session?.user && !session.user.isGuest && (
+        {currentUserRow && !currentUserRow.isGuest && !currentUserRow.hasBoughtIn && (
           <div className="rounded-xl border border-amber-100 bg-amber-50/40 p-4 text-xs text-amber-800 flex items-center justify-between gap-4 shadow-sm">
             <div>
               <p className="font-semibold text-amber-900">🪙 Low on tokens or playing high-stakes?</p>

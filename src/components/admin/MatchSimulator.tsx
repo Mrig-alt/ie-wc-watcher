@@ -7,6 +7,9 @@ export default function MatchSimulator({ upcomingMatches }: { upcomingMatches: a
   const [matchId, setMatchId] = useState("");
   const [team1Score, setTeam1Score] = useState(0);
   const [team2Score, setTeam2Score] = useState(0);
+  const [hasPenalties, setHasPenalties] = useState(false);
+  const [team1Penalties, setTeam1Penalties] = useState(0);
+  const [team2Penalties, setTeam2Penalties] = useState(0);
   const [loading, setLoading] = useState(false);
   const [success, setSuccess] = useState(false);
 
@@ -16,10 +19,18 @@ export default function MatchSimulator({ upcomingMatches }: { upcomingMatches: a
     setSuccess(false);
 
     try {
+      const payload = {
+        matchId,
+        team1Score,
+        team2Score,
+        team1Penalties: hasPenalties ? team1Penalties : undefined,
+        team2Penalties: hasPenalties ? team2Penalties : undefined,
+      };
+      
       const res = await fetch("/api/admin/simulate-match", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ matchId, team1Score, team2Score }),
+        body: JSON.stringify(payload),
       });
 
       if (res.ok) {
@@ -80,6 +91,43 @@ export default function MatchSimulator({ upcomingMatches }: { upcomingMatches: a
             />
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          <input 
+            type="checkbox" 
+            id="hasPenalties" 
+            checked={hasPenalties} 
+            onChange={(e) => setHasPenalties(e.target.checked)} 
+            className="rounded text-amber-600 focus:ring-amber-500"
+          />
+          <label htmlFor="hasPenalties" className="text-sm text-amber-900 font-medium">Went to Penalties?</label>
+        </div>
+
+        {hasPenalties && (
+          <div className="flex items-center gap-4 p-3 bg-amber-100/50 rounded-lg border border-amber-200">
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-amber-800">Team 1 Pens</label>
+              <input
+                type="number"
+                min={0}
+                value={team1Penalties}
+                onChange={(e) => setTeam1Penalties(parseInt(e.target.value))}
+                className="w-20 rounded-md border-gray-300 shadow-sm p-2 bg-white"
+              />
+            </div>
+            <span className="font-bold pt-4 text-amber-800">-</span>
+            <div className="flex flex-col">
+              <label className="text-xs font-medium text-amber-800">Team 2 Pens</label>
+              <input
+                type="number"
+                min={0}
+                value={team2Penalties}
+                onChange={(e) => setTeam2Penalties(parseInt(e.target.value))}
+                className="w-20 rounded-md border-gray-300 shadow-sm p-2 bg-white"
+              />
+            </div>
+          </div>
+        )}
 
         <Button onClick={handleSimulate} disabled={loading || !matchId} className="w-full bg-amber-600 hover:bg-amber-700">
           {loading ? "Simulating..." : success ? "Settled!" : "Simulate Completion"}

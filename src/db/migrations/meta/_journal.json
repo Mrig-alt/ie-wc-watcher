@@ -64,6 +64,20 @@
       "when": 1780808169743,
       "tag": "0008_stale_fantastic_four",
       "breakpoints": true
+    },
+    {
+      "idx": 9,
+      "version": "7",
+      "when": 1780935206568,
+      "tag": "0009_shiny_lord_hawal",
+      "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "7",
+      "when": 1780936485104,
+      "tag": "0010_previous_earthquake",
+      "breakpoints": true
     }
   ]
 }

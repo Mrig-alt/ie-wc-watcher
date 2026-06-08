@@ -55,12 +55,22 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       // Step 2: always fetch fresh tokenBalance from DB so all components are perfectly in sync
       if (baseSession?.user?.id) {
         const [student] = await db
-          .select({ tokenBalance: students.tokenBalance })
+          .select({ 
+            tokenBalance: students.tokenBalance, 
+            referralTokensEarned: students.referralTokensEarned,
+            notificationsOnboarded: students.notificationsOnboarded,
+            pushEnabled: students.pushEnabled,
+            emailEnabled: students.emailEnabled
+          })
           .from(students)
           .where(eq(students.id, baseSession.user.id))
           .limit(1);
         if (student) {
           baseSession.user.tokenBalance = student.tokenBalance;
+          (baseSession.user as any).referralTokensEarned = student.referralTokensEarned;
+          (baseSession.user as any).notificationsOnboarded = student.notificationsOnboarded;
+          (baseSession.user as any).pushEnabled = student.pushEnabled;
+          (baseSession.user as any).emailEnabled = student.emailEnabled;
         }
       }
       return baseSession as any;
@@ -114,6 +124,9 @@ declare module "next-auth" {
     tokenBalance?: number;
     isGuest?: boolean;
     hasBoughtIn?: boolean;
+    notificationsOnboarded?: boolean;
+    pushEnabled?: boolean;
+    emailEnabled?: boolean;
   }
   interface Session {
     user: {
@@ -125,6 +138,9 @@ declare module "next-auth" {
       tokenBalance: number;
       isGuest: boolean;
       hasBoughtIn: boolean;
+      notificationsOnboarded: boolean;
+      pushEnabled: boolean;
+      emailEnabled: boolean;
     };
   }
 }

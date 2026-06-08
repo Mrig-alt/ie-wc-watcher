@@ -24,6 +24,20 @@ const client = postgres(connectionString, {
   connect_timeout: 15,
   idle_timeout: 10,
   max_lifetime: 60,
+  types: {
+    real: {
+      to: 700,
+      from: [700],
+      parse: parseFloat,
+      serialize: (x: any) => x.toString()
+    },
+    float8: {
+      to: 701,
+      from: [701],
+      parse: parseFloat,
+      serialize: (x: any) => x.toString()
+    }
+  }
 });
 
 export const db = drizzle(client, { schema });

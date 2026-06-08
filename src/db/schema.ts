@@ -92,6 +92,12 @@ export const students = pgTable("students", {
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
   deviceId: varchar("device_id", { length: 255 }), // Anti-cheat persistent cookie identifier
+  referredBy: uuid("referred_by"), // Self-referential UUID but Drizzle sometimes struggles with self-refs in pgTable without complex aliases, so keeping it simple UUID
+  referralTokensEarned: integer("referral_tokens_earned").notNull().default(0),
+  notificationsOnboarded: boolean("notifications_onboarded").notNull().default(false),
+  pushEnabled: boolean("push_enabled").notNull().default(false),
+  emailEnabled: boolean("email_enabled").notNull().default(false),
+
   deletedAt: timestamp("deleted_at"),
   lastFloorReplenishedAt: timestamp("last_floor_replenished_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),

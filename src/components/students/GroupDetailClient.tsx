@@ -294,9 +294,7 @@ export default function GroupDetailClient({
                         onClick={async () => {
                           setActioningBet(bet.id);
                           await fetch(`/api/bets/${bet.id}`, {
-                            method: "PATCH",
-                            headers: { "Content-Type": "application/json" },
-                            body: JSON.stringify({ action: "cancel" }),
+                            method: "DELETE",
                           });
                           setActioningBet(null);
                           router.refresh();

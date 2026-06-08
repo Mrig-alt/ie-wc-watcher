@@ -10,6 +10,33 @@ const surveyInputSchema = z.object({
   responseText: z.string().min(1).max(5000),
 });
 
+export async function GET(req: Request) {
+  const session = await auth();
+  if (!session?.user?.id) {
+    return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+  }
+
+  try {
+    const userResponses = await db
+      .select({
+        questionKey: surveyResponses.questionKey,
+        responseText: surveyResponses.responseText,
+      })
+      .from(surveyResponses)
+      .where(eq(surveyResponses.studentId, session.user.id));
+
+    const answers: Record<string, string> = {};
+    for (const res of userResponses) {
+      answers[res.questionKey] = res.responseText;
+    }
+
+    return NextResponse.json({ answers }, { status: 200 });
+  } catch (error) {
+    console.error("Survey GET error:", error);
+    return NextResponse.json({ error: "Internal Server Error" }, { status: 500 });
+  }
+}
+
 export async function POST(req: Request) {
   const session = await auth();
   if (!session?.user?.id) {

@@ -270,23 +270,32 @@ export async function settlePredictionsForMatch(matchId: string) {
       pred.predictedScore1 > pred.predictedScore2 ? "home" :
       pred.predictedScore2 > pred.predictedScore1 ? "away" : "draw";
 
+    const hasOdds = !!(match.team1Odds || match.team2Odds || match.drawOdds);
+    
     const stake = pred.stakeTokens ?? 0;
-    let applicableOdds = 2.0; // fallback multiplier
+    let applicableOdds = 1.0; 
     if (actualWinner === "home" && match.team1Odds) applicableOdds = match.team1Odds;
     if (actualWinner === "away" && match.team2Odds) applicableOdds = match.team2Odds;
     if (actualWinner === "draw" && match.drawOdds) applicableOdds = match.drawOdds;
-    else if (actualWinner === "draw") applicableOdds = 3.0; // fallback draw odds
 
     if (actualWinner === predWinner) {
       if (
         pred.predictedScore1 === match.team1Score &&
         pred.predictedScore2 === match.team2Score
       ) {
-        // Correct Score Reward
-        earned = Math.round(stake * applicableOdds);
+        // Exact Score Reward
+        if (hasOdds) {
+          earned = Math.round(stake * applicableOdds);
+        } else {
+          earned = stake + PREDICTION_EXACT_TOKENS;
+        }
       } else {
-        // Correct Outcome Reward: Half of the Correct Score Reward
-        earned = Math.round((stake * applicableOdds) / 2);
+        // Correct Outcome Reward
+        if (hasOdds) {
+          earned = Math.round((stake * applicableOdds) / 2);
+        } else {
+          earned = stake + PREDICTION_CORRECT_TOKENS;
+        }
       }
     } else {
       earned = 0; // Lost the stake
@@ -322,20 +331,6 @@ export async function settlePredictionsForMatch(matchId: string) {
           reason: "prediction_payout",
           matchId,
         });
-
-        // Award to all friend groups the student is currently in
-        const memberships = await tx
-          .select({ groupId: groupMembers.groupId })
-          .from(groupMembers)
-          .where(eq(groupMembers.studentId, pred.studentId));
-
-        if (memberships.length > 0) {
-          const groupIds = memberships.map((m) => m.groupId);
-          await tx
-            .update(groupMembers)
-            .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${earned}` })
-            .where(and(inArray(groupMembers.groupId, groupIds), eq(groupMembers.studentId, pred.studentId)));
-        }
       }
     });
   }

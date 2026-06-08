@@ -13,7 +13,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
-    const { matchId, team1Score, team2Score } = await req.json();
+    const { matchId, team1Score, team2Score, team1Penalties, team2Penalties } = await req.json();
 
     if (!matchId || typeof team1Score !== "number" || typeof team2Score !== "number") {
       return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
@@ -26,6 +26,8 @@ export async function POST(req: Request) {
         status: "completed",
         team1Score,
         team2Score,
+        team1Penalties: team1Penalties !== undefined ? team1Penalties : null,
+        team2Penalties: team2Penalties !== undefined ? team2Penalties : null,
       })
       .where(eq(matches.id, matchId));
 

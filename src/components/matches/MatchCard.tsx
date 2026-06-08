@@ -1,6 +1,6 @@
 "use client";
 
-import { formatKickoff, stageLabel } from "@/lib/utils";
+import { formatKickoff, stageLabel, getPayoutText } from "@/lib/utils";
 import type { MatchStage } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
@@ -265,11 +265,9 @@ function TeamSide({
           <span className={`text-sm font-semibold truncate ${highlight ? "text-green-700" : "text-gray-900"}`}>
             {name}
           </span>
-          {odds != null && (
-            <span className="text-[10px] font-medium text-gray-500 mt-0.5">
-              Odds: {odds.toFixed(2)}x
-            </span>
-          )}
+          <span className="text-[10px] font-medium text-gray-500 mt-0.5">
+            {getPayoutText(odds)}
+          </span>
         </div>
       </div>
       {supporters.length > 0 && (

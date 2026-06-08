@@ -45,13 +45,13 @@ export default function ScoringLogicModal() {
 
           <div className="space-y-2">
             <h3 className="font-semibold text-gray-900 border-b pb-1">3. Friendly Matches</h3>
-            <p>Because Polymarket only provides odds for the official World Cup matches, we use a <strong>fixed fallback multiplier</strong> for Friendly matches:</p>
+            <p>Because Polymarket only provides odds for official World Cup matches, we use a <strong>Flat Payout</strong> for Friendly matches:</p>
             <ul className="list-disc pl-5 space-y-1">
-              <li><strong>Win / Loss:</strong> 2.0x odds multiplier</li>
-              <li><strong>Draw:</strong> 3.0x odds multiplier</li>
+              <li><strong>Exact Score:</strong> Your stake + 15 tokens.</li>
+              <li><strong>Correct Outcome:</strong> Your stake + 5 tokens.</li>
             </ul>
             <p className="text-xs text-gray-500 mt-1 italic">
-              Example: Predicting the exact score of a Friendly correctly with 10 tokens will pay out 20 tokens.
+              Example: Wagering 10 tokens on a Friendly match and guessing the exact score perfectly pays out 25 tokens (10 stake + 15 reward).
             </p>
           </div>
         </div>

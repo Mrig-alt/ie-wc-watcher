@@ -40,21 +40,27 @@ export default function SurveyWidget() {
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [savingStatus, setSavingStatus] = useState<Record<string, "idle" | "saving" | "saved" | "error">>({});
   
-  // Load initial answers if any exists (optional optimization, keep it simple for now)
+  // Load initial answers
   useEffect(() => {
     if (session?.user?.id && isOpen) {
       fetch("/api/survey")
         .then((res) => res.json())
         .then((data) => {
-          if (data.predictions) {
-            // API matches logic
+          if (data.answers) {
+            setAnswers(data.answers);
+            // Mark all existing answers as saved
+            const loadedStatuses: Record<string, "saved"> = {};
+            Object.keys(data.answers).forEach(k => {
+              loadedStatuses[k] = "saved";
+            });
+            setSavingStatus(loadedStatuses);
           }
         })
         .catch(() => {});
     }
   }, [session, isOpen]);
 
-  if (!session?.user) return null; // Only show for logged in users (guests and regular students)
+  if (!session?.user || session.user.isGuest) return null; // Block guests from seeing the survey
 
   const handleSaveQuestion = async (key: string) => {
     const text = answers[key]?.trim();
@@ -118,12 +124,6 @@ export default function SurveyWidget() {
 
             {/* Scrollable Questions list */}
             <div className="p-4 overflow-y-auto space-y-5 flex-1 max-h-[60vh]">
-              {session.user.isGuest && (
-                <div className="rounded-lg bg-yellow-50/60 border border-yellow-200/50 p-3 text-xs text-yellow-800 leading-relaxed">
-                  ⚠️ <strong>Guest Note:</strong> You can submit feedback, but you will only receive the tokens after upgrading your account with your class PIN.
-                </div>
-              )}
-
               {questions.map((q) => {
                 const status = savingStatus[q.key] || "idle";
                 const responseText = answers[q.key] || "";
