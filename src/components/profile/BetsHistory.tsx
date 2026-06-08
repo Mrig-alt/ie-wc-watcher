@@ -49,9 +49,17 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
             const isSender = item.student1Id === currentUserId;
             title = `Challenge ${isSender ? "Sent to" : "Received from"} ${item.opponentName || "Classmate"}`;
             
-            if (isPending) {
-              resultText = `Pending (${item.stakeTokens} 🪙 staked)`;
-              resultClass = "text-yellow-600 bg-yellow-50 border-yellow-200";
+            if (item.status === "declined" || item.status === "cancelled") {
+              resultText = `Declined (Refunded ${item.stakeTokens} 🪙)`;
+              resultClass = "text-gray-500 bg-gray-100 border-gray-200 line-through";
+            } else if (isPending) {
+              if (item.status === "accepted") {
+                resultText = `Accepted (${item.stakeTokens} 🪙 staked)`;
+                resultClass = "text-blue-700 bg-blue-50 border-blue-200";
+              } else {
+                resultText = `Awaiting Response (${item.stakeTokens} 🪙 staked)`;
+                resultClass = "text-yellow-600 bg-yellow-50 border-yellow-200";
+              }
             } else if (item.winnerId === currentUserId) {
               resultText = `Won (+${item.stakeTokens * 2} 🪙)`;
               resultClass = "text-green-700 bg-green-50 border-green-200";

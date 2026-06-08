@@ -16,6 +16,7 @@ export async function GET(req: Request) {
         id: bets.id,
         matchId: bets.matchId,
         stakeTokens: bets.stakeTokens,
+        status: bets.status,
         settled: bets.settled,
         winnerId: bets.winnerId,
         student1Id: bets.student1Id,
