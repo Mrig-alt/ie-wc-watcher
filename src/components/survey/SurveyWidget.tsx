@@ -39,28 +39,8 @@ export default function SurveyWidget() {
   const [isOpen, setIsOpen] = useState(false);
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [savingStatus, setSavingStatus] = useState<Record<string, "idle" | "saving" | "saved" | "error">>({});
-  
-  // Load initial answers
-  useEffect(() => {
-    if (session?.user?.id && isOpen) {
-      fetch("/api/survey")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.answers) {
-            setAnswers(data.answers);
-            // Mark all existing answers as saved
-            const loadedStatuses: Record<string, "saved"> = {};
-            Object.keys(data.answers).forEach(k => {
-              loadedStatuses[k] = "saved";
-            });
-            setSavingStatus(loadedStatuses);
-          }
-        })
-        .catch(() => {});
-    }
-  }, [session, isOpen]);
-
-  if (!session?.user || session.user.isGuest) return null; // Block guests from seeing the survey
+  if (!session?.user) return null;
+  const isGuest = session.user.isGuest;
 
   const handleSaveQuestion = async (key: string) => {
     const text = answers[key]?.trim();
@@ -154,15 +134,28 @@ export default function SurveyWidget() {
                         {status === "error" && <span className="text-red-500">Failed to save. Try again.</span>}
                       </div>
 
-                      <Button
-                        size="sm"
-                        variant={status === "saved" ? "outline" : "default"}
-                        disabled={status === "saving" || !responseText.trim()}
-                        onClick={() => handleSaveQuestion(q.key)}
-                        className="h-7 text-[11px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all"
-                      >
-                        {status === "saved" ? "Update Answer" : "Save Answer"}
-                      </Button>
+                      {isGuest ? (
+                        <div className="flex flex-col gap-1 items-end">
+                          <Button
+                            size="sm"
+                            disabled
+                            className="h-7 text-[11px] px-3 bg-gray-200 text-gray-400 font-medium shadow-sm transition-all"
+                          >
+                            Guests Cannot Submit
+                          </Button>
+                          <span className="text-[9px] text-gray-500">Upgrade to join the class</span>
+                        </div>
+                      ) : (
+                        <Button
+                          size="sm"
+                          variant={status === "saved" ? "outline" : "default"}
+                          disabled={status === "saving" || !responseText.trim()}
+                          onClick={() => handleSaveQuestion(q.key)}
+                          className="h-7 text-[11px] px-3 bg-emerald-600 hover:bg-emerald-700 text-white font-medium shadow-sm transition-all"
+                        >
+                          {status === "saved" ? "Update Answer" : "Save Answer"}
+                        </Button>
+                      )}
                     </div>
                   </div>
                 );

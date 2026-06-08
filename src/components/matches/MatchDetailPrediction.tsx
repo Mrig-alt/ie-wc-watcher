@@ -7,10 +7,11 @@ interface Props {
   matchId: string;
   team1: { name: string; flagEmoji: string };
   team2: { name: string; flagEmoji: string };
+  hasOdds: boolean;
   existing: { predictedScore1: number; predictedScore2: number } | null;
 }
 
-export default function MatchDetailPrediction({ matchId, team1, team2, existing }: Props) {
+export default function MatchDetailPrediction({ matchId, team1, team2, hasOdds, existing }: Props) {
   const [showForm, setShowForm] = useState(!existing);
   const [localPrediction, setLocalPrediction] = useState(existing);
 
@@ -38,7 +39,9 @@ export default function MatchDetailPrediction({ matchId, team1, team2, existing 
           {team1.flagEmoji} {(localPrediction ?? existing)!.predictedScore1} – {(localPrediction ?? existing)!.predictedScore2} {team2.flagEmoji}
         </p>
       )}
-      <p className="text-xs text-green-700 mt-2">Exact score → +15 tokens · Correct result → +5 tokens</p>
+      <p className="text-xs text-green-700 mt-2">
+        {hasOdds ? "Exact score → odds payout · Correct result → ½ odds payout" : "Exact score → +15 tokens · Correct result → +5 tokens"}
+      </p>
     </div>
   );
 }

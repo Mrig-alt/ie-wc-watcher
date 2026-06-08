@@ -163,6 +163,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
           matchId={id}
           team1={team1!}
           team2={team2!}
+          hasOdds={match.team1Odds != null || match.team2Odds != null || match.drawOdds != null}
           existing={
             existingPrediction
               ? { predictedScore1: existingPrediction.predictedScore1, predictedScore2: existingPrediction.predictedScore2 }

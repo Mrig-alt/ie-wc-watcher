@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, matches, connections } from "@/db/schema";
-import { eq, and, or, asc } from "drizzle-orm";
+import { eq, and, or, asc, isNull } from "drizzle-orm";
 import { redirect } from "next/navigation";
 import MyTeamClient from "@/components/team/MyTeamClient";
 import { calculateGroupStandings } from "@/lib/standings";
@@ -42,7 +42,7 @@ export default async function MyTeamPage() {
     .from(teams)
     .orderBy(teams.name);
 
-  const selectableTeams = allTeams.filter((t) => t.group !== null);
+  const selectableTeams = allTeams.filter((t) => t.group !== null || t.id === student.teamId);
 
   // If student hasn't selected a team, render picker
   if (!student.teamId) {
@@ -102,7 +102,7 @@ export default async function MyTeamPage() {
       visibility: students.visibility,
     })
     .from(students)
-    .where(and(eq(students.teamId, selectedTeam.id), eq(students.flagged, false)));
+    .where(and(eq(students.teamId, selectedTeam.id), eq(students.flagged, false), isNull(students.deletedAt), eq(students.isGuest, false)));
 
   let publicSupporters: Array<{ id: string; name: string; tokenBalance: number }> = [];
   let anonymousCount = 0;
