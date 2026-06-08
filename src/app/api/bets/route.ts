@@ -74,6 +74,9 @@ export async function POST(req: Request) {
       if (existing.length > 0) {
         throw new Error("BET_ALREADY_EXISTS");
       }
+      let opponentEmail: string | null = null;
+      let opponentEmailEnabled = false;
+
       if (groupId) {
         // Group-specific bet validation
         // Sort IDs to prevent deadlocks when locking group members
@@ -100,6 +103,11 @@ export async function POST(req: Request) {
           throw new Error("NOT_IN_GROUP_OPPONENT");
         }
 
+        const [oppStudent] = await tx.select({ email: students.email, emailEnabled: students.emailEnabled }).from(students).where(eq(students.id, opponentId)).limit(1);
+        if (!oppStudent) throw new Error("OPPONENT_NOT_FOUND");
+        opponentEmail = oppStudent.email;
+        opponentEmailEnabled = oppStudent.emailEnabled;
+
         const challengerMember = firstMember.studentId === session.user.id ? firstMember : secondMember;
         const opponentMember = firstMember.studentId === opponentId ? firstMember : secondMember;
 
@@ -125,14 +133,14 @@ export async function POST(req: Request) {
         const secondId = session.user.id < opponentId ? opponentId : session.user.id;
 
         const [firstStudent] = await tx
-          .select({ id: students.id, tokenBalance: students.tokenBalance })
+          .select({ id: students.id, tokenBalance: students.tokenBalance, email: students.email, emailEnabled: students.emailEnabled })
           .from(students)
           .where(eq(students.id, firstId))
           .for("update")
           .limit(1);
 
         const [secondStudent] = await tx
-          .select({ id: students.id, tokenBalance: students.tokenBalance })
+          .select({ id: students.id, tokenBalance: students.tokenBalance, email: students.email, emailEnabled: students.emailEnabled })
           .from(students)
           .where(eq(students.id, secondId))
           .for("update")
@@ -144,6 +152,9 @@ export async function POST(req: Request) {
 
         const requester = firstStudent.id === session.user.id ? firstStudent : secondStudent;
         const opponent = firstStudent.id === opponentId ? firstStudent : secondStudent;
+        
+        opponentEmail = opponent.email;
+        opponentEmailEnabled = opponent.emailEnabled;
 
         if (requester.tokenBalance < stakeTokens) {
           throw new Error("INSUFFICIENT_TOKENS_REQUESTER");
@@ -197,7 +208,7 @@ export async function POST(req: Request) {
         })
         .returning();
 
-      return { created, opponentEmail: opponent.email, opponentEmailEnabled: opponent.emailEnabled };
+      return { created, opponentEmail, opponentEmailEnabled };
     });
   } catch (e: unknown) {
     if (e instanceof Error) {
