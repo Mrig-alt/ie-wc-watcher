@@ -48,9 +48,13 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: "Betting is closed for this match" }, { status: 403 });
   }
 
-  let bet: typeof bets.$inferSelect;
+  let betResult: {
+    created: typeof bets.$inferSelect;
+    opponentEmail?: string | null;
+    opponentEmailEnabled?: boolean;
+  };
   try {
-    bet = await db.transaction(async (tx) => {
+    betResult = await db.transaction(async (tx) => {
       // Check bet doesn't already exist between these two for this match (either direction)
       const existing = await tx
         .select({ id: bets.id })
@@ -224,10 +228,10 @@ export async function POST(req: Request) {
     sendChallengeNotification(opponentId, session.user.name, stakeTokens).catch(console.error);
     
     // Send email notification if enabled
-    if (bet.opponentEmailEnabled && bet.opponentEmail) {
+    if (betResult.opponentEmailEnabled && betResult.opponentEmail) {
       const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://ie-wc-watcher.onrender.com';
       sendEmail({
-        to: bet.opponentEmail,
+        to: betResult.opponentEmail,
         subject: `New Challenge from ${session.user.name}! 🏆`,
         htmlContent: `
           <div style="font-family: sans-serif; padding: 20px; background-color: #f8fafc; border-radius: 8px; max-width: 500px; margin: 0 auto;">
@@ -252,7 +256,7 @@ export async function POST(req: Request) {
     }
   }
 
-  return NextResponse.json({ bet: bet.created }, { status: 201 });
+  return NextResponse.json({ bet: betResult.created }, { status: 201 });
 }
 
 export async function GET(req: Request) {
