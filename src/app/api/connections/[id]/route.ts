@@ -53,13 +53,9 @@ export async function PATCH(
           .returning();
         return NextResponse.json({ connection: updated });
       } else {
-        // Decline: just delete the request or mark it declined? The DB schema says status is 'pending' | 'accepted' | 'declined'.
-        const [updated] = await db
-          .update(connections)
-          .set({ status: "declined" })
-          .where(eq(connections.id, id))
-          .returning();
-        return NextResponse.json({ connection: updated });
+        // Decline: delete the request so it no longer shows up
+        await db.delete(connections).where(eq(connections.id, id));
+        return NextResponse.json({ success: true });
       }
     }
 
