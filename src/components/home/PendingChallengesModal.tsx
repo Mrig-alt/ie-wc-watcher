@@ -71,6 +71,9 @@ export default function PendingChallengesModal({ challenges }: Props) {
     }
   };
 
+  const hasReceived = visible.some((c) => !c.isSender);
+  const headingText = hasReceived ? "You've been challenged!" : "Your challenges";
+
   return (
     <>
       <button 
@@ -78,7 +81,10 @@ export default function PendingChallengesModal({ challenges }: Props) {
         className="w-full sm:w-auto flex items-center justify-center gap-2 mb-4 bg-orange-100 hover:bg-orange-200 text-orange-900 px-4 py-2 rounded-xl font-semibold transition-colors border border-orange-200 shadow-sm"
       >
         <Swords className="h-4 w-4 text-orange-600" />
-        {visible.length} pending challenge{visible.length !== 1 ? "s" : ""}
+        <span className="flex items-center gap-1.5">
+          {headingText} 
+          <span className="bg-orange-200 text-orange-900 text-xs font-bold px-1.5 py-0.5 rounded-full">{visible.length}</span>
+        </span>
       </button>
 
       {isOpen && (
@@ -87,7 +93,7 @@ export default function PendingChallengesModal({ challenges }: Props) {
             <div className="flex items-center justify-between p-4 border-b border-orange-200 bg-white">
               <div className="flex items-center gap-2">
                 <Swords className="h-5 w-5 text-orange-500" />
-                <h2 className="text-lg font-bold text-orange-900">Pending Challenges</h2>
+                <h2 className="text-lg font-bold text-orange-900">{headingText}</h2>
               </div>
               <button onClick={() => setIsOpen(false)} className="p-2 -mr-2 text-gray-400 hover:text-gray-600 rounded-full hover:bg-gray-100">
                 <X className="h-5 w-5" />
