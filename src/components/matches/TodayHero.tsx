@@ -23,7 +23,7 @@ export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam,
       <div className="flex items-start justify-between">
         <div>
           <h1 className="text-xl font-bold">IE World Cup 2026</h1>
-          <p className="mt-0.5 text-green-200 text-sm mb-3">Class cohort tracker</p>
+          <p className="mt-0.5 text-green-200 text-sm mb-3">Predict. Challenge. Watch together.</p>
           <Countdown />
         </div>
         {isLoggedIn && (
