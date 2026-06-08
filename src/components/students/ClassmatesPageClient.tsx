@@ -306,9 +306,9 @@ export default function ClassmatesPageClient({
                       {s.isHonoraryFan && <Badge variant="friendly">🤝 Honorary</Badge>}
                     </div>
                   </div>
-                  <div className="mt-3 flex items-center justify-between text-xs text-gray-500">
-                    <span>🪙 {s.tokenBalance} tokens</span>
-                    <div className="flex items-center gap-2">
+                  <div className="mt-3 flex flex-wrap items-center justify-between gap-2 text-xs text-gray-500">
+                    <span className="shrink-0 whitespace-nowrap">🪙 {s.tokenBalance} tokens</span>
+                    <div className="flex flex-wrap items-center justify-end gap-2">
                       {currentUserId && s.id !== currentUserId && (
                         <ConnectionButton 
                           targetUserId={s.id} 
