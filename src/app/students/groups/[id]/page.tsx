@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { bets, friendGroups, groupMembers, matches, students, teams } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import { redirect } from "next/navigation";
 import GroupDetailClient from "@/components/students/GroupDetailClient";
@@ -36,17 +36,20 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     );
   }
 
+  const profitSql = sql<number>`${groupMembers.tokenBalance} + ${groupMembers.escrowTokens} - ${groupMembers.totalTokensReceived}`;
   const members = await db
     .select({
       studentId: groupMembers.studentId,
       name: students.name,
       tokenBalance: groupMembers.tokenBalance,
+      escrowTokens: groupMembers.escrowTokens,
+      profit: profitSql,
       joinedAt: groupMembers.joinedAt,
     })
     .from(groupMembers)
     .innerJoin(students, eq(students.id, groupMembers.studentId))
     .where(eq(groupMembers.groupId, id))
-    .orderBy(desc(groupMembers.tokenBalance));
+    .orderBy(desc(profitSql));
 
   const s1 = alias(students, "s1");
   const s2 = alias(students, "s2");

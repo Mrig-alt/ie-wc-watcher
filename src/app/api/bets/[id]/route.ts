@@ -99,10 +99,13 @@ export async function PATCH(
             throw new Error("INSUFFICIENT_TOKENS");
           }
 
-          // Deduct from opponent's group balance
+          // Deduct from opponent's group balance and add to group escrow
           await tx
             .update(groupMembers)
-            .set({ tokenBalance: sql`${groupMembers.tokenBalance} - ${bet.stakeTokens}` })
+            .set({ 
+              tokenBalance: sql`${groupMembers.tokenBalance} - ${bet.stakeTokens}`,
+              escrowTokens: sql`${groupMembers.escrowTokens} + ${bet.stakeTokens}`
+            })
             .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, opponentId)));
         } else {
           // Check opponent global balance
@@ -152,7 +155,10 @@ export async function PATCH(
         if (bet.groupId) {
           await tx
             .update(groupMembers)
-            .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+            .set({ 
+              tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}`,
+              escrowTokens: sql`${groupMembers.escrowTokens} - ${bet.stakeTokens}`
+            })
             .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, challengerId)));
         } else {
           await tx
@@ -246,7 +252,10 @@ export async function DELETE(
       if (bet.groupId) {
         await tx
           .update(groupMembers)
-          .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+          .set({ 
+            tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}`,
+            escrowTokens: sql`${groupMembers.escrowTokens} - ${bet.stakeTokens}`
+          })
           .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, challengerId)));
       } else {
         await tx

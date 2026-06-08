@@ -135,6 +135,12 @@ export async function settleBetsForMatch(matchId: string) {
           .update(students)
           .set({ escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}` })
           .where(or(eq(students.id, bet.student1Id), eq(students.id, bet.student2Id)));
+      } else {
+        // Decrease escrowTokens for both participants locally in the group
+        await tx
+          .update(groupMembers)
+          .set({ escrowTokens: sql`${groupMembers.escrowTokens} - ${bet.stakeTokens}` })
+          .where(and(eq(groupMembers.groupId, bet.groupId), or(eq(groupMembers.studentId, bet.student1Id), eq(groupMembers.studentId, bet.student2Id))));
       }
 
       // Execute payouts

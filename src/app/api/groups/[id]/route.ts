@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { bets, friendGroups, groupMembers, matches, students, teams } from "@/db/schema";
-import { eq, and, desc } from "drizzle-orm";
+import { eq, and, desc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -24,17 +24,20 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!group) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Members with token balances
+  const profitSql = sql`${groupMembers.tokenBalance} + ${groupMembers.escrowTokens} - ${groupMembers.totalTokensReceived}`;
   const members = await db
     .select({
       studentId: groupMembers.studentId,
       name: students.name,
       tokenBalance: groupMembers.tokenBalance,
+      escrowTokens: groupMembers.escrowTokens,
+      profit: profitSql,
       joinedAt: groupMembers.joinedAt,
     })
     .from(groupMembers)
     .innerJoin(students, eq(students.id, groupMembers.studentId))
     .where(eq(groupMembers.groupId, id))
-    .orderBy(desc(groupMembers.tokenBalance));
+    .orderBy(desc(profitSql));
 
   // Active bets in this group
   const s1 = alias(students, "s1");

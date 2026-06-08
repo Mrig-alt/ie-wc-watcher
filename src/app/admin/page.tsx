@@ -68,13 +68,21 @@ export default async function AdminPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold text-gray-900">Admin Dashboard</h1>
-        <Link
-          href="/api/admin/export"
-          className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
-          download
-        >
-          Export CSV
-        </Link>
+        <div className="flex gap-2">
+          <Link
+            href="/admin/audit"
+            className="rounded-lg border border-red-200 bg-red-50 px-3 py-1.5 text-sm font-medium text-red-700 hover:bg-red-100"
+          >
+            Security Audit
+          </Link>
+          <Link
+            href="/api/admin/export"
+            className="rounded-lg border border-gray-200 px-3 py-1.5 text-sm font-medium text-gray-700 hover:bg-gray-50"
+            download
+          >
+            Export CSV
+          </Link>
+        </div>
       </div>
 
       <MatchSimulator upcomingMatches={upcomingMatches} />

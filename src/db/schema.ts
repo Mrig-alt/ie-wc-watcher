@@ -91,6 +91,7 @@ export const students = pgTable("students", {
   escrowTokens: integer("escrow_tokens").notNull().default(0),
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
+  deviceId: varchar("device_id", { length: 255 }), // Anti-cheat persistent cookie identifier
   deletedAt: timestamp("deleted_at"),
   lastFloorReplenishedAt: timestamp("last_floor_replenished_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
@@ -142,7 +143,9 @@ export const groupMembers = pgTable(
     studentId: uuid("student_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
-    tokenBalance: integer("token_balance").notNull().default(100),
+    tokenBalance: integer("token_balance").notNull().default(1000),
+    escrowTokens: integer("escrow_tokens").notNull().default(0),
+    totalTokensReceived: integer("total_tokens_received").notNull().default(1000),
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.groupId, t.studentId)]

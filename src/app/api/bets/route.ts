@@ -108,7 +108,10 @@ export async function POST(req: Request) {
         // Deduct stake ONLY from challenger upfront in the group balance
         await tx
           .update(groupMembers)
-          .set({ tokenBalance: sql`${groupMembers.tokenBalance} - ${stakeTokens}` })
+          .set({ 
+            tokenBalance: sql`${groupMembers.tokenBalance} - ${stakeTokens}`,
+            escrowTokens: sql`${groupMembers.escrowTokens} + ${stakeTokens}`
+          })
           .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, session.user.id)));
       } else {
         // Global bet validation

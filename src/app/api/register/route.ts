@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { cookies } from "next/headers";
 import { db } from "@/db";
 import { students, teams, friendGroups, groupMembers } from "@/db/schema";
 import { eq, count, sql } from "drizzle-orm";
@@ -34,6 +35,18 @@ export async function GET() {
 }
 
 export async function POST(req: Request) {
+  const cookieStore = await cookies();
+  let deviceId = cookieStore.get("deviceId")?.value;
+  if (!deviceId) {
+    deviceId = crypto.randomUUID();
+    cookieStore.set("deviceId", deviceId, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "lax",
+      maxAge: 60 * 60 * 24 * 365 * 10, // 10 years
+    });
+  }
+
   const body = await req.json();
   const parsed = registerSchema.safeParse(body);
 
@@ -128,6 +141,7 @@ export async function POST(req: Request) {
         isHonoraryFan: isHonoraryFan ?? false,
         visibility,
         leaderboardVisibility,
+        deviceId,
         tokenBalance,
         totalTokensReceived: tokenBalance, // Ensures initial net profit is 0
         isGuest: isGuest ?? false,

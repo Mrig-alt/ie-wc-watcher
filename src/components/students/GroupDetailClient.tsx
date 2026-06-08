@@ -11,6 +11,8 @@ type Member = {
   studentId: string;
   name: string;
   tokenBalance: number;
+  escrowTokens: number;
+  profit: number;
   joinedAt: string;
 };
 
@@ -171,32 +173,47 @@ export default function GroupDetailClient({
           <Trophy className="h-5 w-5 text-yellow-500" />
           <h2 className="text-lg font-semibold text-gray-900">Standings</h2>
         </div>
-        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-          {members.map((m, i) => (
-            <div
-              key={m.studentId}
-              className={`flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 ${
-                m.studentId === currentUserId ? "bg-green-50" : ""
-              }`}
-            >
-              <span
-                className={`text-sm font-bold w-5 text-center ${
-                  i === 0 ? "text-yellow-500" : i === 1 ? "text-gray-400" : i === 2 ? "text-amber-600" : "text-gray-400"
-                }`}
-              >
-                {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
-              </span>
-              <span
-                className={`flex-1 text-sm font-medium ${
-                  m.studentId === currentUserId ? "text-green-800" : "text-gray-800"
-                }`}
-              >
-                {m.name}
-                {m.studentId === currentUserId ? " (you)" : ""}
-              </span>
-              <span className="text-sm font-semibold text-gray-900">🪙 {m.tokenBalance}</span>
-            </div>
-          ))}
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-x-auto">
+          <table className="w-full text-sm min-w-[500px]">
+            <thead className="bg-gray-50 text-xs text-gray-500 uppercase border-b border-gray-100">
+              <tr>
+                <th className="px-4 py-2 text-left font-medium w-12">#</th>
+                <th className="px-4 py-2 text-left font-medium">Student</th>
+                <th className="px-4 py-2 text-right font-medium">Net Profit</th>
+                <th className="px-4 py-2 text-right font-medium text-gray-400">Balance</th>
+                <th className="px-4 py-2 text-right font-medium text-yellow-600/70">Escrow</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-50">
+              {members.map((m, i) => (
+                <tr
+                  key={m.studentId}
+                  className={m.studentId === currentUserId ? "bg-green-50" : ""}
+                >
+                  <td className="px-4 py-3 text-left">
+                    <span
+                      className={`font-bold ${
+                        i === 0 ? "text-yellow-500" : i === 1 ? "text-gray-400" : i === 2 ? "text-amber-600" : "text-gray-400"
+                      }`}
+                    >
+                      {i === 0 ? "🥇" : i === 1 ? "🥈" : i === 2 ? "🥉" : i + 1}
+                    </span>
+                  </td>
+                  <td className="px-4 py-3">
+                    <span className={`font-medium ${m.studentId === currentUserId ? "text-green-800" : "text-gray-900"}`}>
+                      {m.name}
+                      {m.studentId === currentUserId ? " (you)" : ""}
+                    </span>
+                  </td>
+                  <td className={`px-4 py-3 text-right font-bold ${m.profit >= 0 ? "text-green-600" : "text-red-500"}`}>
+                    {m.profit > 0 ? "+" : ""}{m.profit}
+                  </td>
+                  <td className="px-4 py-3 text-right text-gray-500">{m.tokenBalance}</td>
+                  <td className="px-4 py-3 text-right text-yellow-600">{m.escrowTokens}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
 

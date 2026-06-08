@@ -47,7 +47,24 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     // Re-declare all authConfig callbacks here cleanly — do NOT call authConfig.callbacks.jwt
     // manually, that would double-execute since authConfig is also spread above.
     authorized: authConfig.callbacks!.authorized,
-    session: authConfig.callbacks!.session,
+
+    async session(params) {
+      // Step 1: base auth config session mapping
+      const baseSession = await authConfig.callbacks!.session!(params);
+      
+      // Step 2: always fetch fresh tokenBalance from DB so all components are perfectly in sync
+      if (baseSession?.user?.id) {
+        const [student] = await db
+          .select({ tokenBalance: students.tokenBalance })
+          .from(students)
+          .where(eq(students.id, baseSession.user.id))
+          .limit(1);
+        if (student) {
+          baseSession.user.tokenBalance = student.tokenBalance;
+        }
+      }
+      return baseSession as any;
+    },
 
     async jwt(params) {
       // Step 1: run the base token-building logic from authConfig (handles user sign-in)

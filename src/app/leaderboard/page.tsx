@@ -49,7 +49,13 @@ export default async function LeaderboardPage() {
       })
       .from(students)
       .leftJoin(teams, eq(students.teamId, teams.id))
-      .where(and(eq(students.flagged, false), eq(students.isGuest, false), isNull(students.deletedAt)))
+      .where(and(
+        eq(students.flagged, false),
+        eq(students.isGuest, false),
+        isNull(students.deletedAt),
+        eq(students.visibility, "public"),
+        eq(students.leaderboardVisibility, true)
+      ))
       .orderBy(desc(sql`${students.tokenBalance} + ${students.escrowTokens} - ${students.totalTokensReceived}`))
       .limit(51);
 
@@ -57,27 +63,16 @@ export default async function LeaderboardPage() {
     const paginatedRows = hasNextPage ? rows.slice(0, 50) : rows;
 
     const initialRows = paginatedRows.map((s, i) => {
-      let isVisible = true;
-      if (s.id === session?.user?.id) {
-        isVisible = true;
-      } else if (s.visibility === "stealth") {
-        isVisible = false;
-      } else if (s.visibility === "friends") {
-        isVisible = friendIds.has(s.id);
-      } else if (s.leaderboardVisibility === false) {
-        isVisible = false;
-      }
-      
       return {
         id: s.id,
-        name: isVisible ? s.name : null,
+        name: s.name,
         profit: s.tokenBalance + s.escrowTokens - s.totalTokensReceived,
         isHonoraryFan: s.isHonoraryFan,
-        teamName: isVisible ? s.teamName : null,
-        teamFlag: isVisible ? s.teamFlag : null,
+        teamName: s.teamName,
+        teamFlag: s.teamFlag,
         hasBoughtIn: s.hasBoughtIn,
         isCurrentUser: s.id === session?.user?.id,
-        isAnonymous: !isVisible,
+        isAnonymous: false,
         rank: i + 1,
       };
     });
