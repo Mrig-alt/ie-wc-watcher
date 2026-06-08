@@ -225,6 +225,7 @@ export async function POST(req: Request) {
     
     // Send email notification if enabled
     if (bet.opponentEmailEnabled && bet.opponentEmail) {
+      const origin = req.headers.get('origin') || process.env.NEXT_PUBLIC_APP_URL || 'https://ie-wc-watcher.onrender.com';
       sendEmail({
         to: bet.opponentEmail,
         subject: `New Challenge from ${session.user.name}! 🏆`,
@@ -238,7 +239,7 @@ export async function POST(req: Request) {
               Head over to the app to accept or decline the challenge.
             </p>
             <div style="text-align: center; margin-top: 30px;">
-              <a href="https://ie-wc-watcher.vercel.app" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
+              <a href="${origin}" style="background-color: #2563eb; color: white; padding: 12px 24px; text-decoration: none; border-radius: 6px; font-weight: bold;">
                 Open App
               </a>
             </div>
