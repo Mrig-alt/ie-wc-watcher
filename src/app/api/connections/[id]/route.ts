@@ -53,9 +53,13 @@ export async function PATCH(
           .returning();
         return NextResponse.json({ connection: updated });
       } else {
-        // Decline: delete the request so it no longer shows up
-        await db.delete(connections).where(eq(connections.id, id));
-        return NextResponse.json({ success: true });
+        // Decline: mark the request as declined so they cannot spam re-request
+        const [updated] = await db
+          .update(connections)
+          .set({ status: "declined" })
+          .where(eq(connections.id, id))
+          .returning();
+        return NextResponse.json({ connection: updated });
       }
     }
 

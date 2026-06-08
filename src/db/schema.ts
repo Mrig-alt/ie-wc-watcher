@@ -44,6 +44,7 @@ export const visibilityEnum = pgEnum("visibility", [
 export const connectionStatusEnum = pgEnum("connection_status", [
   "pending",
   "accepted",
+  "declined",
 ]);
 
 export const liveReportStatusEnum = pgEnum("live_report_status", [

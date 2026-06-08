@@ -78,6 +78,13 @@
       "when": 1780936485104,
       "tag": "0010_previous_earthquake",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "7",
+      "when": 1780939894524,
+      "tag": "0011_chubby_chamber",
+      "breakpoints": true
     }
   ]
 }
