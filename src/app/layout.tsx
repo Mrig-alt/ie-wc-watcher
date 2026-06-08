@@ -52,7 +52,7 @@ export default async function RootLayout({
         <link rel="apple-touch-icon" href="/icon-192.png" />
       </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 pb-20`}
+        className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 pb-20 break-words`}
       >
         <SessionProvider session={session}>
           <PresenceTracker />
