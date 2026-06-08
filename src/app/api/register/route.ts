@@ -112,7 +112,7 @@ export async function POST(req: Request) {
     let tokenBalance = 0;
     let earlyBirdAwarded = false;
     if (!isGuest) {
-      tokenBalance = 100;
+      tokenBalance = 1000;
       if (visibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
       earlyBirdAwarded = totalStudents < EARLY_BIRD_LIMIT;
       if (earlyBirdAwarded) tokenBalance += EARLY_BIRD_BONUS_TOKENS;
@@ -129,6 +129,7 @@ export async function POST(req: Request) {
         visibility,
         leaderboardVisibility,
         tokenBalance,
+        totalTokensReceived: tokenBalance, // Ensures initial net profit is 0
         isGuest: isGuest ?? false,
       })
       .returning();
@@ -154,7 +155,7 @@ export async function POST(req: Request) {
       await tx.insert(groupMembers).values({
         groupId: groupToJoin.id,
         studentId: created.id,
-        tokenBalance: 100, // Fixed starting balance in a group
+        tokenBalance: 1000, // Fixed starting balance in a group
       });
     }
 
