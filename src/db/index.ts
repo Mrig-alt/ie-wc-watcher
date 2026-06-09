@@ -19,7 +19,7 @@ const sslMode = isLocalhost ? false : "require";
 // requests indefinitely when all slots are occupied.
 const client = postgres(connectionString, {
   prepare: false,
-  max: 1,
+  max: 10,
   ssl: sslMode,
   connect_timeout: 15,
   idle_timeout: 10,
