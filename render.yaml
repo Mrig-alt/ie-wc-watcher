@@ -29,5 +29,11 @@ services:
         sync: false
       - key: LOCK_TEAMS_AT
         value: "2026-06-11T00:00:00Z"
-      # VAPID keys intentionally omitted — push notifications not yet implemented.
-      # Add VAPID_PUBLIC_KEY, VAPID_PRIVATE_KEY, VAPID_SUBJECT here when ready.
+      - key: VAPID_PUBLIC_KEY
+        sync: false
+      - key: NEXT_PUBLIC_VAPID_PUBLIC_KEY
+        sync: false
+      - key: VAPID_PRIVATE_KEY
+        sync: false
+      - key: VAPID_SUBJECT
+        value: "mailto:admin@ie.edu"

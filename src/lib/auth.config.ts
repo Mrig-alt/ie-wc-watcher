@@ -20,6 +20,11 @@ export const authConfig = {
         token.visibility = (user as { visibility?: string }).visibility ?? "public";
         token.tokenBalance = (user as { tokenBalance?: number }).tokenBalance ?? 100;
         token.email = (user as { email?: string }).email ?? null;
+        token.referralTokensEarned = (user as any).referralTokensEarned ?? 0;
+        token.notificationsOnboarded = (user as any).notificationsOnboarded ?? false;
+        token.pushEnabled = (user as any).pushEnabled ?? false;
+        token.emailEnabled = (user as any).emailEnabled ?? false;
+        token.deviceId = (user as any).deviceId ?? null;
       }
       // Always ensure token.id is set — old sessions may only have token.sub
       if (!token.id && token.sub) {
@@ -37,6 +42,11 @@ export const authConfig = {
         session.user.tokenBalance = (token.tokenBalance as number) ?? 100;
         session.user.isGuest = (token.isGuest as boolean) ?? false;
         session.user.hasBoughtIn = (token.hasBoughtIn as boolean) ?? false;
+        (session.user as any).referralTokensEarned = (token.referralTokensEarned as number) ?? 0;
+        (session.user as any).notificationsOnboarded = (token.notificationsOnboarded as boolean) ?? false;
+        (session.user as any).pushEnabled = (token.pushEnabled as boolean) ?? false;
+        (session.user as any).emailEnabled = (token.emailEnabled as boolean) ?? false;
+        (session.user as any).deviceId = (token.deviceId as string | null) ?? null;
       }
       return session;
     },

@@ -39,6 +39,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           tokenBalance: student.tokenBalance,
           isGuest: student.isGuest,
           hasBoughtIn: student.hasBoughtIn,
+          referralTokensEarned: student.referralTokensEarned,
+          notificationsOnboarded: student.notificationsOnboarded,
+          pushEnabled: student.pushEnabled,
+          emailEnabled: student.emailEnabled,
+          deviceId: student.deviceId,
         };
       },
     }),
@@ -49,33 +54,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     authorized: authConfig.callbacks!.authorized,
 
     async session(params) {
-      // Step 1: base auth config session mapping
-      const baseSession = await authConfig.callbacks!.session!(params);
-      
-      // Step 2: always fetch fresh tokenBalance from DB so all components are perfectly in sync
-      if (baseSession?.user?.id) {
-        const [student] = await db
-          .select({ 
-            tokenBalance: students.tokenBalance, 
-            referralTokensEarned: students.referralTokensEarned,
-            notificationsOnboarded: students.notificationsOnboarded,
-            pushEnabled: students.pushEnabled,
-            emailEnabled: students.emailEnabled,
-            deviceId: students.deviceId
-          })
-          .from(students)
-          .where(eq(students.id, baseSession.user.id))
-          .limit(1);
-        if (student) {
-          baseSession.user.tokenBalance = student.tokenBalance;
-          (baseSession.user as any).referralTokensEarned = student.referralTokensEarned;
-          (baseSession.user as any).notificationsOnboarded = student.notificationsOnboarded;
-          (baseSession.user as any).pushEnabled = student.pushEnabled;
-          (baseSession.user as any).emailEnabled = student.emailEnabled;
-          (baseSession.user as any).deviceId = student.deviceId;
-        }
-      }
-      return baseSession as any;
+      return (await authConfig.callbacks!.session!(params)) as any;
     },
 
     async jwt(params) {
@@ -92,6 +71,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         token.email = (user as { email?: string }).email ?? null;
         token.isGuest = (user as { isGuest?: boolean }).isGuest ?? false;
         token.hasBoughtIn = (user as { hasBoughtIn?: boolean }).hasBoughtIn ?? false;
+        token.referralTokensEarned = (user as any).referralTokensEarned ?? 0;
+        token.notificationsOnboarded = (user as any).notificationsOnboarded ?? false;
+        token.pushEnabled = (user as any).pushEnabled ?? false;
+        token.emailEnabled = (user as any).emailEnabled ?? false;
+        token.deviceId = (user as any).deviceId ?? null;
       }
 
       if (!token.id && token.sub) token.id = token.sub;
@@ -110,6 +94,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             token.visibility = student.visibility;
             token.isGuest = student.isGuest;
             token.hasBoughtIn = student.hasBoughtIn;
+            token.referralTokensEarned = student.referralTokensEarned;
+            token.notificationsOnboarded = student.notificationsOnboarded;
+            token.pushEnabled = student.pushEnabled;
+            token.emailEnabled = student.emailEnabled;
+            token.deviceId = student.deviceId;
           }
         }
       }

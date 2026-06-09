@@ -8,6 +8,7 @@ import MobileNav from "@/components/layout/MobileNav";
 import PresenceTracker from "@/components/layout/PresenceTracker";
 import SurveyWidget from "@/components/survey/SurveyWidget";
 import DeviceSync from "@/components/auth/DeviceSync";
+import ServiceWorkerRegistrar from "@/components/layout/ServiceWorkerRegistrar";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -56,6 +57,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 pb-20 break-words`}
       >
         <SessionProvider session={session}>
+          <ServiceWorkerRegistrar />
           <DeviceSync />
           <PresenceTracker />
           <Header />

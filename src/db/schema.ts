@@ -199,7 +199,10 @@ export const matches = pgTable("matches", {
   team1Odds: real("team1_odds"),
   team2Odds: real("team2_odds"),
   drawOdds: real("draw_odds"),
-});
+}, (t) => [
+  index("matches_match_datetime_idx").on(t.matchDatetime),
+  index("matches_status_idx").on(t.status),
+]);
 
 // ─── Predictions ──────────────────────────────────────────────────────────────
 
@@ -257,6 +260,9 @@ export const bets = pgTable(
   (t) => [
     unique().on(t.matchId, t.student1Id, t.student2Id),
     index("bets_match_idx").on(t.matchId),
+    index("bets_student1_idx").on(t.student1Id),
+    index("bets_student2_idx").on(t.student2Id),
+    index("bets_status_idx").on(t.status),
   ]
 );
 

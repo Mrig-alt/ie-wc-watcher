@@ -20,7 +20,9 @@ export default function PushSettings() {
       });
     }
 
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+    const isIOSDevice =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
     setIsIOS(isIOSDevice);
   }, []);
 
@@ -58,6 +60,23 @@ export default function PushSettings() {
     }
   };
 
+  const handleUnsubscribe = async () => {
+    setLoading(true);
+    try {
+      const reg = await navigator.serviceWorker.ready;
+      const sub = await reg.pushManager.getSubscription();
+      if (sub) {
+        await sub.unsubscribe();
+      }
+      await fetch("/api/push/subscribe", { method: "DELETE" });
+      setIsSubscribed(false);
+    } catch (err) {
+      console.error("Error unsubscribing from push", err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   if (!isSupported) return null;
 
   return (
@@ -67,7 +86,7 @@ export default function PushSettings() {
         Notifications
       </div>
       <p className="text-sm text-gray-500">
-        Get alerted when someone joins your mini-league!
+        Get alerted when someone joins your mini-league, your bet is settled, or a match you predicted is about to kick off!
       </p>
 
       {isIOS && (
@@ -77,8 +96,20 @@ export default function PushSettings() {
       )}
 
       {isSubscribed ? (
-        <div className="flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 px-3 py-2 rounded-md w-fit">
-          <Bell className="h-4 w-4" /> Notifications Enabled
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2 text-sm text-green-600 font-medium bg-green-50 px-3 py-2 rounded-md">
+            <Bell className="h-4 w-4" /> Notifications Enabled
+          </div>
+          <Button
+            onClick={handleUnsubscribe}
+            disabled={loading}
+            variant="outline"
+            size="sm"
+            className="text-red-600 border-red-200 hover:bg-red-50"
+          >
+            <BellOff className="h-4 w-4 mr-1" />
+            {loading ? "Disabling..." : "Turn off"}
+          </Button>
         </div>
       ) : (
         <Button onClick={handleSubscribe} disabled={loading} size="sm">
