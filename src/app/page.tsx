@@ -195,14 +195,15 @@ export default async function HomePage() {
 
               const fullMatch = {
                 ...match,
+                matchDatetime: match.matchDatetime.toISOString(),
                 team1: t1 ? { id: t1.id, name: t1.name, flagEmoji: t1.flagEmoji } : null,
                 team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
               };
 
               return {
                 match: fullMatch,
-                team1Supporters: team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt })),
-                team2Supporters: team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt })),
+                team1Supporters: team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt?.toISOString() ?? null })),
+                team2Supporters: team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt?.toISOString() ?? null })),
                 prediction: myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null,
                 myWatchInvite: myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null,
                 opponentWatchInvite: opponentInviteRaw && opponentInviter

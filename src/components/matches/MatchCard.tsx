@@ -17,14 +17,14 @@ import LocalTime from "@/components/ui/LocalTime";
 interface Supporter {
   id: string;
   name: string;
-  lastSeenAt: Date | null;
+  lastSeenAt: string | null;
   watchInvite?: { locationName: string; locationUrl: string | null } | null;
 }
 
 interface MatchCardProps {
   match: {
     id: string;
-    matchDatetime: Date;
+    matchDatetime: string;
     status: "upcoming" | "live" | "completed";
     stage: MatchStage;
     groupName: string | null;

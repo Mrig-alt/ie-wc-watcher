@@ -13,7 +13,7 @@ type OpenBet = {
   challengerId: string;
   challengerName: string;
   matchId: string;
-  matchDatetime: Date;
+  matchDatetime: string;
   team1: { name: string; flagEmoji: string } | null;
   team2: { name: string; flagEmoji: string } | null;
   isMine: boolean;

@@ -55,7 +55,7 @@ export default async function MarketPage() {
       challengerId: bet.challengerId,
       challengerName: bet.challengerName,
       matchId: bet.matchId,
-      matchDatetime: bet.matchDatetime,
+      matchDatetime: bet.matchDatetime.toISOString(),
       team1: t1 ? { name: t1.name, flagEmoji: t1.flagEmoji } : null,
       team2: t2 ? { name: t2.name, flagEmoji: t2.flagEmoji } : null,
       isMine: bet.challengerId === session?.user?.id,
