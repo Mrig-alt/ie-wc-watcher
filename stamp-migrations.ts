@@ -1,4 +1,5 @@
-import "dotenv-flow/config";
+import * as dotenv from "dotenv";
+dotenv.config({ path: ".env.local" });
 import postgres from "postgres";
 
 // Hashes match what drizzle-kit generate stores in the _journal snapshots.
@@ -10,7 +11,7 @@ const MIGRATIONS_TO_STAMP = [
 ];
 
 async function main() {
-  const sql = postgres(process.env.DATABASE_URL!, { ssl: "require", max: 1 });
+  const sql = postgres(process.env.DIRECT_URL!, { ssl: "require", max: 1 });
 
   console.log("Stamping already-applied migrations into drizzle.__drizzle_migrations...");
 
