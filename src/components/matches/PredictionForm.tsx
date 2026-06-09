@@ -75,6 +75,9 @@ export default function PredictionForm({ matchId, team1, team2, existing, locked
           {loading ? "…" : saved ? "✓ Saved" : "Save Prediction"}
         </Button>
       </div>
+      <div className="text-[10px] text-gray-400 text-left leading-tight mt-1">
+        ℹ️ Exact score pays <strong>10x</strong> your stake. Correct winner pays <strong>2x</strong>. Tokens are escrowed until the match finishes.
+      </div>
       {error && <p className="text-xs text-red-500">{error}</p>}
     </div>
   );

@@ -264,6 +264,15 @@ export default function ClassmatesPageClient({
       {/* ── Classmates tab ─────────────────────────────────────────────────── */}
       {tab === "classmates" && (
         <>
+          <div className="rounded-xl border border-amber-100 bg-amber-50 p-4 text-sm text-amber-800 shadow-sm">
+            <h3 className="font-bold flex items-center gap-1.5 mb-1">
+              <span>⚠️</span> Token Balance ≠ Leaderboard Rank
+            </h3>
+            <p className="mt-1">
+              The tokens shown below represent a student's total spending power (Wallet + Escrow). 
+              This is <strong>not</strong> their Leaderboard score! The Leaderboard uses <em>Net Profit</em> to ensure fairness, subtracting initial bonuses (like early-bird registration) or refills. 
+            </p>
+          </div>
           <div className="bg-gradient-to-r from-green-50 to-emerald-50 rounded-xl p-4 border border-green-100 mb-4 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div>
               <h3 className="font-bold text-green-900">Don't see your friends?</h3>

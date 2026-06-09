@@ -37,6 +37,7 @@ export default function Header() {
           <Link href="/watchmap" className="hover:text-gray-900 transition-colors">Where to Watch</Link>
           <Link href="/students" className="hover:text-gray-900 transition-colors">Classmates</Link>
           <Link href="/leaderboard" className="hover:text-gray-900 transition-colors">Leaderboard</Link>
+          <Link href="/market" className="hover:text-gray-900 transition-colors font-semibold text-blue-600">Open Market</Link>
           <Link href="/feed" className="hover:text-gray-900 transition-colors">Feed</Link>
         </nav>
 

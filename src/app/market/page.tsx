@@ -66,9 +66,19 @@ export default async function MarketPage() {
     <div className="max-w-2xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Open Market \uD83D\uDCC8</h1>
+          <h1 className="text-2xl font-black text-gray-900 tracking-tight">Open Market 📈</h1>
           <p className="text-sm text-gray-500 mt-1">Take open bets from other students or post your own.</p>
         </div>
+      </div>
+      
+      {/* HOW IT WORKS ONBOARDING */}
+      <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm text-sm">
+        <h3 className="font-bold text-blue-900 mb-1 flex items-center gap-1.5">
+          <span>ℹ️</span> How it works
+        </h3>
+        <p className="text-blue-800">
+          The Open Market allows you to make 1-on-1 bets against anyone in the class. When you take a bet, your tokens are locked in <strong>escrow</strong> along with the challenger's tokens. If you win the bet, you take the entire pot!
+        </p>
       </div>
       
       <MarketClient 

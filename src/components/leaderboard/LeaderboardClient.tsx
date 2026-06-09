@@ -117,7 +117,7 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
   return (
     <div className="space-y-4">
       <div className="sticky top-0 z-10 bg-gray-50 pt-2 pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
-        <div className="relative">
+        <div className="relative mb-3">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
           <Input
             value={search}
@@ -125,6 +125,24 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
             placeholder="Search by student name..."
             className="pl-9 bg-white shadow-sm"
           />
+        </div>
+
+        {/* OPEN MARKET CTA */}
+        <div className="rounded-xl border border-blue-100 bg-blue-50/50 p-4 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-4">
+          <div>
+            <h3 className="font-semibold text-blue-900 flex items-center gap-2">
+              📈 The Open Market
+            </h3>
+            <p className="text-xs text-blue-800 mt-1">
+              Want to climb the leaderboard faster? Trade peer-to-peer bets against other students in the open market.
+            </p>
+          </div>
+          <a
+            href="/market"
+            className="shrink-0 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 transition-colors shadow-sm whitespace-nowrap"
+          >
+            Go to Market
+          </a>
         </div>
       </div>
 

@@ -167,6 +167,16 @@ export default function GroupDetailClient({
         </Button>
       </div>
 
+      {/* HOW IT WORKS ONBOARDING */}
+      <div className="rounded-xl border border-purple-100 bg-purple-50/50 p-4 shadow-sm text-sm">
+        <h3 className="font-bold text-purple-900 mb-1 flex items-center gap-1.5">
+          <span>ℹ️</span> Group Economy
+        </h3>
+        <p className="text-purple-800">
+          This group acts as a completely <strong>isolated mini-league</strong>. Bets made within this group stay within this group! Your performance here contributes to your overall Master Leaderboard net profit, but tokens are kept strictly peer-to-peer.
+        </p>
+      </div>
+
       {/* Standings */}
       <section>
         <div className="flex items-center gap-2 mb-3">
