@@ -7,6 +7,7 @@ import Header from "@/components/layout/Header";
 import MobileNav from "@/components/layout/MobileNav";
 import PresenceTracker from "@/components/layout/PresenceTracker";
 import SurveyWidget from "@/components/survey/SurveyWidget";
+import DeviceSync from "@/components/auth/DeviceSync";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -55,6 +56,7 @@ export default async function RootLayout({
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-gray-50 pb-20 break-words`}
       >
         <SessionProvider session={session}>
+          <DeviceSync />
           <PresenceTracker />
           <Header />
           <main className="mx-auto max-w-2xl px-4 py-6">

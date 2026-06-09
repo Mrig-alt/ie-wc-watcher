@@ -60,7 +60,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             referralTokensEarned: students.referralTokensEarned,
             notificationsOnboarded: students.notificationsOnboarded,
             pushEnabled: students.pushEnabled,
-            emailEnabled: students.emailEnabled
+            emailEnabled: students.emailEnabled,
+            deviceId: students.deviceId
           })
           .from(students)
           .where(eq(students.id, baseSession.user.id))
@@ -71,6 +72,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           (baseSession.user as any).notificationsOnboarded = student.notificationsOnboarded;
           (baseSession.user as any).pushEnabled = student.pushEnabled;
           (baseSession.user as any).emailEnabled = student.emailEnabled;
+          (baseSession.user as any).deviceId = student.deviceId;
         }
       }
       return baseSession as any;
@@ -127,6 +129,7 @@ declare module "next-auth" {
     notificationsOnboarded?: boolean;
     pushEnabled?: boolean;
     emailEnabled?: boolean;
+    deviceId?: string | null;
   }
   interface Session {
     user: {
@@ -141,6 +144,7 @@ declare module "next-auth" {
       notificationsOnboarded: boolean;
       pushEnabled: boolean;
       emailEnabled: boolean;
+      deviceId: string | null;
     };
   }
 }
