@@ -3,6 +3,8 @@ import { students, bets, predictions, matches, groupMembers, tokenLedger } from 
 import { eq, and, or, isNull, sql, inArray } from "drizzle-orm";
 
 export * from "./constants";
+import { STAKE_TOKENS, PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS, PUBLIC_BONUS_TOKENS, EARLY_BIRD_BONUS_TOKENS, EARLY_BIRD_LIMIT } from "./constants";
+export { STAKE_TOKENS, PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS, PUBLIC_BONUS_TOKENS, EARLY_BIRD_BONUS_TOKENS, EARLY_BIRD_LIMIT };
 
 export async function settleBetsForMatch(matchId: string) {
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);
@@ -25,7 +27,9 @@ export async function settleBetsForMatch(matchId: string) {
           .returning({ id: bets.id });
         if (updated.length === 0) return;
 
-        const challengerId = bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id;
+        const challengerId = bet.isOpenMarket || bet.student1Score1 !== null 
+          ? bet.student1Id 
+          : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id!);
         if (bet.groupId) {
           await tx
             .update(groupMembers)
@@ -103,10 +107,10 @@ export async function settleBetsForMatch(matchId: string) {
 
         let winnerOdds = 2.0;
         if (matchWinner === 1) {
-          winnerId = bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id;
+          winnerId = bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id!;
           winnerOdds = match.team1Odds ?? 2.0;
         } else if (matchWinner === 2) {
-          winnerId = bet.challengerTeamSide === 2 ? bet.student1Id : bet.student2Id;
+          winnerId = bet.challengerTeamSide === 2 ? bet.student1Id : bet.student2Id!;
           winnerOdds = match.team2Odds ?? 2.0;
         } else {
           winnerId = null;
@@ -129,13 +133,13 @@ export async function settleBetsForMatch(matchId: string) {
         await tx
           .update(students)
           .set({ escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}` })
-          .where(or(eq(students.id, bet.student1Id), eq(students.id, bet.student2Id)));
+          .where(or(eq(students.id, bet.student1Id), eq(students.id, bet.student2Id!)));
       } else {
         // Decrease escrowTokens for both participants locally in the group
         await tx
           .update(groupMembers)
           .set({ escrowTokens: sql`${groupMembers.escrowTokens} - ${bet.stakeTokens}` })
-          .where(and(eq(groupMembers.groupId, bet.groupId), or(eq(groupMembers.studentId, bet.student1Id), eq(groupMembers.studentId, bet.student2Id))));
+          .where(and(eq(groupMembers.groupId, bet.groupId), or(eq(groupMembers.studentId, bet.student1Id), eq(groupMembers.studentId, bet.student2Id!))));
       }
 
       // Execute payouts
@@ -163,7 +167,7 @@ export async function settleBetsForMatch(matchId: string) {
         // Closest wins half, the other half is returned to the loser
         const winnerRefund = Math.round(bet.stakeTokens * 1.5);
         const loserRefund = (bet.stakeTokens * 2) - winnerRefund;
-        const loserId = winnerId === bet.student1Id ? bet.student2Id : bet.student1Id;
+        const loserId = winnerId === bet.student1Id ? bet.student2Id! : bet.student1Id;
 
         if (bet.groupId) {
           await tx
@@ -207,7 +211,7 @@ export async function settleBetsForMatch(matchId: string) {
           await tx
             .update(groupMembers)
             .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
-            .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, bet.student2Id)));
+            .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, bet.student2Id!)));
         } else {
           await tx
             .update(students)
@@ -216,7 +220,7 @@ export async function settleBetsForMatch(matchId: string) {
           await tx
             .update(students)
             .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
-            .where(eq(students.id, bet.student2Id));
+            .where(eq(students.id, bet.student2Id!));
 
           await tx.insert(tokenLedger).values({
             studentId: bet.student1Id,
@@ -225,7 +229,7 @@ export async function settleBetsForMatch(matchId: string) {
             matchId,
           });
           await tx.insert(tokenLedger).values({
-            studentId: bet.student2Id,
+            studentId: bet.student2Id!,
             amount: bet.stakeTokens,
             reason: "bet_refund_draw",
             matchId,

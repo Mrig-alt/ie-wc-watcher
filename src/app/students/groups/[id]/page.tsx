@@ -96,7 +96,7 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
       inviteCode={group.inviteCode}
       isOwner={group.createdBy === session.user.id}
       members={members.map((m) => ({ ...m, joinedAt: m.joinedAt.toISOString() }))}
-      bets={groupBets.map((b) => ({ ...b, matchDatetime: b.matchDatetime.toISOString() }))}
+      bets={groupBets.map((b) => ({ ...b, student2Id: b.student2Id!, matchDatetime: b.matchDatetime.toISOString() }))}
       teams={allTeams}
       currentUserId={session.user.id}
     />

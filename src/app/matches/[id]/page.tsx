@@ -45,7 +45,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
   const teamIds = [match.team1Id, match.team2Id].filter(Boolean) as string[];
 
-  const [fetchedTeams, team1Supporters, team2Supporters, rawInvites, allVenues, reactions, myPrediction] =
+  const [fetchedTeams, team1Supporters, team2Supporters, rawInvites, allVenues, reactions, myPredictionList, allRsvps] =
     await Promise.all([
       teamIds.length > 0 ? db.select().from(teams).where(inArray(teams.id, teamIds)) : Promise.resolve([]),
       match.team1Id
@@ -118,7 +118,7 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   const t1Name = team1?.name ?? match.team1Placeholder ?? "TBD";
   const t2Name = team2?.name ?? match.team2Placeholder ?? "TBD";
 
-  const existingPrediction = (myPrediction as Array<typeof myPrediction[0]>)[0] ?? null;
+  const existingPrediction = (myPredictionList as Array<typeof myPredictionList[0]>)[0] ?? null;
   const cutoffTime = new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000);
   const canPredict = !!session?.user?.id && isUpcoming && !!team1 && !!team2 && new Date() < cutoffTime;
   const loginReturnUrl = `/join?next=/matches/${id}`;
