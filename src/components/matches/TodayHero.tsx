@@ -8,7 +8,7 @@ interface TodayHeroProps {
   upcomingCount: number;
   liveCount: number;
   nextMatch?: {
-    matchDatetime: Date;
+    matchDatetime: string;
     team1: { name: string; flagEmoji: string } | null;
     team2: { name: string; flagEmoji: string } | null;
   } | null;

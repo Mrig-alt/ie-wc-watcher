@@ -142,7 +142,7 @@ export default async function HomePage() {
     const [nextMatchRaw] = await db.select().from(matches).where(and(gte(matches.matchDatetime, new Date()), eq(matches.status, "upcoming"))).orderBy(asc(matches.matchDatetime)).limit(1);
     const nextMatch = nextMatchRaw
       ? {
-          matchDatetime: nextMatchRaw.matchDatetime,
+          matchDatetime: nextMatchRaw.matchDatetime.toISOString(),
           team1: nextMatchRaw.team1Id ? (teamMap.get(nextMatchRaw.team1Id) ?? null) : null,
           team2: nextMatchRaw.team2Id ? (teamMap.get(nextMatchRaw.team2Id) ?? null) : null,
         }
@@ -202,8 +202,8 @@ export default async function HomePage() {
 
               return {
                 match: fullMatch,
-                team1Supporters: team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt?.toISOString() ?? null })),
-                team2Supporters: team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt?.toISOString() ?? null })),
+                team1Supporters: team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt ? new Date(s.lastSeenAt).toISOString() : null })),
+                team2Supporters: team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt ? new Date(s.lastSeenAt).toISOString() : null })),
                 prediction: myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null,
                 myWatchInvite: myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null,
                 opponentWatchInvite: opponentInviteRaw && opponentInviter
