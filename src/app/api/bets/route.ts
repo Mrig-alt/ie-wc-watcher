@@ -10,7 +10,7 @@ import { sendEmail } from "@/lib/email";
 
 const betSchema = z.object({
   matchId: z.string().uuid(),
-  opponentId: z.string().uuid(),
+  opponentId: z.string().uuid().optional().nullable(),
   stakeTokens: z.number().int().min(1).max(500).default(STAKE_TOKENS),
   challengerTeamSide: z.number().int().min(1).max(2).optional().nullable(),
   student1Score1: z.number().int().min(0).max(50).optional().nullable(),
@@ -82,6 +82,20 @@ export async function POST(req: Request) {
           )
           .for("update")
           .limit(1);
+      } else {
+        existing = await tx
+          .select({ id: bets.id })
+          .from(bets)
+          .where(
+            and(
+              eq(bets.matchId, matchId),
+              eq(bets.student1Id, session.user.id),
+              eq(bets.isOpenMarket, true),
+              eq(bets.status, "pending")
+            )
+          )
+          .for("update")
+          .limit(1);
       }
 
       if (existing.length > 0) {
@@ -93,8 +107,9 @@ export async function POST(req: Request) {
       if (groupId) {
         // Group-specific bet validation
         // Sort IDs to prevent deadlocks when locking group members
-        const firstMemberId = session.user.id < opponentId ? session.user.id : opponentId;
-        const secondMemberId = session.user.id < opponentId ? opponentId : session.user.id;
+        const oppId = opponentId as string;
+        const firstMemberId = session.user.id < oppId ? session.user.id : oppId;
+        const secondMemberId = session.user.id < oppId ? oppId : session.user.id;
 
         const [firstMember] = await tx
           .select({ studentId: groupMembers.studentId, tokenBalance: groupMembers.tokenBalance })

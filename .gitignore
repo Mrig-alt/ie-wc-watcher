@@ -34,3 +34,4 @@ tsconfig.tsbuildinfo
 
 # pnpm
 .pnpm-store/
+scripts/ad-hoc/

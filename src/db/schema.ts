@@ -104,6 +104,7 @@ export const students = pgTable("students", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
   check("token_balance_check", sql`${t.tokenBalance} >= 0`),
+  check("escrow_tokens_check", sql`${t.escrowTokens} >= 0`),
 ]);
 
 // ─── Connections ──────────────────────────────────────────────────────────────
@@ -155,7 +156,10 @@ export const groupMembers = pgTable(
     totalTokensReceived: integer("total_tokens_received").notNull().default(1000),
     joinedAt: timestamp("joined_at").notNull().defaultNow(),
   },
-  (t) => [unique().on(t.groupId, t.studentId)]
+  (t) => [
+    unique().on(t.groupId, t.studentId),
+    check("group_escrow_tokens_check", sql`${t.escrowTokens} >= 0`)
+  ]
 );
 
 // ─── Venues ───────────────────────────────────────────────────────────────────
@@ -383,9 +387,9 @@ export const tokenLedger = pgTable("token_ledger", {
 
 export const predictionHistory = pgTable("prediction_history", {
   id: uuid("id").primaryKey().defaultRandom(),
-  predictionId: uuid("prediction_id").notNull().references(() => predictions.id, { onDelete: "cascade" }),
-  studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
-  matchId: uuid("match_id").notNull().references(() => matches.id, { onDelete: "cascade" }),
+  predictionId: uuid("prediction_id").references(() => predictions.id, { onDelete: "set null" }),
+  studentId: uuid("student_id").references(() => students.id, { onDelete: "set null" }),
+  matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
   oldScore1: integer("old_score1"),
   oldScore2: integer("old_score2"),
   newScore1: integer("new_score1").notNull(),

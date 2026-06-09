@@ -143,11 +143,16 @@ export async function PATCH(
           updates.student2Score2 = student2Score2;
         }
 
-        const [acceptedBet] = await tx
+        const acceptedBets = await tx
           .update(bets)
           .set(updates)
-          .where(eq(bets.id, id))
+          .where(and(eq(bets.id, id), eq(bets.status, "pending")))
           .returning();
+          
+        if (acceptedBets.length === 0) {
+          throw new Error("Bet is no longer pending or does not exist.");
+        }
+        const acceptedBet = acceptedBets[0];
 
         return acceptedBet;
       } else {

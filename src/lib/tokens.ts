@@ -105,19 +105,15 @@ export async function settleBetsForMatch(matchId: string) {
           }
         }
 
-        let winnerOdds = 2.0;
         if (matchWinner === 1) {
           winnerId = bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id!;
-          winnerOdds = match.team1Odds ?? 2.0;
         } else if (matchWinner === 2) {
           winnerId = bet.challengerTeamSide === 2 ? bet.student1Id : bet.student2Id!;
-          winnerOdds = match.team2Odds ?? 2.0;
         } else {
           winnerId = null;
         }
         
         payoutType = winnerId ? "full" : "refund";
-        (bet as any).winnerOdds = winnerOdds; // store locally for payout calculation
       }
 
       // CAS guard: only update if still unsettled
@@ -144,7 +140,7 @@ export async function settleBetsForMatch(matchId: string) {
 
       // Execute payouts
       if (payoutType === "full" && winnerId) {
-        const payoutAmount = Math.round(bet.stakeTokens * ((bet as any).winnerOdds ?? 2.0));
+        const payoutAmount = bet.stakeTokens * 2;
         if (bet.groupId) {
           await tx
             .update(groupMembers)
