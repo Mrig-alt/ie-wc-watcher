@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { STAKE_TOKENS } from "@/lib/tokens";
+const DEFAULT_STAKE_TOKENS = 10;
 
 interface OpenBetModalProps {
   matchId: string;
@@ -15,7 +15,7 @@ export default function OpenBetModal({ matchId, team1, team2, hasOdds }: OpenBet
   const [isOpen, setIsOpen] = useState(false);
   const router = useRouter();
 
-  const [stakeTokens, setStakeTokens] = useState<number>(STAKE_TOKENS);
+  const [stakeTokens, setStakeTokens] = useState<number>(DEFAULT_STAKE_TOKENS);
   const [betType, setBetType] = useState<"outcome" | "score">("outcome");
   const [challengerTeamSide, setChallengerTeamSide] = useState<1 | 2>(1);
   const [s1, setS1] = useState<string>("0");
