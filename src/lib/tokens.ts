@@ -2,12 +2,7 @@ import { db } from "@/db";
 import { students, bets, predictions, matches, groupMembers, tokenLedger } from "@/db/schema";
 import { eq, and, or, isNull, sql, inArray } from "drizzle-orm";
 
-export const STAKE_TOKENS = 10;
-export const PREDICTION_CORRECT_TOKENS = 5;
-export const PREDICTION_EXACT_TOKENS = 15;
-export const PUBLIC_BONUS_TOKENS = 200;
-export const EARLY_BIRD_BONUS_TOKENS = 100;
-export const EARLY_BIRD_LIMIT = 20;
+export * from "./constants";
 
 export async function settleBetsForMatch(matchId: string) {
   const [match] = await db.select().from(matches).where(eq(matches.id, matchId)).limit(1);

@@ -5,7 +5,7 @@ import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
 import LeaderboardClient from "@/components/leaderboard/LeaderboardClient";
 import LeaderboardInfoModal from "@/components/leaderboard/LeaderboardInfoModal";
 import ScoringLogicModal from "@/components/leaderboard/ScoringLogicModal";
-import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/tokens";
+import { PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS } from "@/lib/constants";
 
 export const dynamic = "force-dynamic";
 
