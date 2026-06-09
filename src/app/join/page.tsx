@@ -230,7 +230,7 @@ function JoinPageInner() {
               </div>
             )}
             {error && <p className="text-sm text-red-500">{error}</p>}
-            <Button className="w-full" disabled={loading || (pinRequired && !pin.trim())} onClick={handleSignIn}>
+            <Button className="w-full" disabled={loading || (pinRequired && !isGuest && !pin.trim())} onClick={handleSignIn}>
               {loading ? "Signing in..." : "Sign in \u2192"}
             </Button>
           </div>

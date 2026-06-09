@@ -7,13 +7,6 @@ import { useSession } from "next-auth/react";
 export default function PresenceTracker() {
   const { data: session } = useSession();
 
-  // Register service worker in production
-  useEffect(() => {
-    if ("serviceWorker" in navigator && process.env.NODE_ENV === "production") {
-      navigator.serviceWorker.register("/sw.js").catch(console.error);
-    }
-  }, []);
-
   useEffect(() => {
     // Guard on user.id — session.user alone can be a truthy empty object before id is populated
     if (!session?.user?.id) return;
