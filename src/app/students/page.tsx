@@ -12,29 +12,26 @@ export default async function StudentsPage() {
     const session = await auth();
     const validSession = session?.user?.id ? session : null;
 
-    // Accepted friend IDs — use two separate indexed queries instead of OR
+    // Fetch accepted friend IDs using two separate indexed queries
     // (OR on two UUID columns can't use individual indexes efficiently)
-    let friendIds = new Set<string>();
+    const friendIds = new Set<string>();
     if (validSession) {
-    const asRequester = validSession
-      ? await db
-          .select({ requesteeId: connections.requesteeId })
-          .from(connections)
-          .where(and(eq(connections.requesterId, validSession.user.id), eq(connections.status, "accepted")))
-      : [];
-      
-    const asRequestee = validSession
-      ? await db
-          .select({ requesterId: connections.requesterId })
-          .from(connections)
-          .where(and(eq(connections.requesteeId, validSession.user.id), eq(connections.status, "accepted")))
-      : [];
-      
-    if (validSession) {
+      const uid = validSession.user.id;
+      const asRequester = await db
+        .select({ requesteeId: connections.requesteeId })
+        .from(connections)
+        .where(and(eq(connections.requesterId, uid), eq(connections.status, "accepted")));
+
+      const asRequestee = await db
+        .select({ requesterId: connections.requesterId })
+        .from(connections)
+        .where(and(eq(connections.requesteeId, uid), eq(connections.status, "accepted")));
+
       for (const c of asRequester) friendIds.add(c.requesteeId);
       for (const c of asRequestee) friendIds.add(c.requesterId);
     }
 
+    // Build visibility filter directly in SQL to avoid loading all students into memory
     const visibilityCondition = validSession
       ? or(
           eq(students.visibility, "public"),
@@ -53,7 +50,6 @@ export default async function StudentsPage() {
         nationality: students.nationality,
         isHonoraryFan: students.isHonoraryFan,
         tokenBalance: students.tokenBalance,
-        visibility: students.visibility,
         lastSeenAt: students.lastSeenAt,
         teamId: students.teamId,
         teamName: teams.name,
@@ -71,7 +67,7 @@ export default async function StudentsPage() {
         )
       )
       .orderBy(students.name)
-      .limit(51);
+      .limit(51); // fetch 51 so we know if there's a next page
 
     const allTeams = await db
       .select({ id: teams.id, name: teams.name, flagEmoji: teams.flagEmoji })
