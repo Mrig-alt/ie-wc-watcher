@@ -61,10 +61,10 @@ export async function PATCH(
   const isScore = bet.student1Score1 !== null;
   const challengerId = isScore 
     ? bet.student1Id 
-    : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id);
+    : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id!);
   const opponentId = isScore 
-    ? bet.student2Id 
-    : (bet.challengerTeamSide === 1 ? bet.student2Id : bet.student1Id);
+    ? bet.student2Id! 
+    : (bet.challengerTeamSide === 1 ? bet.student2Id! : bet.student1Id);
 
   // Only the opponent can accept/decline
   if (session.user.id !== opponentId) {
@@ -242,7 +242,7 @@ export async function DELETE(
       const isScore = bet.student1Score1 !== null;
       const challengerId = isScore 
         ? bet.student1Id 
-        : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id);
+        : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id!);
 
       // Only the challenger can cancel
       if (session.user.id !== challengerId) {

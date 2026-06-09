@@ -15,7 +15,7 @@ const betSchema = z.object({
   challengerTeamSide: z.number().int().min(1).max(2).optional().nullable(),
   student1Score1: z.number().int().min(0).max(50).optional().nullable(),
   student1Score2: z.number().int().min(0).max(50).optional().nullable(),
-  student1Score2: z.number().int().min(0).max(50).optional().nullable(),
+
   groupId: z.string().uuid().optional().nullable(),
   isOpenMarket: z.boolean().optional().default(false),
 });
