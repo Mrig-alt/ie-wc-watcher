@@ -93,7 +93,7 @@ export default function UpdateWatchPlanSheet({
         onClick={() => { setOpen(true); setStep("match"); setSelMatch(null); setSelVenueId(null); setFreeVenue(""); setFreeUrl(""); }}
         className="w-full rounded-xl border-2 border-dashed border-gray-200 py-3 text-sm text-gray-400 hover:border-green-300 hover:text-green-600 transition-colors font-medium"
       >
-        + Update where you’re watching
+        + Update where you’re watching <span className="ml-2 text-green-500 font-bold bg-green-50 px-2 py-0.5 rounded-md text-xs border border-green-100">+50 Tokens / RSVP</span>
       </button>
 
       {open && (

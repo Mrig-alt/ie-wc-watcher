@@ -1,13 +1,15 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { matches, teams, students, matchReactions, watchInvites, venues, predictions, connections } from "@/db/schema";
+import { matches, teams, students, matchReactions, watchInvites, venues, predictions, connections, watchRsvps } from "@/db/schema";
 import { eq, and, asc, inArray, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { formatMatchDate, formatKickoff, stageLabel } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import ReactionTimeline from "@/components/matches/ReactionTimeline";
 import LiveReportsWidget from "@/components/watchmap/LiveReportsWidget";
+import WatchPlansList from "@/components/watchmap/WatchPlansList";
 import MatchDetailPrediction from "@/components/matches/MatchDetailPrediction";
+import OpenBetModal from "@/components/market/OpenBetModal";
 import Link from "next/link";
 import { MapPin, ExternalLink, Users } from "lucide-react";
 import LocalTime from "@/components/ui/LocalTime";
@@ -64,6 +66,11 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       session?.user?.id
         ? db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
         : Promise.resolve([]),
+      db.select({ inviteId: watchRsvps.inviteId, studentId: watchRsvps.studentId, studentName: students.name })
+        .from(watchRsvps)
+        .innerJoin(watchInvites, eq(watchInvites.id, watchRsvps.inviteId))
+        .innerJoin(students, eq(students.id, watchRsvps.studentId))
+        .where(eq(watchInvites.matchId, id)),
     ]);
 
   const teamMap = new Map(fetchedTeams.map((t) => [t.id, t]));
@@ -81,16 +88,24 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
     return true;
   });
 
-  const venueCounts: Record<string, { name: string; area: string | null; mapsUrl: string | null; url: string | null; count: number; people: string[] }> = {};
-  for (const inv of filteredInvites) {
-    const key = inv.venueId ?? inv.locationName ?? "Unknown";
-    const linked = inv.venueId ? venueMap.get(inv.venueId) : null;
-    const name = linked?.name ?? inv.locationName ?? "Unknown";
-    if (!venueCounts[key]) venueCounts[key] = { name, area: linked?.area ?? null, mapsUrl: linked?.mapsUrl ?? null, url: inv.locationUrl ?? null, count: 0, people: [] };
-    venueCounts[key].count++;
-    venueCounts[key].people.push(inv.inviterName);
+  const rsvpsByInvite: Record<string, { studentId: string; name: string }[]> = {};
+  for (const rsvp of allRsvps) {
+    if (!rsvpsByInvite[rsvp.inviteId]) rsvpsByInvite[rsvp.inviteId] = [];
+    rsvpsByInvite[rsvp.inviteId].push({ studentId: rsvp.studentId, name: rsvp.studentName });
   }
-  const venueBreakdown = Object.values(venueCounts).sort((a, b) => b.count - a.count);
+
+  const invitesWithRsvps = filteredInvites.map((inv) => {
+    const linked = inv.venueId ? venueMap.get(inv.venueId) : null;
+    return {
+      id: inv.id,
+      venueName: linked?.name ?? inv.locationName ?? "Unknown",
+      area: linked?.area ?? null,
+      mapsUrl: linked?.mapsUrl ?? inv.locationUrl ?? null,
+      hostId: inv.inviterId,
+      hostName: inv.inviterName,
+      rsvps: rsvpsByInvite[inv.id] || [],
+    };
+  });
 
   const enrichedReactions = reactions.map((r) => ({
     ...r,
@@ -159,17 +174,25 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
       {/* Prediction card — client component handles collapse/expand + token refresh */}
       {canPredict && (
-        <MatchDetailPrediction
-          matchId={id}
-          team1={team1!}
-          team2={team2!}
-          hasOdds={match.team1Odds != null || match.team2Odds != null || match.drawOdds != null}
-          existing={
-            existingPrediction
-              ? { predictedScore1: existingPrediction.predictedScore1, predictedScore2: existingPrediction.predictedScore2 }
-              : null
-          }
-        />
+        <>
+          <MatchDetailPrediction
+            matchId={id}
+            team1={team1!}
+            team2={team2!}
+            hasOdds={match.team1Odds != null || match.team2Odds != null || match.drawOdds != null}
+            existing={
+              existingPrediction
+                ? { predictedScore1: existingPrediction.predictedScore1, predictedScore2: existingPrediction.predictedScore2 }
+                : null
+            }
+          />
+          <OpenBetModal
+            matchId={id}
+            team1={{ id: team1!.id, name: t1Name, flagEmoji: team1?.flagEmoji ?? "🏳️" }}
+            team2={{ id: team2!.id, name: t2Name, flagEmoji: team2?.flagEmoji ?? "🏳️" }}
+            hasOdds={match.team1Odds != null || match.team2Odds != null || match.drawOdds != null}
+          />
+        </>
       )}
 
       {/* Logged-out CTA */}
@@ -186,38 +209,14 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
       <section>
         <h2 className="text-base font-semibold text-gray-900 mb-3 flex items-center gap-2">
           <MapPin className="h-4 w-4 text-green-500" /> Where people are watching
-          {filteredInvites.length > 0 && <span className="text-xs font-normal text-gray-400 flex items-center gap-1"><Users className="h-3.5 w-3.5" />{filteredInvites.length} going</span>}
+          {filteredInvites.length > 0 && <span className="text-xs font-normal text-gray-400 flex items-center gap-1"><Users className="h-3.5 w-3.5" />{filteredInvites.length} plans</span>}
         </h2>
-        {venueBreakdown.length === 0 ? (
-          <div className="rounded-xl border border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">
-            No watch plans yet.
-            {match.status !== "completed" && <Link href="/watchmap" className="ml-1 text-green-600 font-medium hover:underline">Add yours &rarr;</Link>}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {venueBreakdown.map((v) => (
-              <div key={v.name} className="rounded-xl border border-gray-100 bg-white shadow-sm px-4 py-3">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <div className="flex items-center gap-1.5">
-                      <MapPin className="h-3.5 w-3.5 text-green-500 shrink-0" />
-                      <span className="text-sm font-semibold text-gray-900">{v.name}</span>
-                      {v.area && <span className="text-xs text-gray-400">· {v.area}</span>}
-                      {(v.mapsUrl || v.url) && (
-                        <a href={v.mapsUrl ?? v.url ?? ""} target="_blank" rel="noopener noreferrer">
-                          <ExternalLink className="h-3 w-3 text-gray-400 hover:text-green-600" />
-                        </a>
-                      )}
-                    </div>
-                    <div className="text-xs text-gray-500 mt-1 ml-5">{v.people.join(", ")}</div>
-                  </div>
-                  <span className="shrink-0 text-xs font-bold text-green-600 bg-green-50 px-2 py-0.5 rounded-full">{v.count} going</span>
-                </div>
-              </div>
-            ))}
-            {match.status !== "completed" && <Link href="/watchmap" className="block text-center text-xs text-green-600 hover:underline pt-1">Update your plan &rarr;</Link>}
-          </div>
-        )}
+        
+        <WatchPlansList 
+          invites={invitesWithRsvps} 
+          currentUserId={session?.user?.id}
+          isCompleted={match.status === "completed"}
+        />
       </section>
 
       {/* Reactions */}

@@ -47,7 +47,11 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
 
           if (item.type === "bet") {
             const isSender = item.student1Id === currentUserId;
-            title = `Challenge ${isSender ? "Sent to" : "Received from"} ${item.opponentName || "Classmate"}`;
+            if (item.isOpenMarket) {
+              title = isSender ? "Your Open Bet" : `Took Open Bet from ${item.opponentName || "Classmate"}`;
+            } else {
+              title = `Challenge ${isSender ? "Sent to" : "Received from"} ${item.opponentName || "Classmate"}`;
+            }
             
             if (item.status === "declined" || item.status === "cancelled") {
               resultText = `Declined (Refunded ${item.stakeTokens} 🪙)`;
@@ -56,6 +60,9 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
               if (item.status === "accepted") {
                 resultText = `Accepted (${item.stakeTokens} 🪙 staked)`;
                 resultClass = "text-blue-700 bg-blue-50 border-blue-200";
+              } else if (item.isOpenMarket) {
+                resultText = `Available on Market (${item.stakeTokens} 🪙 staked)`;
+                resultClass = "text-purple-600 bg-purple-50 border-purple-200";
               } else {
                 resultText = `Awaiting Response (${item.stakeTokens} 🪙 staked)`;
                 resultClass = "text-yellow-600 bg-yellow-50 border-yellow-200";

@@ -85,6 +85,13 @@
       "when": 1780939894524,
       "tag": "0011_chubby_chamber",
       "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "7",
+      "when": 1780959954034,
+      "tag": "0012_secret_wallflower",
+      "breakpoints": true
     }
   ]
 }

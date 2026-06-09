@@ -15,7 +15,9 @@ const betSchema = z.object({
   challengerTeamSide: z.number().int().min(1).max(2).optional().nullable(),
   student1Score1: z.number().int().min(0).max(50).optional().nullable(),
   student1Score2: z.number().int().min(0).max(50).optional().nullable(),
+  student1Score2: z.number().int().min(0).max(50).optional().nullable(),
   groupId: z.string().uuid().optional().nullable(),
+  isOpenMarket: z.boolean().optional().default(false),
 });
 
 export async function POST(req: Request) {
@@ -32,7 +34,15 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: parsed.error.flatten().fieldErrors }, { status: 400 });
   }
 
-  const { matchId, opponentId, stakeTokens, challengerTeamSide, student1Score1, student1Score2, groupId } = parsed.data;
+  const { matchId, opponentId, stakeTokens, challengerTeamSide, student1Score1, student1Score2, groupId, isOpenMarket } = parsed.data;
+
+  if (!isOpenMarket && !opponentId) {
+    return NextResponse.json({ error: "Opponent is required for private bets" }, { status: 400 });
+  }
+
+  if (isOpenMarket && groupId) {
+    return NextResponse.json({ error: "Open market bets cannot be placed inside groups" }, { status: 400 });
+  }
 
   if (opponentId === session.user.id) {
     return NextResponse.json({ error: "Cannot bet against yourself" }, { status: 400 });
@@ -56,20 +66,23 @@ export async function POST(req: Request) {
   try {
     betResult = await db.transaction(async (tx) => {
       // Check bet doesn't already exist between these two for this match (either direction)
-      const existing = await tx
-        .select({ id: bets.id })
-        .from(bets)
-        .where(
-          and(
-            eq(bets.matchId, matchId),
-            or(
-              and(eq(bets.student1Id, session.user.id), eq(bets.student2Id, opponentId)),
-              and(eq(bets.student1Id, opponentId), eq(bets.student2Id, session.user.id))
+      let existing = [];
+      if (!isOpenMarket) {
+        existing = await tx
+          .select({ id: bets.id })
+          .from(bets)
+          .where(
+            and(
+              eq(bets.matchId, matchId),
+              or(
+                and(eq(bets.student1Id, session.user.id), eq(bets.student2Id, opponentId!)),
+                and(eq(bets.student1Id, opponentId!), eq(bets.student2Id, session.user.id))
+              )
             )
           )
-        )
-        .for("update")
-        .limit(1);
+          .for("update")
+          .limit(1);
+      }
 
       if (existing.length > 0) {
         throw new Error("BET_ALREADY_EXISTS");
@@ -103,7 +116,7 @@ export async function POST(req: Request) {
           throw new Error("NOT_IN_GROUP_OPPONENT");
         }
 
-        const [oppStudent] = await tx.select({ email: students.email, emailEnabled: students.emailEnabled }).from(students).where(eq(students.id, opponentId)).limit(1);
+        const [oppStudent] = await tx.select({ email: students.email, emailEnabled: students.emailEnabled }).from(students).where(eq(students.id, opponentId!)).limit(1);
         if (!oppStudent) throw new Error("OPPONENT_NOT_FOUND");
         opponentEmail = oppStudent.email;
         opponentEmailEnabled = oppStudent.emailEnabled;
@@ -127,40 +140,46 @@ export async function POST(req: Request) {
           })
           .where(and(eq(groupMembers.groupId, groupId), eq(groupMembers.studentId, session.user.id)));
       } else {
-        // Global bet validation
-        // Sort IDs to prevent deadlocks when locking student records
-        const firstId = session.user.id < opponentId ? session.user.id : opponentId;
-        const secondId = session.user.id < opponentId ? opponentId : session.user.id;
-
-        const [firstStudent] = await tx
-          .select({ id: students.id, tokenBalance: students.tokenBalance, email: students.email, emailEnabled: students.emailEnabled })
-          .from(students)
-          .where(eq(students.id, firstId))
-          .for("update")
-          .limit(1);
-
-        const [secondStudent] = await tx
-          .select({ id: students.id, tokenBalance: students.tokenBalance, email: students.email, emailEnabled: students.emailEnabled })
-          .from(students)
-          .where(eq(students.id, secondId))
-          .for("update")
-          .limit(1);
-
-        if (!firstStudent || !secondStudent) {
-          throw new Error("OPPONENT_NOT_FOUND");
-        }
-
-        const requester = firstStudent.id === session.user.id ? firstStudent : secondStudent;
-        const opponent = firstStudent.id === opponentId ? firstStudent : secondStudent;
-        
-        opponentEmail = opponent.email;
-        opponentEmailEnabled = opponent.emailEnabled;
-
-        if (requester.tokenBalance < stakeTokens) {
-          throw new Error("INSUFFICIENT_TOKENS_REQUESTER");
-        }
-        if (opponent.tokenBalance < stakeTokens) {
-          throw new Error("INSUFFICIENT_TOKENS_OPPONENT");
+        if (isOpenMarket) {
+          const [challenger] = await tx
+            .select({ id: students.id, tokenBalance: students.tokenBalance })
+            .from(students)
+            .where(eq(students.id, session.user.id))
+            .for("update")
+            .limit(1);
+  
+          if (!challenger) throw new Error("CHALLENGER_NOT_FOUND");
+          if (challenger.tokenBalance < stakeTokens) throw new Error("INSUFFICIENT_TOKENS_REQUESTER");
+        } else {
+          const firstId = session.user.id < opponentId! ? session.user.id : opponentId!;
+          const secondId = session.user.id < opponentId! ? opponentId! : session.user.id;
+  
+          const [firstStudent] = await tx
+            .select({ id: students.id, tokenBalance: students.tokenBalance, email: students.email, emailEnabled: students.emailEnabled })
+            .from(students)
+            .where(eq(students.id, firstId))
+            .for("update")
+            .limit(1);
+  
+          const [secondStudent] = await tx
+            .select({ id: students.id, tokenBalance: students.tokenBalance, email: students.email, emailEnabled: students.emailEnabled })
+            .from(students)
+            .where(eq(students.id, secondId))
+            .for("update")
+            .limit(1);
+  
+          if (!firstStudent || !secondStudent) {
+            throw new Error("OPPONENT_NOT_FOUND");
+          }
+  
+          const opponent = firstStudent.id === opponentId ? firstStudent : secondStudent;
+          
+          opponentEmail = opponent.email;
+          opponentEmailEnabled = opponent.emailEnabled;
+  
+          const requester = firstStudent.id === session.user.id ? firstStudent : secondStudent;
+          if (requester.tokenBalance < stakeTokens) throw new Error("INSUFFICIENT_TOKENS_REQUESTER");
+          if (opponent.tokenBalance < stakeTokens) throw new Error("INSUFFICIENT_TOKENS_OPPONENT");
         }
 
         // Deduct stake ONLY from challenger upfront in global balance
@@ -183,14 +202,17 @@ export async function POST(req: Request) {
 
       const isScore = student1Score1 !== undefined && student1Score1 !== null;
       let student1Id: string;
-      let student2Id: string;
+      let student2Id: string | null = null;
 
-      if (isScore) {
+      if (isOpenMarket) {
         student1Id = session.user.id;
-        student2Id = opponentId;
+        student2Id = null;
+      } else if (isScore) {
+        student1Id = session.user.id;
+        student2Id = opponentId!;
       } else {
-        student1Id = challengerTeamSide === 1 ? session.user.id : opponentId;
-        student2Id = challengerTeamSide === 1 ? opponentId : session.user.id;
+        student1Id = challengerTeamSide === 1 ? session.user.id : opponentId!;
+        student2Id = challengerTeamSide === 1 ? opponentId! : session.user.id;
       }
 
       const [created] = await tx
@@ -200,6 +222,7 @@ export async function POST(req: Request) {
           student1Id,
           student2Id,
           groupId: groupId || null,
+          isOpenMarket,
           status: "pending",
           challengerTeamSide: isScore ? null : challengerTeamSide,
           stakeTokens,
@@ -235,7 +258,7 @@ export async function POST(req: Request) {
   }
 
   // Send push notification asynchronously
-  if (session.user.name) {
+  if (session.user.name && !isOpenMarket && opponentId) {
     sendChallengeNotification(opponentId, session.user.name, stakeTokens).catch(console.error);
     
     // Send email notification if enabled

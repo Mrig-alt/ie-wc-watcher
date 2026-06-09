@@ -25,6 +25,7 @@ export async function GET(req: Request) {
         team1Score: matches.team1Score,
         team2Score: matches.team2Score,
         opponentName: students.name,
+        isOpenMarket: bets.isOpenMarket,
       })
       .from(bets)
       .innerJoin(matches, eq(bets.matchId, matches.id))

@@ -237,9 +237,8 @@ export const bets = pgTable(
     student1Id: uuid("student1_id")
       .notNull()
       .references(() => students.id, { onDelete: "cascade" }),
-    student2Id: uuid("student2_id")
-      .notNull()
-      .references(() => students.id, { onDelete: "cascade" }),
+    student2Id: uuid("student2_id").references(() => students.id, { onDelete: "cascade" }),
+    isOpenMarket: boolean("is_open_market").notNull().default(false),
     groupId: uuid("group_id").references(() => friendGroups.id, { onDelete: "cascade" }),
     status: betStatusEnum("status").notNull().default("pending"),
     challengerTeamSide: integer("challenger_team_side"),
@@ -312,6 +311,21 @@ export const watchInvites = pgTable(
     createdAt: timestamp("created_at").notNull().defaultNow(),
   },
   (t) => [unique().on(t.inviterId, t.matchId)]
+);
+
+export const watchRsvps = pgTable(
+  "watch_rsvps",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    inviteId: uuid("invite_id")
+      .notNull()
+      .references(() => watchInvites.id, { onDelete: "cascade" }),
+    studentId: uuid("student_id")
+      .notNull()
+      .references(() => students.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [unique().on(t.inviteId, t.studentId)]
 );
 
 // ─── Live Reports ─────────────────────────────────────────────────────────────

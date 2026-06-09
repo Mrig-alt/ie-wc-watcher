@@ -1,28 +1,27 @@
-import { config } from "dotenv";
-config({ path: ".env.local" });
+import { db } from "../db/index";
 import { sql } from "drizzle-orm";
-import * as fs from "fs";
+import fs from "fs";
+import path from "path";
 
 async function main() {
-  const { db } = await import("@/db");
-  const sqlContent = fs.readFileSync("src/db/migrations/0010_previous_earthquake.sql", "utf8");
-  const statements = sqlContent.split("--> statement-breakpoint").map(s => s.trim()).filter(s => s.length > 0);
-  
-  for (const statement of statements) {
-    try {
-      await db.execute(sql.raw(statement));
-      console.log("Executed: ", statement.slice(0, 50) + "...");
-    } catch (e: any) { 
-      console.log("Failed query:", statement);
-      console.log("Error:", e.message); 
+  try {
+    const migrationPath = path.join(__dirname, "../db/migrations/0012_secret_wallflower.sql");
+    const migrationSql = fs.readFileSync(migrationPath, "utf-8");
+    
+    // Split by statement-breakpoint because drizzle separates statements
+    const statements = migrationSql.split("--> statement-breakpoint");
+    
+    for (const stmt of statements) {
+      if (stmt.trim()) {
+        await db.execute(sql.raw(stmt.trim()));
+      }
     }
+    
+    console.log("Migration applied successfully!");
+  } catch (error) {
+    console.error("Migration failed:", error);
   }
-  
-  console.log("Migration executed!");
   process.exit(0);
 }
 
-main().catch((e) => {
-  console.error(e);
-  process.exit(1);
-});
+main();
