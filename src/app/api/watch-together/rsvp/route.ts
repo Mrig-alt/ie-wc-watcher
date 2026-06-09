@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { watchRsvps, watchInvites, students, tokenLedger } from "@/db/schema";
 import { eq, and, sql } from "drizzle-orm";
 import { z } from "zod";
+import { revalidatePath } from "next/cache";
 
 const HOST_REWARD_PER_RSVP = 50;
 const MAX_REWARDED_RSVPS = 10;
@@ -78,10 +79,12 @@ export async function POST(req: Request) {
         });
       }
 
-      return { rsvp, rewarded: isRewarded };
+      return { rsvpRecord, invite };
     });
 
-    return NextResponse.json({ success: true, ...result });
+    revalidatePath("/");
+    revalidatePath(`/matches/${result.invite.matchId}`);
+    return NextResponse.json({ success: true, rsvp: result.rsvpRecord }, { status: 201 });
   } catch (e: any) {
     console.error("[rsvp error]", e);
     const msg = e.message || "Internal error";

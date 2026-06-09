@@ -45,33 +45,37 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
   const teamIds = [match.team1Id, match.team2Id].filter(Boolean) as string[];
 
-  const [fetchedTeams, team1Supporters, team2Supporters, rawInvites, allVenues, reactions, myPredictionList, allRsvps] =
-    await Promise.all([
-      teamIds.length > 0 ? db.select().from(teams).where(inArray(teams.id, teamIds)) : Promise.resolve([]),
-      match.team1Id
-        ? db.select({ id: students.id, name: students.name }).from(students)
-            .where(and(eq(students.teamId, match.team1Id), eq(students.flagged, false), eq(students.visibility, "public")))
-        : Promise.resolve([]),
-      match.team2Id
-        ? db.select({ id: students.id, name: students.name }).from(students)
-            .where(and(eq(students.teamId, match.team2Id), eq(students.flagged, false), eq(students.visibility, "public")))
-        : Promise.resolve([]),
-      db.select({ id: watchInvites.id, inviterId: watchInvites.inviterId, venueId: watchInvites.venueId, locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl, inviterName: students.name, visibility: students.visibility })
-        .from(watchInvites).innerJoin(students, eq(students.id, watchInvites.inviterId)).where(eq(watchInvites.matchId, id)),
-      db.select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl }).from(venues),
-      db.select({ id: matchReactions.id, emoji: matchReactions.emoji, matchMinute: matchReactions.matchMinute, createdAt: matchReactions.createdAt, studentId: matchReactions.studentId, studentName: students.name, studentVisibility: students.visibility })
-        .from(matchReactions)
-        .leftJoin(students, and(eq(students.id, matchReactions.studentId), eq(students.flagged, false)))
-        .where(eq(matchReactions.matchId, id)).orderBy(asc(matchReactions.createdAt)),
-      session?.user?.id
-        ? db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
-        : Promise.resolve([]),
-      db.select({ inviteId: watchRsvps.inviteId, studentId: watchRsvps.studentId, studentName: students.name })
-        .from(watchRsvps)
-        .innerJoin(watchInvites, eq(watchInvites.id, watchRsvps.inviteId))
-        .innerJoin(students, eq(students.id, watchRsvps.studentId))
-        .where(eq(watchInvites.matchId, id)),
-    ]);
+  const fetchedTeams = teamIds.length > 0 ? await db.select().from(teams).where(inArray(teams.id, teamIds)) : [];
+  
+  const team1Supporters = match.team1Id
+    ? await db.select({ id: students.id, name: students.name }).from(students)
+        .where(and(eq(students.teamId, match.team1Id), eq(students.flagged, false), eq(students.visibility, "public")))
+    : [];
+
+  const team2Supporters = match.team2Id
+    ? await db.select({ id: students.id, name: students.name }).from(students)
+        .where(and(eq(students.teamId, match.team2Id), eq(students.flagged, false), eq(students.visibility, "public")))
+    : [];
+
+  const rawInvites = await db.select({ id: watchInvites.id, inviterId: watchInvites.inviterId, venueId: watchInvites.venueId, locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl, inviterName: students.name, visibility: students.visibility })
+    .from(watchInvites).innerJoin(students, eq(students.id, watchInvites.inviterId)).where(eq(watchInvites.matchId, id));
+
+  const allVenues = await db.select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl }).from(venues);
+
+  const reactions = await db.select({ id: matchReactions.id, emoji: matchReactions.emoji, matchMinute: matchReactions.matchMinute, createdAt: matchReactions.createdAt, studentId: matchReactions.studentId, studentName: students.name, studentVisibility: students.visibility })
+    .from(matchReactions)
+    .leftJoin(students, and(eq(students.id, matchReactions.studentId), eq(students.flagged, false)))
+    .where(eq(matchReactions.matchId, id)).orderBy(asc(matchReactions.createdAt));
+
+  const myPredictionList = session?.user?.id
+    ? await db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
+    : [];
+
+  const allRsvps = await db.select({ inviteId: watchRsvps.inviteId, studentId: watchRsvps.studentId, studentName: students.name })
+    .from(watchRsvps)
+    .innerJoin(watchInvites, eq(watchInvites.id, watchRsvps.inviteId))
+    .innerJoin(students, eq(students.id, watchRsvps.studentId))
+    .where(eq(watchInvites.matchId, id));
 
   const teamMap = new Map(fetchedTeams.map((t) => [t.id, t]));
   const team1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;

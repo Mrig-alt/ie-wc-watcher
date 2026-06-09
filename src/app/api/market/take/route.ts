@@ -5,6 +5,7 @@ import { bets, students, tokenLedger, matches } from "@/db/schema";
 import { eq, and, sql, isNull } from "drizzle-orm";
 import { z } from "zod";
 import { sendChallengeNotification } from "@/lib/push";
+import { revalidatePath } from "next/cache";
 
 const takeBetSchema = z.object({
   betId: z.string().uuid(),
@@ -98,6 +99,8 @@ export async function POST(req: Request) {
       sendChallengeNotification(result.student1Id, session.user.name, result.stakeTokens).catch(console.error);
     }
 
+    revalidatePath("/");
+    revalidatePath(`/matches/${result.matchId}`);
     return NextResponse.json({ success: true, bet: result });
   } catch (e: any) {
     console.error("[market take error]", e);

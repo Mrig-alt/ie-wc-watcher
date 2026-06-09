@@ -45,10 +45,8 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
     const allMatchesForStandings = isGroups ? await db.select().from(matches) : [];
 
-    const [allStudents, allTeams] = await Promise.all([
-      getCachedActiveStudents(),
-      getCachedTeams(),
-    ]);
+    const allStudents = await getCachedActiveStudents();
+    const allTeams = await getCachedTeams();
     const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
     const myPredictions = validSession

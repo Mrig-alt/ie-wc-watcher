@@ -2,7 +2,7 @@ import { Suspense } from "react";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
 import { students, teams, connections, matches } from "@/db/schema";
-import { eq, and, asc, isNull } from "drizzle-orm";
+import { eq, and, asc, isNull, or, sql, inArray } from "drizzle-orm";
 import ClassmatesPageClient from "@/components/students/ClassmatesPageClient";
 
 export const dynamic = "force-dynamic";
@@ -16,71 +16,83 @@ export default async function StudentsPage() {
     // (OR on two UUID columns can't use individual indexes efficiently)
     let friendIds = new Set<string>();
     if (validSession) {
-      const uid = validSession.user.id;
-      const [asRequester, asRequestee] = await Promise.all([
-        db
+    const asRequester = validSession
+      ? await db
           .select({ requesteeId: connections.requesteeId })
           .from(connections)
-          .where(and(eq(connections.requesterId, uid), eq(connections.status, "accepted"))),
-        db
+          .where(and(eq(connections.requesterId, validSession.user.id), eq(connections.status, "accepted")))
+      : [];
+      
+    const asRequestee = validSession
+      ? await db
           .select({ requesterId: connections.requesterId })
           .from(connections)
-          .where(and(eq(connections.requesteeId, uid), eq(connections.status, "accepted"))),
-      ]);
+          .where(and(eq(connections.requesteeId, validSession.user.id), eq(connections.status, "accepted")))
+      : [];
+      
+    if (validSession) {
       for (const c of asRequester) friendIds.add(c.requesteeId);
       for (const c of asRequestee) friendIds.add(c.requesterId);
     }
 
-    const [allStudents, allTeams, upcomingMatches] = await Promise.all([
-      db
-        .select({
-          id: students.id,
-          name: students.name,
-          nationality: students.nationality,
-          isHonoraryFan: students.isHonoraryFan,
-          tokenBalance: students.tokenBalance,
-          visibility: students.visibility,
-          lastSeenAt: students.lastSeenAt,
-          teamId: students.teamId,
-          teamName: teams.name,
-          teamFlag: teams.flagEmoji,
-          teamCode: teams.countryCode,
-        })
-        .from(students)
-        .leftJoin(teams, eq(students.teamId, teams.id))
-        .where(and(eq(students.flagged, false), eq(students.isGuest, false), isNull(students.deletedAt)))
-        .orderBy(students.name),
+    const visibilityCondition = validSession
+      ? or(
+          eq(students.visibility, "public"),
+          eq(students.id, validSession.user.id),
+          and(
+            eq(students.visibility, "friends"),
+            friendIds.size > 0 ? inArray(students.id, Array.from(friendIds)) : sql`FALSE`
+          )
+        )
+      : eq(students.visibility, "public");
 
-      db
-        .select({ id: teams.id, name: teams.name, flagEmoji: teams.flagEmoji })
-        .from(teams),
+    const allStudentsRaw = await db
+      .select({
+        id: students.id,
+        name: students.name,
+        nationality: students.nationality,
+        isHonoraryFan: students.isHonoraryFan,
+        tokenBalance: students.tokenBalance,
+        visibility: students.visibility,
+        lastSeenAt: students.lastSeenAt,
+        teamId: students.teamId,
+        teamName: teams.name,
+        teamFlag: teams.flagEmoji,
+        teamCode: teams.countryCode,
+      })
+      .from(students)
+      .leftJoin(teams, eq(students.teamId, teams.id))
+      .where(
+        and(
+          eq(students.flagged, false),
+          eq(students.isGuest, false),
+          isNull(students.deletedAt),
+          visibilityCondition
+        )
+      )
+      .orderBy(students.name)
+      .limit(51);
 
-      db
-        .select({
-          id: matches.id,
-          team1Id: matches.team1Id,
-          team2Id: matches.team2Id,
-          team1Placeholder: matches.team1Placeholder,
-          team2Placeholder: matches.team2Placeholder,
-          matchDatetime: matches.matchDatetime,
-          team1Odds: matches.team1Odds,
-          team2Odds: matches.team2Odds,
-        })
-        .from(matches)
-        .where(eq(matches.status, "upcoming"))
-        .orderBy(asc(matches.matchDatetime)),
-    ]);
+    const allTeams = await db
+      .select({ id: teams.id, name: teams.name, flagEmoji: teams.flagEmoji })
+      .from(teams);
 
-    // Filter by visibility
-    const visible = allStudents.filter((s) => {
-      if (s.visibility === "public") return true;
-      if (!validSession) return false;
-      if (s.id === validSession.user.id) return true;
-      if (s.visibility === "friends") return friendIds.has(s.id);
-      return false; // stealth
-    });
+    const upcomingMatches = await db
+      .select({
+        id: matches.id,
+        team1Id: matches.team1Id,
+        team2Id: matches.team2Id,
+        team1Placeholder: matches.team1Placeholder,
+        team2Placeholder: matches.team2Placeholder,
+        matchDatetime: matches.matchDatetime,
+        team1Odds: matches.team1Odds,
+        team2Odds: matches.team2Odds,
+      })
+      .from(matches)
+      .where(eq(matches.status, "upcoming"))
+      .orderBy(asc(matches.matchDatetime));
 
-    const mappedStudents = visible.map((s) => ({
+    const mappedStudents = allStudentsRaw.map((s) => ({
       id: s.id,
       name: s.name,
       nationality: s.nationality,

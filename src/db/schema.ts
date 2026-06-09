@@ -158,6 +158,7 @@ export const groupMembers = pgTable(
   },
   (t) => [
     unique().on(t.groupId, t.studentId),
+    index("group_members_student_idx").on(t.studentId),
     check("group_escrow_tokens_check", sql`${t.escrowTokens} >= 0`)
   ]
 );
@@ -175,7 +176,9 @@ export const venues = pgTable("venues", {
   isCustom: boolean("is_custom").notNull().default(false),
   addedBy: uuid("added_by").references(() => students.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("venues_added_by_idx").on(t.addedBy),
+]);
 
 // ─── Matches ──────────────────────────────────────────────────────────────────
 
@@ -354,7 +357,11 @@ export const liveReports = pgTable("live_reports", {
   status: liveReportStatusEnum("status").notNull(),
   comment: text("comment"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
-});
+}, (t) => [
+  index("live_reports_student_idx").on(t.studentId),
+  index("live_reports_venue_idx").on(t.venueId),
+  index("live_reports_match_idx").on(t.matchId),
+]);
 
 // ─── Survey Responses ─────────────────────────────────────────────────────────
 
@@ -388,7 +395,9 @@ export const tokenLedger = pgTable("token_ledger", {
   reason: varchar("reason", { length: 100 }).notNull(),
   matchId: uuid("match_id").references(() => matches.id, { onDelete: "set null" }),
   createdAt: timestamp("created_at").notNull().defaultNow(),
-});
+}, (t) => [
+  index("token_ledger_student_idx").on(t.studentId),
+]);
 
 // ─── Prediction History ───────────────────────────────────────────────────────
 

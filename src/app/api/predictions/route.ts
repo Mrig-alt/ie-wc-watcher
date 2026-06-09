@@ -4,6 +4,7 @@ import { db } from "@/db";
 import { predictions, matches, predictionHistory, students } from "@/db/schema";
 import { eq, and, count, isNull, sql } from "drizzle-orm";
 import { predictionSchema } from "@/lib/validations";
+import { revalidatePath } from "next/cache";
 
 export async function POST(req: Request) {
   const session = await auth();
@@ -135,6 +136,8 @@ export async function POST(req: Request) {
       return predRow;
     });
 
+    revalidatePath("/");
+    revalidatePath(`/matches/${matchId}`);
     return NextResponse.json({ prediction: pred }, { status: 201 });
   } catch (e: any) {
     if (e.message === "INSUFFICIENT_FUNDS") {

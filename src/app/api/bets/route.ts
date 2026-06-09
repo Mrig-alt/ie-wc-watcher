@@ -7,6 +7,7 @@ import { z } from "zod";
 import { STAKE_TOKENS } from "@/lib/tokens";
 import { sendChallengeNotification } from "@/lib/push";
 import { sendEmail } from "@/lib/email";
+import { revalidatePath } from "next/cache";
 
 const betSchema = z.object({
   matchId: z.string().uuid(),
@@ -305,6 +306,11 @@ export async function POST(req: Request) {
     }
   }
 
+  revalidatePath("/");
+  revalidatePath(`/matches/${matchId}`);
+  if (groupId) {
+    revalidatePath(`/students/groups/${groupId}`);
+  }
   return NextResponse.json({ bet: betResult.created }, { status: 201 });
 }
 

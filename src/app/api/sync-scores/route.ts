@@ -46,7 +46,7 @@ export async function GET(req: Request) {
     const matchesByExtId = new Map(dbMatches.filter(m => m.externalId).map(m => [m.externalId, m]));
     const matchesByTeams = new Map(dbMatches.map(m => [`${m.team1Id}-${m.team2Id}`, m]));
 
-    const syncPromises = apiMatches.map(async (am) => {
+    for (const am of apiMatches) {
       const newStatus = mapApiStatus(am.status);
       const score1 = am.score.fullTime.home;
       const score2 = am.score.fullTime.away;
@@ -65,7 +65,7 @@ export async function GET(req: Request) {
                            existingByExtId.team1Penalties !== pen1 ||
                            existingByExtId.team2Penalties !== pen2;
                            
-        if (!hasChanged) return { synced: 0, settled: 0 };
+        if (!hasChanged) continue;
 
         const wasCompleted = existingByExtId.status === "completed";
         const scoresNowAvailable =
@@ -84,7 +84,9 @@ export async function GET(req: Request) {
           await settlePredictionsForMatch(existingByExtId.id);
           settledNow = 1;
         }
-        return { synced: 1, settled: settledNow };
+        synced += 1;
+        settled += settledNow;
+        continue;
       }
 
       const tla1 = am.homeTeam.tla?.toUpperCase();
@@ -104,7 +106,8 @@ export async function GET(req: Request) {
           team1Score: score1,
           team2Score: score2,
         });
-        return { synced: 1, settled: 0 };
+        synced += 1;
+        continue;
       }
 
       const existingByTeams = matchesByTeams.get(`${team1Id}-${team2Id}`);
@@ -116,7 +119,7 @@ export async function GET(req: Request) {
                            existingByTeams.team1Penalties !== pen1 ||
                            existingByTeams.team2Penalties !== pen2;
                            
-        if (!hasChanged) return { synced: 0, settled: 0 };
+        if (!hasChanged) continue;
 
         const wasCompleted = existingByTeams.status === "completed";
         const scoresNowAvailable =
@@ -135,7 +138,9 @@ export async function GET(req: Request) {
           await settlePredictionsForMatch(existingByTeams.id);
           settledNow = 1;
         }
-        return { synced: 1, settled: settledNow };
+        synced += 1;
+        settled += settledNow;
+        continue;
       } else {
         // New WC match
         await db.insert(matches).values({
@@ -148,13 +153,10 @@ export async function GET(req: Request) {
           team1Score: score1,
           team2Score: score2,
         });
-        return { synced: 1, settled: 0 };
+        synced += 1;
+        continue;
       }
-    });
-
-    const results = await Promise.all(syncPromises);
-    synced = results.reduce((acc, r) => acc + r.synced, 0);
-    settled = results.reduce((acc, r) => acc + r.settled, 0);
+    }
 
     return NextResponse.json({ synced, settled });
   } catch (e) {
