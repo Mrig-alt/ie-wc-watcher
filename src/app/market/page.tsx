@@ -1,4 +1,5 @@
 import { auth } from "@/lib/auth";
+import { redirect } from "next/navigation";
 import { db } from "@/db";
 import { bets, matches, students, teams } from "@/db/schema";
 import { eq, and, isNull, desc, gte } from "drizzle-orm";
@@ -8,6 +9,9 @@ export const dynamic = "force-dynamic";
 
 export default async function MarketPage() {
   const session = await auth();
+  if (!session?.user?.id) {
+    redirect("/join");
+  }
 
   const openBetsRaw = await db
     .select({

@@ -127,7 +127,9 @@ export default function LiveReportsWidget({
     if (!barMap[key]) barMap[key] = { venueName: r.venueName, venueArea: r.venueArea, venueMapsUrl: r.venueMapsUrl, latestStatus: r.status, latestTime: r.createdAt, reports: [] };
     barMap[key].reports.push(r);
   }
-  const bars = Object.values(barMap).sort((a, b) => new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime());
+  const bars = Object.entries(barMap)
+    .map(([key, data]) => ({ key, ...data }))
+    .sort((a, b) => new Date(b.latestTime).getTime() - new Date(a.latestTime).getTime());
 
   return (
     <div className="space-y-3">
@@ -298,8 +300,8 @@ export default function LiveReportsWidget({
             </div>
           )}
           {bars.map((bar) => (
-            <div key={bar.venueName} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
-              <button className="w-full text-left px-4 py-3" onClick={() => setExpanded(expanded === bar.venueName ? null : bar.venueName)}>
+            <div key={bar.key} className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+              <button className="w-full text-left px-4 py-3" onClick={() => setExpanded(expanded === bar.key ? null : bar.key)}>
                 <div className="flex items-center justify-between gap-2">
                   <div>
                     <div className="flex items-center gap-1.5">
@@ -314,7 +316,7 @@ export default function LiveReportsWidget({
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-gray-400">{bar.reports.length} report{bar.reports.length !== 1 ? "s" : ""}</span>
-                    {expanded === bar.venueName ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
+                    {expanded === bar.key ? <ChevronUp className="h-4 w-4 text-gray-400" /> : <ChevronDown className="h-4 w-4 text-gray-400" />}
                   </div>
                 </div>
               </button>

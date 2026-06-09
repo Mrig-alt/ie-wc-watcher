@@ -36,6 +36,7 @@ export default function OpenBetModal({ matchId, team1, team2, hasOdds }: OpenBet
         matchId,
         stakeTokens,
         isOpenMarket: true,
+        opponentId: null,
       };
 
       if (betType === "outcome") {

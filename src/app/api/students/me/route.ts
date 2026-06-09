@@ -21,6 +21,11 @@ export async function GET() {
       tokenBalance: students.tokenBalance,
       teamId: students.teamId,
       visibility: students.visibility,
+      isGuest: students.isGuest,
+      hasBoughtIn: students.hasBoughtIn,
+      escrowTokens: students.escrowTokens,
+      pushEnabled: students.pushEnabled,
+      emailEnabled: students.emailEnabled,
     })
     .from(students)
     .where(and(eq(students.id, session.user.id), isNull(students.deletedAt)))
@@ -32,5 +37,10 @@ export async function GET() {
     tokenBalance: student.tokenBalance,
     teamId: student.teamId,
     visibility: student.visibility,
+    isGuest: student.isGuest,
+    hasBoughtIn: student.hasBoughtIn,
+    escrowTokens: student.escrowTokens,
+    pushEnabled: student.pushEnabled,
+    emailEnabled: student.emailEnabled,
   });
 }

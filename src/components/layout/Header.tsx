@@ -2,41 +2,25 @@
 
 import Link from "next/link";
 import { useSession } from "next-auth/react";
-import { useEffect, useState, useCallback } from "react";
+import { useEffect } from "react";
+import useSWR from "swr";
 import { Trophy, Coins, UserPlus } from "lucide-react";
 
 export default function Header() {
   const { data: session } = useSession();
-  const [liveTokens, setLiveTokens] = useState<number | null>(
-    session?.user?.tokenBalance ?? null
+  const fetcher = (url: string) => fetch(url).then((res) => res.ok ? res.json() : null);
+  const { data: profile, mutate } = useSWR(
+    session?.user?.id ? "/api/students/me" : null,
+    fetcher,
+    { refreshInterval: 0 } // no automatic polling, we rely on mutate
   );
 
-  // Sync from session immediately whenever session changes
   useEffect(() => {
-    if (session?.user?.tokenBalance != null) {
-      setLiveTokens(session.user.tokenBalance);
-    }
-  }, [session?.user?.id, session?.user?.tokenBalance]);
+    window.addEventListener("token-refresh", () => mutate());
+    return () => window.removeEventListener("token-refresh", () => mutate());
+  }, [mutate]);
 
-  const fetchTokens = useCallback(() => {
-    if (!session?.user?.id) {
-      setLiveTokens(null);
-      return;
-    }
-    fetch("/api/students/me")
-      .then((r) => (r.ok ? r.json() : null))
-      .then((d) => {
-        if (d?.tokenBalance != null) setLiveTokens(d.tokenBalance);
-      })
-      .catch(() => {});
-  }, [session?.user?.id]);
-
-  useEffect(() => { fetchTokens(); }, [fetchTokens]);
-
-  useEffect(() => {
-    window.addEventListener("token-refresh", fetchTokens);
-    return () => window.removeEventListener("token-refresh", fetchTokens);
-  }, [fetchTokens]);
+  const liveTokens = profile?.tokenBalance ?? session?.user?.tokenBalance ?? null;
 
   return (
     <header className="sticky top-0 z-40 border-b border-gray-100 bg-white/90 backdrop-blur-sm">
@@ -64,7 +48,7 @@ export default function Header() {
                 className="flex items-center gap-1.5 text-sm font-medium text-gray-700 hover:text-gray-900"
               >
                 <Coins className="h-4 w-4 text-yellow-500" />
-                <span>{liveTokens ?? session.user.tokenBalance ?? "\u2014"}</span>
+                <span>{liveTokens ?? "\u2014"}</span>
               </Link>
               <Link
                 href="/account"

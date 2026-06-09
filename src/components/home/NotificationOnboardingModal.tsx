@@ -128,7 +128,20 @@ export default function NotificationOnboardingModal({ email }: Props) {
           <Button onClick={handleSave} disabled={loading} className="w-full bg-blue-600 hover:bg-blue-700">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Save Preferences"}
           </Button>
-          <Button variant="ghost" onClick={handleSave} disabled={loading} className="w-full text-gray-500 text-xs">
+          <Button variant="ghost" onClick={async () => {
+            setLoading(true);
+            try {
+              await fetch("/api/profile/notifications", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ pushEnabled: false, emailEnabled: false }),
+              });
+              setOpen(false);
+              window.dispatchEvent(new Event("token-refresh"));
+            } finally {
+              setLoading(false);
+            }
+          }} disabled={loading} className="w-full text-gray-500 text-xs">
             Skip for now
           </Button>
         </div>

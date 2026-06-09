@@ -24,7 +24,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
   if (!group) return NextResponse.json({ error: "Not found" }, { status: 404 });
 
   // Members with token balances
-  const profitSql = sql`${groupMembers.tokenBalance} + ${groupMembers.escrowTokens} - ${groupMembers.totalTokensReceived}`;
+  const profitSql = sql<number>`${groupMembers.tokenBalance} + ${groupMembers.escrowTokens} - ${groupMembers.totalTokensReceived}`.mapWith(Number);
   const members = await db
     .select({
       studentId: groupMembers.studentId,

@@ -39,7 +39,7 @@ export default function LeaderboardRow({
       <span className="text-xl shrink-0">{student.team?.flagEmoji ?? "🏳️"}</span>
       <div className="flex-1 min-w-0">
         <p className="truncate text-sm font-medium text-gray-900 flex items-center flex-wrap gap-1.5">
-          <span>{student.name}</span>
+          <span>{(!currentUserId || student.isAnonymous) && !isCurrentUser ? "Anonymous Student" : student.name}</span>
           {isCurrentUser && <span className="text-xs text-green-600">(you)</span>}
           {student.isHonoraryFan && <span className="text-xs text-blue-500">🤝</span>}
           {student.hasBoughtIn && (

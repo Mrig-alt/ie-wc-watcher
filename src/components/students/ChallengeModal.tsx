@@ -86,16 +86,17 @@ export default function ChallengeModal({
 
       const data = await res.json();
       if (!res.ok) {
-        setError(data.error ?? "Failed to send challenge");
-      } else {
-        await update({ tokenBalance: myBalance - stakeTokens });
-        window.dispatchEvent(new Event("token-refresh"));
-        router.refresh();
-        if (onSuccess) onSuccess();
-        onClose();
+        throw new Error(data.error || "Failed to challenge");
       }
-    } catch {
-      setError("Something went wrong");
+
+      await update({ tokenBalance: myBalance - stakeTokens });
+      window.dispatchEvent(new Event("token-refresh"));
+      router.refresh();
+      if (onSuccess) onSuccess();
+      onClose();
+    } catch (err: any) {
+      setError(err.message || "An error occurred");
+      window.dispatchEvent(new Event("token-refresh")); // Rollback optimistic update
     } finally {
       setLoading(false);
     }

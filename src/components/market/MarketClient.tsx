@@ -61,6 +61,7 @@ export default function MarketClient({
       // Remove it from the list
       setBets((prev) => prev.filter((b) => b.id !== bet.id));
       router.refresh();
+      window.dispatchEvent(new Event("token-refresh"));
     } catch (err: any) {
       setError(err.message);
     } finally {
