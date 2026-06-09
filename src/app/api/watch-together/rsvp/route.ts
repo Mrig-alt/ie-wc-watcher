@@ -79,12 +79,12 @@ export async function POST(req: Request) {
         });
       }
 
-      return { rsvpRecord, invite };
+      return { rsvp, invite };
     });
 
     revalidatePath("/");
     revalidatePath(`/matches/${result.invite.matchId}`);
-    return NextResponse.json({ success: true, rsvp: result.rsvpRecord }, { status: 201 });
+    return NextResponse.json({ success: true, rsvp: result.rsvp }, { status: 201 });
   } catch (e: any) {
     console.error("[rsvp error]", e);
     const msg = e.message || "Internal error";
