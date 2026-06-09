@@ -33,7 +33,7 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
   const combined = [
     ...history.bets.map((b) => ({ ...b, type: "bet" as const })),
     ...history.predictions.map((p) => ({ ...p, type: "prediction" as const })),
-  ].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+  ].sort((a, b) => new Date(b.matchDatetime).getTime() - new Date(a.matchDatetime).getTime());
 
   return (
     <div className="space-y-3">
@@ -56,6 +56,9 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
             if (item.status === "declined" || item.status === "cancelled") {
               resultText = `Declined (Refunded ${item.stakeTokens} 🪙)`;
               resultClass = "text-gray-500 bg-gray-100 border-gray-200 line-through";
+            } else if (item.status === "expired") {
+              resultText = `Expired (Refunded ${item.stakeTokens} 🪙)`;
+              resultClass = "text-gray-500 bg-gray-100 border-gray-200";
             } else if (isPending) {
               if (item.status === "accepted") {
                 resultText = `Accepted (${item.stakeTokens} 🪙 staked)`;
@@ -68,24 +71,62 @@ export default function BetsHistory({ currentUserId }: { currentUserId: string }
                 resultClass = "text-yellow-600 bg-yellow-50 border-yellow-200";
               }
             } else if (item.winnerId === currentUserId) {
-              resultText = `Won (+${item.stakeTokens * 2} 🪙)`;
-              resultClass = "text-green-700 bg-green-50 border-green-200";
+              // Win or Half Win
+              const isScoreChallenge = item.student1Score1 !== null;
+              if (isScoreChallenge && item.team1Score !== null) {
+                // Determine if it was a half win
+                const exact1 = item.student1Score1 === item.team1Score && item.student1Score2 === item.team2Score;
+                const exact2 = item.student2Score1 === item.team1Score && item.student2Score2 === item.team2Score;
+                if (!exact1 && !exact2) {
+                  // Nobody was exact, so winner is closest -> Half Win
+                  resultText = `Closest Win (+${Math.round(item.stakeTokens * 1.5)} 🪙)`;
+                  resultClass = "text-green-600 bg-green-50 border-green-200";
+                } else {
+                  resultText = `Won (+${item.stakeTokens * 2} 🪙)`;
+                  resultClass = "text-green-700 bg-green-50 border-green-200";
+                }
+              } else {
+                resultText = `Won (+${item.stakeTokens * 2} 🪙)`;
+                resultClass = "text-green-700 bg-green-50 border-green-200";
+              }
             } else if (item.winnerId === null) {
               resultText = `Draw (Refunded ${item.stakeTokens} 🪙)`;
               resultClass = "text-gray-600 bg-gray-100 border-gray-200";
             } else {
-              resultText = `Lost (-${item.stakeTokens} 🪙)`;
-              resultClass = "text-red-700 bg-red-50 border-red-200";
+              // Lost or Half Loss
+              const isScoreChallenge = item.student1Score1 !== null;
+              if (isScoreChallenge && item.team1Score !== null) {
+                const exact1 = item.student1Score1 === item.team1Score && item.student1Score2 === item.team2Score;
+                const exact2 = item.student2Score1 === item.team1Score && item.student2Score2 === item.team2Score;
+                if (!exact1 && !exact2) {
+                  // Opponent was closest -> Half Loss
+                  const winnerRefund = Math.round(item.stakeTokens * 1.5);
+                  const loserRefund = (item.stakeTokens * 2) - winnerRefund;
+                  const lossAmount = item.stakeTokens - loserRefund;
+                  resultText = `Closest Loss (-${lossAmount} 🪙)`;
+                  resultClass = "text-red-600 bg-red-50 border-red-200";
+                } else {
+                  resultText = `Lost (-${item.stakeTokens} 🪙)`;
+                  resultClass = "text-red-700 bg-red-50 border-red-200";
+                }
+              } else {
+                resultText = `Lost (-${item.stakeTokens} 🪙)`;
+                resultClass = "text-red-700 bg-red-50 border-red-200";
+              }
             }
           } else {
             title = `Global Prediction`;
             if (isPending) {
               resultText = `Pending: ${item.predictedScore1}-${item.predictedScore2}`;
               resultClass = "text-blue-600 bg-blue-50 border-blue-200";
+            } else if (item.tokensEarned > 0) {
+              const stakeAmount = item.stakeTokens || 0;
+              const netProfit = item.tokensEarned - stakeAmount;
+              resultText = `✅ Won (+${netProfit} 🪙)`;
+              resultClass = "text-green-700 bg-green-50 border-green-200 font-bold";
             } else {
-              // We'll just show "Settled" for predictions for simplicity since we don't store exact tokens won per prediction in the table easily right now.
-              resultText = `Settled: ${item.predictedScore1}-${item.predictedScore2}`;
-              resultClass = "text-gray-600 bg-gray-100 border-gray-200";
+              resultText = `❌ Lost (-${item.stakeTokens || 0} 🪙)`;
+              resultClass = "text-red-700 bg-red-50 border-red-200";
             }
           }
 

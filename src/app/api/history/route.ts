@@ -21,6 +21,10 @@ export async function GET(req: Request) {
         winnerId: bets.winnerId,
         student1Id: bets.student1Id,
         student2Id: bets.student2Id,
+        student1Score1: bets.student1Score1,
+        student1Score2: bets.student1Score2,
+        student2Score1: bets.student2Score1,
+        student2Score2: bets.student2Score2,
         matchDatetime: matches.matchDatetime,
         team1Score: matches.team1Score,
         team2Score: matches.team2Score,
@@ -45,6 +49,8 @@ export async function GET(req: Request) {
         matchDatetime: matches.matchDatetime,
         team1Score: matches.team1Score,
         team2Score: matches.team2Score,
+        tokensEarned: predictions.tokensEarned,
+        stakeTokens: predictions.stakeTokens,
       })
       .from(predictions)
       .innerJoin(matches, eq(predictions.matchId, matches.id))

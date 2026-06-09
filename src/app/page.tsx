@@ -9,6 +9,7 @@ import HomeTabsClient from "@/components/home/HomeTabsClient";
 import JoinBanner from "@/components/home/JoinBanner";
 import PendingChallengesModal from "@/components/home/PendingChallengesModal";
 import NotificationOnboardingModal from "@/components/home/NotificationOnboardingModal";
+import DevicePushPrompt from "@/components/home/DevicePushPrompt";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
 
@@ -184,6 +185,7 @@ export default async function HomePage() {
 
         {/* Client component — uses useSession() so it always reflects true auth state */}
         <JoinBanner />
+        <DevicePushPrompt />
 
         {validSession && !validSession.user.isGuest && !(validSession.user as any).notificationsOnboarded && (
           <NotificationOnboardingModal email={validSession.user.email!} />

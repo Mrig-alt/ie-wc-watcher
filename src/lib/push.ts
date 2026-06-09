@@ -96,3 +96,96 @@ export async function sendChallengeNotification(opponentId: string, challengerNa
     console.error("Failed to send challenge notification", error);
   }
 }
+
+export async function sendBetSettledNotification(studentId: string, result: "won" | "half_win" | "lost" | "half_loss" | "draw", tokens: number) {
+  try {
+    const [student] = await db
+      .select({ pushSubscription: students.pushSubscription })
+      .from(students)
+      .where(eq(students.id, studentId))
+      .limit(1);
+
+    if (!student?.pushSubscription) return;
+
+    let title = "Challenge Settled!";
+    let body = "";
+    if (result === "won") {
+      title = "✅ You won your challenge!";
+      body = `You've earned ${tokens} tokens.`;
+    } else if (result === "half_win") {
+      title = "✅ Closest Prediction Win!";
+      body = `You were closest! You earned ${tokens} tokens.`;
+    } else if (result === "draw") {
+      title = "🤝 Challenge Drawn";
+      body = `Your ${tokens} tokens have been refunded.`;
+    } else if (result === "half_loss") {
+      title = "❌ Closest Prediction Loss";
+      body = `Your opponent was closer. You lost ${tokens} tokens.`;
+    } else {
+      title = "❌ You lost your challenge";
+      body = `You lost ${tokens} tokens. Better luck next time!`;
+    }
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      url: `/account`,
+    });
+
+    try {
+      const sub = JSON.parse(student.pushSubscription);
+      await webpush.sendNotification(sub, payload);
+    } catch (error: any) {
+      if (error?.statusCode === 404 || error?.statusCode === 410) {
+        await db.update(students).set({ pushSubscription: null }).where(eq(students.id, studentId));
+      } else {
+        console.error("Error sending push to", studentId, error);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to send bet settled notification", error);
+  }
+}
+
+export async function sendPredictionSettledNotification(studentId: string, earned: number, staked: number) {
+  try {
+    const [student] = await db
+      .select({ pushSubscription: students.pushSubscription })
+      .from(students)
+      .where(eq(students.id, studentId))
+      .limit(1);
+
+    if (!student?.pushSubscription) return;
+
+    let title = "";
+    let body = "";
+    
+    if (earned > 0) {
+      title = "✅ Prediction Won!";
+      const netProfit = earned - staked;
+      body = `Your prediction hit! You earned ${netProfit} tokens.`;
+    } else {
+      title = "❌ Prediction Lost";
+      body = `Your prediction missed. You lost ${staked} tokens.`;
+    }
+
+    const payload = JSON.stringify({
+      title,
+      body,
+      url: `/account`,
+    });
+
+    try {
+      const sub = JSON.parse(student.pushSubscription);
+      await webpush.sendNotification(sub, payload);
+    } catch (error: any) {
+      if (error?.statusCode === 404 || error?.statusCode === 410) {
+        await db.update(students).set({ pushSubscription: null }).where(eq(students.id, studentId));
+      } else {
+        console.error("Error sending push to", studentId, error);
+      }
+    }
+  } catch (error) {
+    console.error("Failed to send prediction settled notification", error);
+  }
+}

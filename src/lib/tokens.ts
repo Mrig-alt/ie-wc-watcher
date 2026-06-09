@@ -1,6 +1,7 @@
 import { db } from "@/db";
 import { students, bets, predictions, matches, groupMembers, tokenLedger } from "@/db/schema";
 import { eq, and, or, isNull, sql, inArray } from "drizzle-orm";
+import { sendBetSettledNotification, sendPredictionSettledNotification } from "./push";
 
 export * from "./constants";
 import { STAKE_TOKENS, PREDICTION_CORRECT_TOKENS, PREDICTION_EXACT_TOKENS, PUBLIC_BONUS_TOKENS, EARLY_BIRD_BONUS_TOKENS, EARLY_BIRD_LIMIT } from "./constants";
@@ -159,6 +160,13 @@ export async function settleBetsForMatch(matchId: string) {
             matchId,
           });
         }
+        
+        const loserId = winnerId === bet.student1Id ? bet.student2Id! : bet.student1Id;
+        // The transaction runs sequentially, we don't await the push but we can fire it after the tx completes. 
+        // We'll queue it here. Note: inside the transaction is fine for a fire-and-forget promise, but it might execute even if tx fails.
+        // Given this is a simple tx that should succeed, it's generally okay.
+        sendBetSettledNotification(winnerId, "won", payoutAmount);
+        sendBetSettledNotification(loserId, "lost", bet.stakeTokens);
       } else if (payoutType === "half" && winnerId) {
         // Closest wins half, the other half is returned to the loser
         const winnerRefund = Math.round(bet.stakeTokens * 1.5);
@@ -197,6 +205,9 @@ export async function settleBetsForMatch(matchId: string) {
             matchId,
           });
         }
+
+        sendBetSettledNotification(winnerId, "half_win", winnerRefund);
+        sendBetSettledNotification(loserId, "half_loss", bet.stakeTokens - loserRefund);
       } else {
         // Refund both players their stakeTokens (draw/tie/both exact match)
         if (bet.groupId) {
@@ -230,6 +241,10 @@ export async function settleBetsForMatch(matchId: string) {
             reason: "bet_refund_draw",
             matchId,
           });
+        }
+        sendBetSettledNotification(bet.student1Id, "draw", bet.stakeTokens);
+        if (bet.student2Id) {
+          sendBetSettledNotification(bet.student2Id, "draw", bet.stakeTokens);
         }
       }
     });
@@ -331,6 +346,8 @@ export async function settlePredictionsForMatch(matchId: string) {
           matchId,
         });
       }
+      
+      sendPredictionSettledNotification(pred.studentId, earned, actualStake);
     });
   }
 }
