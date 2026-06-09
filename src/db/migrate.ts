@@ -7,8 +7,8 @@ dotenv.config({ path: ".env.local" });
 
 const connectionString = process.env.DATABASE_URL || "";
 
-// Dedicated client for migrations (max: 1 connection)
-const migrationClient = postgres(connectionString, { max: 1 });
+// Dedicated client for migrations (max: 1 connection, must disable prepared statements for PgBouncer)
+const migrationClient = postgres(connectionString, { max: 1, ssl: "require", prepare: false });
 
 async function main() {
   console.log("Running database migrations...");

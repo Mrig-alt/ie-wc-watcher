@@ -46,56 +46,54 @@ export default async function HomePage() {
     const challenger = alias(students, "challenger");
     const challenged = alias(students, "challenged");
 
-    const [allTeams, allStudents, myPredictions, todayInvites, pendingChallengesRaw] = await Promise.all([
-      getCachedTeams(),
-      getCachedActiveStudents(),
-      validSession
-        ? db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
-        : Promise.resolve([]),
-      todayMatchIds.length > 0
-        ? db
-            .select({
-              inviterId: watchInvites.inviterId,
-              matchId: watchInvites.matchId,
-              locationName: watchInvites.locationName,
-              locationUrl: watchInvites.locationUrl,
-            })
-            .from(watchInvites)
-            .where(inArray(watchInvites.matchId, todayMatchIds))
-        : Promise.resolve([]),
-      validSession
-        ? db
-            .select({
-              id: bets.id,
-              stakeTokens: bets.stakeTokens,
-              challengerName: challenger.name,
-              challengedName: challenged.name,
-              student1Id: bets.student1Id,
-              student2Id: bets.student2Id,
-              challengerTeamSide: bets.challengerTeamSide,
-              matchDatetime: matches.matchDatetime,
-              team1Id: matches.team1Id,
-              team2Id: matches.team2Id,
-              team1Placeholder: matches.team1Placeholder,
-              team2Placeholder: matches.team2Placeholder,
-              groupId: bets.groupId,
-              student1Score1: bets.student1Score1,
-              student1Score2: bets.student1Score2,
-            })
-            .from(bets)
-            .innerJoin(matches, eq(matches.id, bets.matchId))
-            .innerJoin(challenger, eq(challenger.id, bets.student1Id))
-            .innerJoin(challenged, eq(challenged.id, bets.student2Id))
-            .where(
-              and(
-                or(eq(bets.student1Id, validSession.user.id), eq(bets.student2Id, validSession.user.id)),
-                eq(bets.status, "pending"),
-                eq(bets.settled, false)
-              )
+    const allTeams = await getCachedTeams();
+    const allStudents = await getCachedActiveStudents();
+    const myPredictions = validSession
+      ? await db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
+      : [];
+    const todayInvites = todayMatchIds.length > 0
+      ? await db
+          .select({
+            inviterId: watchInvites.inviterId,
+            matchId: watchInvites.matchId,
+            locationName: watchInvites.locationName,
+            locationUrl: watchInvites.locationUrl,
+          })
+          .from(watchInvites)
+          .where(inArray(watchInvites.matchId, todayMatchIds))
+      : [];
+    const pendingChallengesRaw = validSession
+      ? await db
+          .select({
+            id: bets.id,
+            stakeTokens: bets.stakeTokens,
+            challengerName: challenger.name,
+            challengedName: challenged.name,
+            student1Id: bets.student1Id,
+            student2Id: bets.student2Id,
+            challengerTeamSide: bets.challengerTeamSide,
+            matchDatetime: matches.matchDatetime,
+            team1Id: matches.team1Id,
+            team2Id: matches.team2Id,
+            team1Placeholder: matches.team1Placeholder,
+            team2Placeholder: matches.team2Placeholder,
+            groupId: bets.groupId,
+            student1Score1: bets.student1Score1,
+            student1Score2: bets.student1Score2,
+          })
+          .from(bets)
+          .innerJoin(matches, eq(matches.id, bets.matchId))
+          .innerJoin(challenger, eq(challenger.id, bets.student1Id))
+          .innerJoin(challenged, eq(challenged.id, bets.student2Id))
+          .where(
+            and(
+              or(eq(bets.student1Id, validSession.user.id), eq(bets.student2Id, validSession.user.id)),
+              eq(bets.status, "pending"),
+              eq(bets.settled, false)
             )
-            .orderBy(desc(matches.matchDatetime))
-        : Promise.resolve([]),
-    ]);
+          )
+          .orderBy(desc(matches.matchDatetime))
+      : [];
 
     // Resolve group names for pending challenges
     const groupIdsNeeded = [...new Set((pendingChallengesRaw as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];

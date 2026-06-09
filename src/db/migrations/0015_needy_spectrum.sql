@@ -1,0 +1,1 @@
+ALTER TABLE "matches" ADD COLUMN "kickoff_reminded" boolean DEFAULT false NOT NULL;

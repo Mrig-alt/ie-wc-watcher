@@ -222,6 +222,7 @@ export const predictions = pgTable(
     tokensEarned: integer("tokens_earned"),
     settled: boolean("settled").notNull().default(false),
     isEarly: boolean("is_early").notNull().default(false),
+    reminderSent: boolean("reminder_sent").notNull().default(false),
     createdAt: timestamp("created_at").notNull().defaultNow(),
     updatedAt: timestamp("updated_at").notNull().defaultNow(),
   },
