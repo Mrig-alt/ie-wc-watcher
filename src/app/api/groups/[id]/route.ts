@@ -66,7 +66,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
     .from(bets)
     .innerJoin(matches, eq(matches.id, bets.matchId))
     .innerJoin(s1, eq(s1.id, bets.student1Id))
-    .innerJoin(s2, eq(s2.id, bets.student2Id))
+    .leftJoin(s2, eq(s2.id, bets.student2Id))
     .where(and(eq(bets.groupId, id), eq(bets.settled, false)))
     .orderBy(desc(matches.matchDatetime));
 

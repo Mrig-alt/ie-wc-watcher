@@ -34,12 +34,18 @@ export async function settleBetsForMatch(matchId: string) {
         if (bet.groupId) {
           await tx
             .update(groupMembers)
-            .set({ tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}` })
+            .set({
+              tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}`,
+              escrowTokens: sql`${groupMembers.escrowTokens} - ${bet.stakeTokens}`,
+            })
             .where(and(eq(groupMembers.groupId, bet.groupId), eq(groupMembers.studentId, challengerId)));
         } else {
           await tx
             .update(students)
-            .set({ tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}` })
+            .set({
+              tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}`,
+              escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}`,
+            })
             .where(eq(students.id, challengerId));
 
           await tx.insert(tokenLedger).values({

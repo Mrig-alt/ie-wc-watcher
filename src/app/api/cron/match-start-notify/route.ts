@@ -24,6 +24,9 @@ export async function GET(req: Request) {
   if (authHeader !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return NextResponse.json({ success: true, notified: 0, betsExpired: 0, skipped: "VAPID keys not configured" });
+  }
 
   const now = new Date();
   const window = new Date(now.getTime() + 35 * 60_000);

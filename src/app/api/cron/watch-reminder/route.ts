@@ -22,6 +22,9 @@ export async function GET(req: Request) {
   if (req.headers.get("authorization") !== `Bearer ${cronSecret}`) {
     return NextResponse.json({ error: "Forbidden" }, { status: 403 });
   }
+  if (!process.env.VAPID_PUBLIC_KEY || !process.env.VAPID_PRIVATE_KEY) {
+    return NextResponse.json({ success: true, notified: 0, skipped: "VAPID keys not configured" });
+  }
 
   const now = new Date();
   // Find matches starting in 18–30 hours with watch_reminder_sent = false

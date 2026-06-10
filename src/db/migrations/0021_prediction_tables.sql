@@ -28,6 +28,7 @@ CREATE TABLE IF NOT EXISTS "lineup_predictions" (
 );
 CREATE INDEX IF NOT EXISTS "lineup_predictions_match_student_idx" ON "lineup_predictions" ("match_id", "student_id");
 CREATE INDEX IF NOT EXISTS "lineup_predictions_student_idx" ON "lineup_predictions" ("student_id");
+ALTER TABLE "lineup_predictions" ADD CONSTRAINT IF NOT EXISTS "lineup_pred_student_match_player_unique" UNIQUE ("student_id", "match_id", "player_id");
 
 CREATE TABLE IF NOT EXISTS "scorer_predictions" (
   "id" uuid PRIMARY KEY DEFAULT gen_random_uuid() NOT NULL,

@@ -12,14 +12,14 @@ export async function GET(req: Request) {
   }
 
   const [student] = await db
-    .select({ name: students.name })
+    .select({ name: students.name, visibility: students.visibility })
     .from(students)
     .where(eq(students.id, id))
     .limit(1);
 
-  if (!student) {
+  if (!student || student.visibility === "stealth") {
     return NextResponse.json({ error: "Not found" }, { status: 404 });
   }
 
-  return NextResponse.json({ name: student.name });
+  return NextResponse.json({ name: student.name.split(" ")[0] });
 }

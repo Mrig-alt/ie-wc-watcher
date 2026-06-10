@@ -8,11 +8,9 @@ export async function GET(req: Request) {
     const authHeader = req.headers.get("authorization");
     const cronSecret = process.env.CRON_SECRET;
 
-    if (!cronSecret || authHeader !== `Bearer ${cronSecret}`) {
-      // Local dev testing bypass if no CRON_SECRET is set, but required in prod
-      if (process.env.NODE_ENV === "production" || authHeader) {
-         return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
-      }
+    if (!cronSecret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 503 });
+    if (authHeader !== `Bearer ${cronSecret}`) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 403 });
     }
 
     const result = await fetchAndSyncOdds();
