@@ -123,7 +123,7 @@ export default function LineupPredictionModal({ matchId, matchLabel, cutoffTime 
         <Users className="h-4 w-4 text-blue-500 shrink-0" />
         {saved
           ? `✅ XI picked (${selected.size}/11) · edit`
-          : "👥 Predict starting XI → +20 pts/player"}
+          : "👥 Starting XI → +20 pts"}
       </button>
 
       {/* Modal backdrop + sheet */}

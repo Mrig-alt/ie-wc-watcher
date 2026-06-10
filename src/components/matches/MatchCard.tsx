@@ -182,7 +182,7 @@ export default function MatchCard({
 
         {/* Goalscorer + lineup predictions — side by side, wraps on small screens */}
         {canPredict && !currentUserIsGuest && (
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-1.5 flex flex-wrap gap-1.5">
             <div className="flex-1 min-w-[140px]">
               <ScorerPrediction
                 matchId={match.id}
@@ -252,18 +252,18 @@ export default function MatchCard({
           </div>
         )}
 
-        {/* Watch together full card */}
+        {/* Watch together — compact toggle */}
         {isUpcoming && (
-          <div className="mt-3">
+          <div className="mt-2">
             <button
               onClick={() => setShowWatchCard((v) => !v)}
-              className="flex items-center justify-center w-full gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
             >
-              <MapPin className="h-4 w-4 shrink-0 text-indigo-500" />
+              <MapPin className="h-3 w-3 shrink-0" />
               {watchCount > 0
-                ? `👀 ${watchCount} ${watchCount === 1 ? "person" : "people"} watching — join them!`
-                : "Wanna watch the match together? Find a group!"}
-              {showWatchCard ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
+                ? `${watchCount} watching · find a group`
+                : "Find a group to watch with"}
+              {showWatchCard ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
             </button>
             {showWatchCard && (
               <div className="mt-2">

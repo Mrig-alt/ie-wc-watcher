@@ -87,7 +87,7 @@ export default function ScorerPrediction({ matchId, existing, cutoffTime }: Prop
           className="flex items-center justify-center w-full gap-2 rounded-lg bg-purple-50 border border-purple-200 px-3 py-2 text-sm font-medium text-purple-700 hover:bg-purple-100 transition-colors"
         >
           <Target className="h-4 w-4 text-purple-500" />
-          🎯 Predict a goalscorer → +100 tokens
+          🎯 Goalscorer → +50 pts
           {open ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
         </button>
       )}
