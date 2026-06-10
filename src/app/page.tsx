@@ -22,86 +22,81 @@ export default async function HomePage() {
 
     const { start: todayStart, end: todayEnd } = getMadridTodayRange();
 
-    const todayMatches = await db
-      .select({
-        id: matches.id, matchDatetime: matches.matchDatetime, status: matches.status,
-        stage: matches.stage, groupName: matches.groupName,
-        team1Score: matches.team1Score, team2Score: matches.team2Score,
-        venue: matches.venue, city: matches.city,
-        team1Placeholder: matches.team1Placeholder, team2Placeholder: matches.team2Placeholder,
-        team1Odds: matches.team1Odds, team2Odds: matches.team2Odds,
-        team1Id: matches.team1Id, team2Id: matches.team2Id,
-      })
-      .from(matches)
-      .where(or(
-        and(gte(matches.matchDatetime, todayStart), lte(matches.matchDatetime, todayEnd)), // Today's matches
-        and(gte(matches.matchDatetime, todayStart), eq(matches.status, "upcoming")) // Or any future upcoming matches
-      ))
-      .orderBy(asc(matches.matchDatetime))
-      .limit(30);
-
-    const todayMatchIds = todayMatches.map((m) => m.id);
-
     // Alias students for pending bet names
     const challenger = alias(students, "challenger");
     const challenged = alias(students, "challenged");
 
-    const allTeams = await getCachedTeams();
-    const allStudents = await getCachedActiveStudents();
-    const myPredictions = validSession
-      ? await db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
-      : [];
-    const todayInvites = todayMatchIds.length > 0
-      ? await db
-          .select({
-            inviterId: watchInvites.inviterId,
-            matchId: watchInvites.matchId,
-            locationName: watchInvites.locationName,
-            locationUrl: watchInvites.locationUrl,
-          })
-          .from(watchInvites)
-          .where(inArray(watchInvites.matchId, todayMatchIds))
-      : [];
-    const pendingChallengesRaw = validSession
-      ? await db
-          .select({
-            id: bets.id,
-            stakeTokens: bets.stakeTokens,
-            challengerName: challenger.name,
-            challengedName: challenged.name,
-            student1Id: bets.student1Id,
-            student2Id: bets.student2Id,
-            challengerTeamSide: bets.challengerTeamSide,
-            matchDatetime: matches.matchDatetime,
-            team1Id: matches.team1Id,
-            team2Id: matches.team2Id,
-            team1Placeholder: matches.team1Placeholder,
-            team2Placeholder: matches.team2Placeholder,
-            groupId: bets.groupId,
-            student1Score1: bets.student1Score1,
-            student1Score2: bets.student1Score2,
-          })
-          .from(bets)
-          .innerJoin(matches, eq(matches.id, bets.matchId))
-          .innerJoin(challenger, eq(challenger.id, bets.student1Id))
-          .innerJoin(challenged, eq(challenged.id, bets.student2Id))
-          .where(
-            and(
-              or(eq(bets.student1Id, validSession.user.id), eq(bets.student2Id, validSession.user.id)),
-              eq(bets.status, "pending"),
-              eq(bets.settled, false)
-            )
-          )
-          .orderBy(desc(matches.matchDatetime))
-      : [];
+    // Round 1: fetch todayMatches + all session-independent data in parallel
+    const [todayMatches, allTeams, allStudents, myPredictions, pendingChallengesRaw, nextMatchRaw] =
+      await Promise.all([
+        db.select({
+          id: matches.id, matchDatetime: matches.matchDatetime, status: matches.status,
+          stage: matches.stage, groupName: matches.groupName,
+          team1Score: matches.team1Score, team2Score: matches.team2Score,
+          venue: matches.venue, city: matches.city,
+          team1Placeholder: matches.team1Placeholder, team2Placeholder: matches.team2Placeholder,
+          team1Odds: matches.team1Odds, team2Odds: matches.team2Odds,
+          team1Id: matches.team1Id, team2Id: matches.team2Id,
+        })
+          .from(matches)
+          .where(or(
+            and(gte(matches.matchDatetime, todayStart), lte(matches.matchDatetime, todayEnd)),
+            and(gte(matches.matchDatetime, todayStart), eq(matches.status, "upcoming"))
+          ))
+          .orderBy(asc(matches.matchDatetime))
+          .limit(30),
+        getCachedTeams(),
+        getCachedActiveStudents(),
+        validSession
+          ? db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
+          : Promise.resolve([]),
+        validSession
+          ? db.select({
+              id: bets.id, stakeTokens: bets.stakeTokens,
+              challengerName: challenger.name, challengedName: challenged.name,
+              student1Id: bets.student1Id, student2Id: bets.student2Id,
+              challengerTeamSide: bets.challengerTeamSide,
+              matchDatetime: matches.matchDatetime,
+              team1Id: matches.team1Id, team2Id: matches.team2Id,
+              team1Placeholder: matches.team1Placeholder, team2Placeholder: matches.team2Placeholder,
+              groupId: bets.groupId,
+              student1Score1: bets.student1Score1, student1Score2: bets.student1Score2,
+            })
+              .from(bets)
+              .innerJoin(matches, eq(matches.id, bets.matchId))
+              .innerJoin(challenger, eq(challenger.id, bets.student1Id))
+              .innerJoin(challenged, eq(challenged.id, bets.student2Id))
+              .where(and(
+                or(eq(bets.student1Id, validSession.user.id), eq(bets.student2Id, validSession.user.id)),
+                eq(bets.status, "pending"),
+                eq(bets.settled, false)
+              ))
+              .orderBy(desc(matches.matchDatetime))
+          : Promise.resolve([]),
+        db.select().from(matches)
+          .where(and(gte(matches.matchDatetime, new Date()), eq(matches.status, "upcoming")))
+          .orderBy(asc(matches.matchDatetime))
+          .limit(1),
+      ]);
 
-    // Resolve group names for pending challenges
+    const todayMatchIds = todayMatches.map((m) => m.id);
+
+    // Round 2: todayInvites and group names need results from round 1
     const groupIdsNeeded = [...new Set((pendingChallengesRaw as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];
+    const [todayInvites, groupRows] = await Promise.all([
+      todayMatchIds.length > 0
+        ? db.select({
+            inviterId: watchInvites.inviterId, matchId: watchInvites.matchId,
+            locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl,
+          }).from(watchInvites).where(inArray(watchInvites.matchId, todayMatchIds))
+        : Promise.resolve([]),
+      groupIdsNeeded.length > 0
+        ? db.select({ id: friendGroups.id, name: friendGroups.name }).from(friendGroups).where(inArray(friendGroups.id, groupIdsNeeded))
+        : Promise.resolve([]),
+    ]);
+
     const groupNameMap = new Map<string, string>();
-    if (groupIdsNeeded.length > 0) {
-      const groupRows = await db.select({ id: friendGroups.id, name: friendGroups.name }).from(friendGroups).where(inArray(friendGroups.id, groupIdsNeeded));
-      for (const g of groupRows) groupNameMap.set(g.id, g.name);
-    }
+    for (const g of groupRows) groupNameMap.set(g.id, g.name);
 
     const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
@@ -138,12 +133,12 @@ export default async function HomePage() {
 
     const liveCount = todayMatches.filter((m) => m.status === "live").length;
     const upcomingCount = todayMatches.filter((m) => m.status === "upcoming").length;
-    const [nextMatchRaw] = await db.select().from(matches).where(and(gte(matches.matchDatetime, new Date()), eq(matches.status, "upcoming"))).orderBy(asc(matches.matchDatetime)).limit(1);
-    const nextMatch = nextMatchRaw
+    const nextMatchRawItem = nextMatchRaw[0] ?? null;
+    const nextMatchObj = nextMatchRawItem
       ? {
-          matchDatetime: nextMatchRaw.matchDatetime.toISOString(),
-          team1: nextMatchRaw.team1Id ? (teamMap.get(nextMatchRaw.team1Id) ?? null) : null,
-          team2: nextMatchRaw.team2Id ? (teamMap.get(nextMatchRaw.team2Id) ?? null) : null,
+          matchDatetime: nextMatchRawItem.matchDatetime.toISOString(),
+          team1: nextMatchRawItem.team1Id ? (teamMap.get(nextMatchRawItem.team1Id) ?? null) : null,
+          team2: nextMatchRawItem.team2Id ? (teamMap.get(nextMatchRawItem.team2Id) ?? null) : null,
         }
       : null;
 
@@ -158,7 +153,7 @@ export default async function HomePage() {
         {pendingChallengeProps.length > 0 && (
           <PendingChallengesModal challenges={pendingChallengeProps} />
         )}
-        <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatch} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
+        <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatchObj} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
 
         {/* HOW TO PLAY ONBOARDING */}
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm text-sm">

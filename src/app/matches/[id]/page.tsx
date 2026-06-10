@@ -20,78 +20,63 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
   const { id } = await params;
   const session = await auth();
 
-  let friendIds = new Set<string>();
-  if (session?.user?.id) {
-    const myConnections = await db
-      .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
-      .from(connections)
-      .where(
-        and(
-          eq(connections.status, "accepted"),
-          or(
-            eq(connections.requesterId, session.user.id),
-            eq(connections.requesteeId, session.user.id)
-          )
-        )
-      );
-    for (const c of myConnections) {
-      if (c.requesterId !== session.user.id) friendIds.add(c.requesterId);
-      if (c.requesteeId !== session.user.id) friendIds.add(c.requesteeId);
-    }
+  // Round 1: everything that only needs `id` (from params) or `session.user.id`
+  const [
+    myConnectionsRaw, matchArr, rawInvites, allVenues,
+    reactions, myPredictionList, myPredictionHistory, allRsvps,
+  ] = await Promise.all([
+    session?.user?.id
+      ? db.select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
+          .from(connections)
+          .where(and(eq(connections.status, "accepted"), or(eq(connections.requesterId, session.user.id), eq(connections.requesteeId, session.user.id))))
+      : Promise.resolve([]),
+    db.select().from(matches).where(eq(matches.id, id)).limit(1),
+    db.select({ id: watchInvites.id, inviterId: watchInvites.inviterId, venueId: watchInvites.venueId, locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl, inviterName: students.name, visibility: students.visibility })
+      .from(watchInvites).innerJoin(students, eq(students.id, watchInvites.inviterId)).where(eq(watchInvites.matchId, id)),
+    db.select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl }).from(venues),
+    db.select({ id: matchReactions.id, emoji: matchReactions.emoji, matchMinute: matchReactions.matchMinute, createdAt: matchReactions.createdAt, studentId: matchReactions.studentId, studentName: students.name, studentVisibility: students.visibility })
+      .from(matchReactions)
+      .leftJoin(students, and(eq(students.id, matchReactions.studentId), eq(students.flagged, false)))
+      .where(eq(matchReactions.matchId, id)).orderBy(asc(matchReactions.createdAt)),
+    session?.user?.id
+      ? db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
+      : Promise.resolve([]),
+    session?.user?.id
+      ? db.select({ id: predictionHistory.id, oldScore1: predictionHistory.oldScore1, oldScore2: predictionHistory.oldScore2, newScore1: predictionHistory.newScore1, newScore2: predictionHistory.newScore2, createdAt: predictionHistory.createdAt })
+          .from(predictionHistory)
+          .where(and(eq(predictionHistory.studentId, session.user.id), eq(predictionHistory.matchId, id)))
+          .orderBy(asc(predictionHistory.createdAt)).limit(10)
+      : Promise.resolve([]),
+    db.select({ inviteId: watchRsvps.inviteId, studentId: watchRsvps.studentId, studentName: students.name })
+      .from(watchRsvps)
+      .innerJoin(watchInvites, eq(watchInvites.id, watchRsvps.inviteId))
+      .innerJoin(students, eq(students.id, watchRsvps.studentId))
+      .where(eq(watchInvites.matchId, id)),
+  ]);
+
+  const friendIds = new Set<string>();
+  for (const c of myConnectionsRaw) {
+    if (session?.user?.id && c.requesterId !== session.user.id) friendIds.add(c.requesterId);
+    if (session?.user?.id && c.requesteeId !== session.user.id) friendIds.add(c.requesteeId);
   }
 
-  const [match] = await db.select().from(matches).where(eq(matches.id, id)).limit(1);
+  const [match] = matchArr;
   if (!match) notFound();
 
   const teamIds = [match.team1Id, match.team2Id].filter(Boolean) as string[];
 
-  const fetchedTeams = teamIds.length > 0 ? await db.select().from(teams).where(inArray(teams.id, teamIds)) : [];
-  
-  const team1Supporters = match.team1Id
-    ? await db.select({ id: students.id, name: students.name }).from(students)
-        .where(and(eq(students.teamId, match.team1Id), eq(students.flagged, false), eq(students.visibility, "public")))
-    : [];
-
-  const team2Supporters = match.team2Id
-    ? await db.select({ id: students.id, name: students.name }).from(students)
-        .where(and(eq(students.teamId, match.team2Id), eq(students.flagged, false), eq(students.visibility, "public")))
-    : [];
-
-  const rawInvites = await db.select({ id: watchInvites.id, inviterId: watchInvites.inviterId, venueId: watchInvites.venueId, locationName: watchInvites.locationName, locationUrl: watchInvites.locationUrl, inviterName: students.name, visibility: students.visibility })
-    .from(watchInvites).innerJoin(students, eq(students.id, watchInvites.inviterId)).where(eq(watchInvites.matchId, id));
-
-  const allVenues = await db.select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl }).from(venues);
-
-  const reactions = await db.select({ id: matchReactions.id, emoji: matchReactions.emoji, matchMinute: matchReactions.matchMinute, createdAt: matchReactions.createdAt, studentId: matchReactions.studentId, studentName: students.name, studentVisibility: students.visibility })
-    .from(matchReactions)
-    .leftJoin(students, and(eq(students.id, matchReactions.studentId), eq(students.flagged, false)))
-    .where(eq(matchReactions.matchId, id)).orderBy(asc(matchReactions.createdAt));
-
-  const myPredictionList = session?.user?.id
-    ? await db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
-    : [];
-
-  const myPredictionHistory = session?.user?.id
-    ? await db
-        .select({
-          id: predictionHistory.id,
-          oldScore1: predictionHistory.oldScore1,
-          oldScore2: predictionHistory.oldScore2,
-          newScore1: predictionHistory.newScore1,
-          newScore2: predictionHistory.newScore2,
-          createdAt: predictionHistory.createdAt,
-        })
-        .from(predictionHistory)
-        .where(and(eq(predictionHistory.studentId, session.user.id), eq(predictionHistory.matchId, id)))
-        .orderBy(asc(predictionHistory.createdAt))
-        .limit(10)
-    : [];
-
-  const allRsvps = await db.select({ inviteId: watchRsvps.inviteId, studentId: watchRsvps.studentId, studentName: students.name })
-    .from(watchRsvps)
-    .innerJoin(watchInvites, eq(watchInvites.id, watchRsvps.inviteId))
-    .innerJoin(students, eq(students.id, watchRsvps.studentId))
-    .where(eq(watchInvites.matchId, id));
+  // Round 2: needs match.team1Id / match.team2Id
+  const [fetchedTeams, team1Supporters, team2Supporters] = await Promise.all([
+    teamIds.length > 0 ? db.select().from(teams).where(inArray(teams.id, teamIds)) : Promise.resolve([]),
+    match.team1Id
+      ? db.select({ id: students.id, name: students.name }).from(students)
+          .where(and(eq(students.teamId, match.team1Id), eq(students.flagged, false), eq(students.visibility, "public")))
+      : Promise.resolve([]),
+    match.team2Id
+      ? db.select({ id: students.id, name: students.name }).from(students)
+          .where(and(eq(students.teamId, match.team2Id), eq(students.flagged, false), eq(students.visibility, "public")))
+      : Promise.resolve([]),
+  ]);
 
   const teamMap = new Map(fetchedTeams.map((t) => [t.id, t]));
   const team1 = match.team1Id ? teamMap.get(match.team1Id) ?? null : null;

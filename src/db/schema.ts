@@ -106,6 +106,10 @@ export const students = pgTable("students", {
 }, (t) => [
   check("token_balance_check", sql`${t.tokenBalance} >= 0`),
   check("escrow_tokens_check", sql`${t.escrowTokens} >= 0`),
+  index("students_flagged_idx").on(t.flagged),
+  index("students_team_id_idx").on(t.teamId),
+  index("students_token_balance_idx").on(t.tokenBalance),
+  index("students_flagged_visibility_idx").on(t.flagged, t.visibility),
 ]);
 
 // ─── Connections ──────────────────────────────────────────────────────────────
@@ -269,6 +273,9 @@ export const bets = pgTable(
     index("bets_student1_idx").on(t.student1Id),
     index("bets_student2_idx").on(t.student2Id),
     index("bets_status_idx").on(t.status),
+    index("bets_settled_idx").on(t.settled),
+    index("bets_open_market_idx").on(t.isOpenMarket),
+    index("bets_settled_status_idx").on(t.settled, t.status),
   ]
 );
 
