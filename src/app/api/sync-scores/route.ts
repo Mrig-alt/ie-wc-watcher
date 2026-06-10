@@ -27,13 +27,17 @@ export async function GET(req: Request) {
   // In a robust production environment, use Redis or a system_config table.
   // Serverless environments generally prevent overlapping cron executions anyway.
   try {
-    // Sweep: any match still "upcoming" but kicked off 2+ hours ago → mark completed.
-    // Covers friendlies and other matches the API doesn't return.
-    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    // Sweep: mark as completed any match still "upcoming" or "live" but kicked off 3+ hours ago.
+    // Covers friendlies not in the API and matches stuck in "live" if the API stops updating.
+    const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
     await db
       .update(matches)
       .set({ status: "completed" })
-      .where(and(eq(matches.status, "upcoming"), lt(matches.matchDatetime, twoHoursAgo)));
+      .where(and(lt(matches.matchDatetime, threeHoursAgo), eq(matches.status, "upcoming")));
+    await db
+      .update(matches)
+      .set({ status: "completed" })
+      .where(and(lt(matches.matchDatetime, threeHoursAgo), eq(matches.status, "live")));
 
     const apiMatchesWC = await fetchWCMatches();
     const apiMatchesGlobal = await fetchGlobalMatches();
