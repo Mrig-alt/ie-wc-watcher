@@ -13,7 +13,7 @@ import PredictionForm from "./PredictionForm";
 import PresenceDot from "@/components/students/PresenceDot";
 import Link from "next/link";
 import { useState } from "react";
-import { MapPin, ChevronDown, ChevronUp } from "lucide-react";
+import { MapPin } from "lucide-react";
 import LocalTime from "@/components/ui/LocalTime";
 
 interface Supporter {
@@ -76,7 +76,6 @@ export default function MatchCard({
   const isCompleted = match.status === "completed";
   const isUpcoming = match.status === "upcoming";
   const isFriendly = match.stage === "friendly";
-  const [showWatchCard, setShowWatchCard] = useState(false);
   const [showPredict, setShowPredict] = useState(false);
 
   const myTeamSide =
@@ -252,24 +251,10 @@ export default function MatchCard({
           </div>
         )}
 
-        {/* Watch together — compact toggle */}
+        {/* Watch together — bottom sheet modal */}
         {isUpcoming && (
           <div className="mt-2">
-            <button
-              onClick={() => setShowWatchCard((v) => !v)}
-              className="flex items-center gap-1.5 text-xs text-indigo-500 hover:text-indigo-700 transition-colors"
-            >
-              <MapPin className="h-3 w-3 shrink-0" />
-              {watchCount > 0
-                ? `${watchCount} watching · find a group`
-                : "Find a group to watch with"}
-              {showWatchCard ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
-            </button>
-            {showWatchCard && (
-              <div className="mt-2">
-                <WatchTogetherCard matchId={match.id} />
-              </div>
-            )}
+            <WatchTogetherCard matchId={match.id} watchCount={watchCount} />
           </div>
         )}
 
