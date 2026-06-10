@@ -117,7 +117,19 @@ export async function POST(req: Request) {
     }
   }
 
-  const student = await db.transaction(async (tx) => {
+  let student;
+  try {
+    student = await db.transaction(async (tx) => {
+    // Re-check email inside the serializable transaction — catches race conditions
+    // where two registrations with the same email arrive simultaneously.
+    // The unique constraint would catch it anyway, but this gives a clean 409.
+    const [dup] = await tx
+      .select({ id: students.id })
+      .from(students)
+      .where(eq(students.email, email.toLowerCase()))
+      .limit(1);
+    if (dup) throw Object.assign(new Error("EMAIL_EXISTS"), { code: "EMAIL_EXISTS" });
+
     const [{ value: totalStudents }] = await tx
       .select({ value: count() })
       .from(students);
@@ -187,6 +199,12 @@ export async function POST(req: Request) {
 
     return { created, groupToJoin };
   }, { isolationLevel: "serializable" });
+  } catch (e: any) {
+    if (e.code === "EMAIL_EXISTS" || e.code === "23505") {
+      return NextResponse.json({ error: "Email already registered" }, { status: 409 });
+    }
+    throw e;
+  }
 
   if (student.groupToJoin) {
     sendGroupJoinNotification(student.groupToJoin.id, student.created.name, student.created.id).catch(console.error);
