@@ -71,6 +71,9 @@ export async function GET(req: Request) {
       const existingByExtId = matchesByExtId.get(am.id);
 
       if (existingByExtId) {
+        // Never move a match backwards — completed is terminal
+        if (existingByExtId.status === "completed" && resolvedStatus !== "completed") continue;
+
         const hasChanged = existingByExtId.status !== resolvedStatus || 
                            existingByExtId.team1Score !== score1 || 
                            existingByExtId.team2Score !== score2 ||
@@ -128,6 +131,9 @@ export async function GET(req: Request) {
       const existingByTeams = matchesByTeams.get(`${team1Id}-${team2Id}`);
 
       if (existingByTeams) {
+        // Never move a match backwards — completed is terminal
+        if (existingByTeams.status === "completed" && resolvedStatus !== "completed") continue;
+
         const hasChanged = existingByTeams.status !== resolvedStatus || 
                            existingByTeams.team1Score !== score1 || 
                            existingByTeams.team2Score !== score2 ||
