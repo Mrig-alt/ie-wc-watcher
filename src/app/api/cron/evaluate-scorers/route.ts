@@ -25,8 +25,7 @@ export async function GET(req: Request) {
   }
 
   const serpApiKey = process.env.SERPAPI_KEY;
-  // TheSportsDB free key is "1"; set SPORTSDB_API_KEY to a Patreon key if lineup endpoint requires it
-  const sportsDbKey = process.env.SPORTSDB_API_KEY ?? "1";
+  const footballDataKey = process.env.FOOTBALL_DATA_API_KEY;
 
   // Find completed matches with unprocessed predictions
   const [unprocessedScorers, unprocessedLineups] = await Promise.all([
@@ -62,7 +61,7 @@ export async function GET(req: Request) {
       team1Id: matches.team1Id,
       team2Id: matches.team2Id,
       matchDatetime: matches.matchDatetime,
-      apiFootballFixtureId: matches.apiFootballFixtureId,
+      externalId: matches.externalId,
     })
     .from(matches)
     .where(and(inArray(matches.id, allUnprocessedMatchIds), eq(matches.status, "completed")));
@@ -112,25 +111,11 @@ export async function GET(req: Request) {
       }
     }
 
-    // ── Lineup evaluation (TheSportsDB) ─────────────────────────────────────
+    // ── Lineup evaluation (football-data.org) ───────────────────────────────
     const matchLineupPreds = unprocessedLineups.filter((p) => p.matchId === match.id);
-    if (matchLineupPreds.length === 0) continue;
+    if (matchLineupPreds.length === 0 || !footballDataKey || !match.externalId) continue;
 
-    // Resolve TheSportsDB event ID (cached in apiFootballFixtureId column)
-    let eventId = match.apiFootballFixtureId;
-    if (!eventId) {
-      eventId = await resolveSportsDbEventId(match.matchDatetime, t1Name, t2Name, sportsDbKey);
-      if (eventId) {
-        await db.update(matches).set({ apiFootballFixtureId: eventId }).where(eq(matches.id, match.id));
-      }
-    }
-
-    if (!eventId) {
-      // Can't evaluate lineup — skip, will retry next cron run
-      continue;
-    }
-
-    const actualStarters = await fetchStartingXI(eventId, sportsDbKey);
+    const actualStarters = await fetchStartingXI(match.externalId, footballDataKey);
     if (actualStarters.length === 0) continue;
 
     // Group lineup preds by student
@@ -142,8 +127,6 @@ export async function GET(req: Request) {
 
     for (const [studentId, preds] of byStudent) {
       let correct = 0;
-      const predIds = preds.map((p) => p.predId);
-
       for (const pred of preds) {
         const isCorrect = actualStarters.some((s) =>
           normalise(s).includes(normalise(pred.playerName)) ||
@@ -203,46 +186,22 @@ function extractScorers(data: any): string[] {
   return [...new Set(scorers)];
 }
 
-async function resolveSportsDbEventId(
-  matchDatetime: Date,
-  t1Name: string,
-  t2Name: string,
-  apiKey: string
-): Promise<number | null> {
+async function fetchStartingXI(externalId: number, apiKey: string): Promise<string[]> {
   try {
-    const date = matchDatetime.toISOString().slice(0, 10);
-    const url = `https://www.thesportsdb.com/api/v1/json/${apiKey}/eventsday.php?d=${date}&s=Soccer`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const t1 = normalise(t1Name);
-    const t2 = normalise(t2Name);
-    for (const event of data?.events ?? []) {
-      const home = normalise(event?.strHomeTeam ?? "");
-      const away = normalise(event?.strAwayTeam ?? "");
-      if (
-        (home.includes(t1) || t1.includes(home)) &&
-        (away.includes(t2) || t2.includes(away))
-      ) {
-        return Number(event.idEvent) || null;
-      }
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
-async function fetchStartingXI(eventId: number, apiKey: string): Promise<string[]> {
-  try {
-    const url = `https://www.thesportsdb.com/api/v1/json/${apiKey}/lookupeventlineup.php?id=${eventId}`;
-    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
+    const url = `https://api.football-data.org/v4/matches/${externalId}`;
+    const res = await fetch(url, {
+      headers: { "X-Auth-Token": apiKey },
+      signal: AbortSignal.timeout(15000),
+    });
     if (!res.ok) return [];
     const data = await res.json();
-    return (data?.lineup ?? [])
-      .filter((p: any) => p?.strSubstitute === "No")
-      .map((p: any) => String(p?.strPlayer ?? ""))
-      .filter(Boolean);
+    const starters: string[] = [];
+    for (const side of ["homeTeam", "awayTeam"] as const) {
+      for (const player of data?.[side]?.lineup ?? []) {
+        if (player?.name) starters.push(player.name);
+      }
+    }
+    return starters;
   } catch {
     return [];
   }
