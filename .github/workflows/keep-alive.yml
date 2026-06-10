@@ -1,4 +1,4 @@
-name: Keep Render alive
+name: Keep Render alive + sync scores
 
 on:
   schedule:
@@ -6,14 +6,22 @@ on:
   workflow_dispatch:         # manual trigger from GitHub Actions tab
 
 jobs:
-  ping:
+  ping-and-sync:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping health endpoint
+      - name: Ping health endpoint (keep-alive)
         run: |
           STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://wc-syeo.onrender.com/api/health)
           echo "Health check status: $STATUS"
           if [ "$STATUS" != "200" ]; then
             echo "Warning: health check returned $STATUS"
-            exit 1
           fi
+
+      - name: Sync match scores from football-data.org
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://wc-syeo.onrender.com/api/sync-scores)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "Sync response ($HTTP_CODE): $BODY"
