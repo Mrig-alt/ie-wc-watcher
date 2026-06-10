@@ -13,7 +13,7 @@ This document outlines the design and integration plan for a robust product anal
 
 ## Proposed Architecture: Analytics Stack Comparison
 
-Vercel Web Analytics is **highly restricted** on the free (Hobby) tier (limited to 2,500 page views per month). If you get even minor traction, your limits will be exhausted within days. We propose avoiding Vercel Analytics for product event tracking and using a setup that remains **100% free** under high traffic.
+The app is deployed on **Render** (not Vercel). We use PostHog for analytics since it's free up to 1M events/month and works on any hosting platform.
 
 ### Free Tier Comparison & Selection
 
@@ -21,8 +21,7 @@ Vercel Web Analytics is **highly restricted** on the free (Hobby) tier (limited 
 | :--- | :--- | :--- | :--- | :--- |
 | **PostHog Cloud** | **1,000,000 events/month** + 15,000 session replays | Session recordings, custom event funnels, heatmaps, cohort grouping. | Requires light SDK script injection. | **Primary Choice (Highly Recommended)**. 1M events is more than enough for thousands of active users. |
 | **Google Analytics 4 (GA4)** | **Unlimited events** | 100% free forever, industry standard for traffic reports. | Harder to set up custom conversion funnels, lacks session replay/UX recording. | **Secondary Backup** (purely for long-term traffic stats). |
-| **Self-Hosted Umami / PostHog** | **100% free & unlimited** (except server costs) | Complete privacy control, unlimited events. | Requires setting up an independent database/server (Render/Fly.io) and maintenance. | **Not Recommended for Launch** (overkill for World Cup duration). |
-| **Vercel Analytics** | 2,500 events/month | Zero-config, lightweight. | Extremely low free limit (will crash or stop tracking quickly). | **Do Not Use** for product/traction tracking. |
+| **Self-Hosted Umami / PostHog** | **100% free & unlimited** (except server costs) | Complete privacy control, unlimited events. | Requires setting up an independent database/server and maintenance. | **Not Recommended for Launch** (overkill for World Cup duration). |
 
 ### Why PostHog Cloud is our primary choice:
 1. **1 Million Free Events:** Tracks up to 1,000,000 predictions, logins, check-ins, or button clicks every month at zero cost.
