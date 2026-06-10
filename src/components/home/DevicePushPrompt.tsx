@@ -12,17 +12,19 @@ export default function DevicePushPrompt() {
 
   useEffect(() => {
     // Only show to authenticated, non-guest users
-    if (!session || session.user.isGuest) return;
+    if (!session?.user?.id || session.user.isGuest) return;
 
     // Check if push is supported by browser
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) return;
 
-    // If permission is already granted or denied, don't show the prompt
-    if (Notification.permission === "default") {
-      // Small delay to not be aggressive on immediate load
-      const t = setTimeout(() => setShow(true), 2000);
-      return () => clearTimeout(t);
-    }
+    // Already decided at browser level — don't prompt
+    if (Notification.permission !== "default") return;
+
+    // Dismissed this session already — wait until next login
+    if (sessionStorage.getItem(`push_dismissed_${session.user.id}`)) return;
+
+    const t = setTimeout(() => setShow(true), 2000);
+    return () => clearTimeout(t);
   }, [session]);
 
   const enablePush = async () => {
@@ -80,7 +82,10 @@ export default function DevicePushPrompt() {
         </div>
       </div>
       <div className="flex gap-2 w-full sm:w-auto shrink-0">
-        <Button variant="outline" size="sm" onClick={() => setShow(false)} disabled={loading} className="w-full sm:w-auto text-xs bg-white border-green-200 text-green-700 hover:bg-green-50">
+        <Button variant="outline" size="sm" onClick={() => {
+          sessionStorage.setItem(`push_dismissed_${session?.user?.id}`, "1");
+          setShow(false);
+        }} disabled={loading} className="w-full sm:w-auto text-xs bg-white border-green-200 text-green-700 hover:bg-green-50">
           Not now
         </Button>
         <Button size="sm" onClick={enablePush} disabled={loading} className="w-full sm:w-auto text-xs bg-green-600 hover:bg-green-700 text-white shadow-sm">
