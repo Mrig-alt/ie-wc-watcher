@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import ShareButton from "./ShareButton";
 import ScorerPrediction from "./ScorerPrediction";
-import LineupPrediction from "./LineupPrediction";
+import LineupPredictionModal from "./LineupPredictionModal";
 import WatchTogetherButton from "./WatchTogetherButton";
 import WatchTogetherCard from "./WatchTogetherCard";
 import PredictionForm from "./PredictionForm";
@@ -191,8 +191,9 @@ export default function MatchCard({
               />
             </div>
             <div className="flex-1 min-w-[140px]">
-              <LineupPrediction
+              <LineupPredictionModal
                 matchId={match.id}
+                matchLabel={`${t1Flag} ${t1Name} vs ${t2Flag} ${t2Name}`}
                 cutoffTime={new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000).toISOString()}
               />
             </div>
