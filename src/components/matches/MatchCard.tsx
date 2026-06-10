@@ -5,6 +5,7 @@ import type { MatchStage } from "@/db/schema";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import ShareButton from "./ShareButton";
+import ScorerPrediction from "./ScorerPrediction";
 import WatchTogetherButton from "./WatchTogetherButton";
 import WatchTogetherCard from "./WatchTogetherCard";
 import PredictionForm from "./PredictionForm";
@@ -46,6 +47,7 @@ interface MatchCardProps {
   currentUserBalance?: number;
   currentUserIsGuest?: boolean;
   prediction?: { predictedScore1: number; predictedScore2: number } | null;
+  scorerPrediction?: { playerId: string; playerName: string } | null;
   myWatchInvite?: { locationName: string; locationUrl: string | null } | null;
   opponentWatchInvite?: { locationName: string; locationUrl: string | null; inviterName: string } | null;
   teammateWatchInvite?: { locationName: string; locationUrl: string | null; inviterName: string } | null;
@@ -62,6 +64,7 @@ export default function MatchCard({
   currentUserBalance,
   currentUserIsGuest,
   prediction,
+  scorerPrediction,
   myWatchInvite,
   opponentWatchInvite,
   teammateWatchInvite,
@@ -173,6 +176,17 @@ export default function MatchCard({
                 onDone={() => setShowPredict(false)}
               />
             )}
+          </div>
+        )}
+
+        {/* Goalscorer prediction */}
+        {canPredict && !currentUserIsGuest && (
+          <div className="mt-2">
+            <ScorerPrediction
+              matchId={match.id}
+              existing={scorerPrediction}
+              cutoffTime={new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000).toISOString()}
+            />
           </div>
         )}
 

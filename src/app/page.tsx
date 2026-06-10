@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { matches, teams, students, predictions, watchInvites, bets, friendGroups } from "@/db/schema";
+import { matches, teams, students, predictions, watchInvites, bets, friendGroups, scorerPredictions } from "@/db/schema";
 import { eq, and, or, gte, lte, asc, inArray, desc } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
 import TodayHero from "@/components/matches/TodayHero";
@@ -93,7 +93,7 @@ export default async function HomePage() {
     const in18h = new Date(now.getTime() + 18 * 60 * 60 * 1000);
     const in30h = new Date(now.getTime() + 30 * 60 * 60 * 1000);
 
-    const [todayInvites, groupRows, tomorrowTeamMatchRaw] = await Promise.all([
+    const [todayInvites, groupRows, tomorrowTeamMatchRaw, myScorerPredictions] = await Promise.all([
       todayMatchIds.length > 0
         ? db.select({
             inviterId: watchInvites.inviterId, matchId: watchInvites.matchId,
@@ -116,6 +116,11 @@ export default async function HomePage() {
               or(eq(matches.team1Id, myTeamIdEarly), eq(matches.team2Id, myTeamIdEarly))
             ))
             .limit(1)
+        : Promise.resolve([]),
+      validSession && todayMatchIds.length > 0
+        ? db.select({ matchId: scorerPredictions.matchId, playerId: scorerPredictions.playerId, playerName: scorerPredictions.playerName })
+            .from(scorerPredictions)
+            .where(and(eq(scorerPredictions.studentId, validSession.user.id), inArray(scorerPredictions.matchId, todayMatchIds)))
         : Promise.resolve([]),
     ]);
 
@@ -237,6 +242,7 @@ export default async function HomePage() {
                 : [];
 
               const myPred = myPredictions.find((p) => p.matchId === match.id);
+              const myScorerPred = (myScorerPredictions as Array<{ matchId: string; playerId: string; playerName: string }>).find((p) => p.matchId === match.id);
               const myInvite = todayInvites.find((i) => i.matchId === match.id && i.inviterId === validSession?.user.id);
 
               const myTeamId = validSession?.user.teamId;
@@ -268,6 +274,7 @@ export default async function HomePage() {
                 team1Supporters: team1Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt ? new Date(s.lastSeenAt).toISOString() : null })),
                 team2Supporters: team2Supporters.map((s) => ({ id: s.id, name: s.name, lastSeenAt: s.lastSeenAt ? new Date(s.lastSeenAt).toISOString() : null })),
                 prediction: myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null,
+                scorerPrediction: myScorerPred ? { playerId: myScorerPred.playerId, playerName: myScorerPred.playerName } : null,
                 myWatchInvite: myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null,
                 opponentWatchInvite: opponentInviteRaw && opponentInviter
                   ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }

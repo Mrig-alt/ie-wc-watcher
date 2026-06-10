@@ -26,6 +26,15 @@ jobs:
           BODY=$(echo "$RESPONSE" | head -n -1)
           echo "Sync response ($HTTP_CODE): $BODY"
 
+      - name: Evaluate goalscorer predictions
+        run: |
+          RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 \
+            -H "Authorization: Bearer ${{ secrets.CRON_SECRET }}" \
+            https://wc-syeo.onrender.com/api/cron/evaluate-scorers)
+          HTTP_CODE=$(echo "$RESPONSE" | tail -n1)
+          BODY=$(echo "$RESPONSE" | head -n -1)
+          echo "Evaluate scorers response ($HTTP_CODE): $BODY"
+
       - name: Send day-before watch-location reminders
         run: |
           RESPONSE=$(curl -s -w "\n%{http_code}" --max-time 30 \

@@ -425,6 +425,44 @@ export const predictionHistory = pgTable("prediction_history", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// ─── Players ──────────────────────────────────────────────────────────────────
+
+export const players = pgTable("players", {
+  id: uuid("id").primaryKey().defaultRandom(),
+  teamId: uuid("team_id").notNull().references(() => teams.id, { onDelete: "cascade" }),
+  name: varchar("name", { length: 100 }).notNull(),
+  position: varchar("position", { length: 3 }).notNull(),
+  club: varchar("club", { length: 100 }),
+  fantasyValue: integer("fantasy_value").notNull().default(6),
+  fantasyScore: integer("fantasy_score").notNull().default(0),
+  isActive: boolean("is_active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+}, (t) => [
+  index("players_team_id_idx").on(t.teamId),
+  index("players_position_idx").on(t.position),
+]);
+
+// ─── Scorer Predictions ───────────────────────────────────────────────────────
+
+export const scorerPredictions = pgTable(
+  "scorer_predictions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id").notNull().references(() => matches.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    playerName: varchar("player_name", { length: 100 }).notNull(),
+    isCorrect: boolean("is_correct"),
+    isProcessed: boolean("is_processed").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    unique().on(t.studentId, t.matchId),
+    index("scorer_predictions_match_idx").on(t.matchId),
+    index("scorer_predictions_student_idx").on(t.studentId),
+  ]
+);
+
 // ─── Inferred Types ───────────────────────────────────────────────────────────
 
 export type Team = typeof teams.$inferSelect;
@@ -443,6 +481,8 @@ export type SurveyResponse = typeof surveyResponses.$inferSelect;
 export type TokenLedgerEntry = typeof tokenLedger.$inferSelect;
 export type PredictionHistoryEntry = typeof predictionHistory.$inferSelect;
 export type LiveReportStatus = (typeof liveReportStatusEnum.enumValues)[number];
+export type Player = typeof players.$inferSelect;
+export type ScorerPrediction = typeof scorerPredictions.$inferSelect;
 
 export type MatchStatus = (typeof matchStatusEnum.enumValues)[number];
 export type MatchStage = (typeof matchStageEnum.enumValues)[number];

@@ -9,6 +9,7 @@ interface Props {
     team1Supporters: any[];
     team2Supporters: any[];
     prediction: any;
+    scorerPrediction?: { playerId: string; playerName: string } | null;
     myWatchInvite: any;
     opponentWatchInvite: any;
     teammateWatchInvite?: any;
@@ -53,13 +54,14 @@ export default function HomeTabsClient({ matches }: Props) {
         </p>
       ) : (
         <div className="space-y-3">
-          {displayedMatches.map(({ match, team1Supporters, team2Supporters, prediction, myWatchInvite, opponentWatchInvite, teammateWatchInvite, otherSupporterNames, watchCount }) => (
+          {displayedMatches.map(({ match, team1Supporters, team2Supporters, prediction, scorerPrediction, myWatchInvite, opponentWatchInvite, teammateWatchInvite, otherSupporterNames, watchCount }) => (
             <MatchCardClient
               key={match.id}
               match={match}
               team1Supporters={team1Supporters}
               team2Supporters={team2Supporters}
               prediction={prediction}
+              scorerPrediction={scorerPrediction}
               myWatchInvite={myWatchInvite}
               opponentWatchInvite={opponentWatchInvite}
               teammateWatchInvite={teammateWatchInvite}
