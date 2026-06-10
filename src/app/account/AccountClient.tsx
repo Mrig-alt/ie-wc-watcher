@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import VisibilitySelector from "@/components/profile/VisibilitySelector";
 import PushSettings from "@/components/profile/PushSettings";
 import BetsHistory from "@/components/profile/BetsHistory";
+import TokenLedger from "@/components/profile/TokenLedger";
 import TeamGrid from "@/components/teams/TeamGrid";
 import ShareButton from "@/components/ui/ShareButton";
 
@@ -240,18 +241,20 @@ export default function AccountClient({ children, dbUser }: { children?: React.R
             </ul>
           </div>
 
-          <Button
-            disabled
-            className="w-full bg-gray-300 text-gray-500 font-bold shadow-sm cursor-not-allowed"
+          <a
+            href="mailto:mrigankshekhar9@gmail.com?subject=Token%20Top-up%20Request&body=Hi%20Mrigank%2C%0A%0AI%27d%20like%20to%20buy%2050%20tokens%20for%20%E2%82%AC10.%20Please%20let%20me%20know%20the%20payment%20details.%0A%0AThanks!"
+            className="flex items-center justify-center w-full rounded-lg bg-green-600 hover:bg-green-700 text-white text-sm font-bold py-2 px-4 transition-colors shadow-sm"
           >
-            Buy Tokens (Coming Soon)
-          </Button>
+            Contact Mrigank to Buy Tokens →
+          </a>
         </div>
       )}
 
       {!isGuest && (
         <>
           <BetsHistory currentUserId={session.user.id} />
+
+          <TokenLedger />
 
           <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
             <h2 className="font-semibold text-gray-900">Privacy mode</h2>

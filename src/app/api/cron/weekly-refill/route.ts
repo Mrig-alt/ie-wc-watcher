@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { students } from "@/db/schema";
-import { sql } from "drizzle-orm";
+import { students, tokenLedger } from "@/db/schema";
+import { sql, eq, isNull, or, lt, and } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -17,10 +17,38 @@ export async function GET(req: Request) {
   }
 
   try {
+    const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
+    const now = new Date();
+
+    // Only refill non-guest, non-deleted students who haven't been refilled in the last 7 days.
+    // lastWeeklyRefillAt acts as an idempotency guard — double-firing the cron is safe.
     const result = await db
       .update(students)
-      .set({ tokenBalance: sql`${students.tokenBalance} + 10` })
+      .set({
+        tokenBalance: sql`${students.tokenBalance} + 10`,
+        lastWeeklyRefillAt: now,
+      })
+      .where(
+        and(
+          eq(students.isGuest, false),
+          isNull(students.deletedAt),
+          or(
+            isNull(students.lastWeeklyRefillAt),
+            lt(students.lastWeeklyRefillAt, sevenDaysAgo)
+          )
+        )
+      )
       .returning({ id: students.id });
+
+    if (result.length > 0) {
+      await db.insert(tokenLedger).values(
+        result.map((s) => ({
+          studentId: s.id,
+          amount: 10,
+          reason: "weekly_refill",
+        }))
+      );
+    }
 
     return NextResponse.json({ success: true, refilledCount: result.length, amount: 10 });
   } catch (error) {

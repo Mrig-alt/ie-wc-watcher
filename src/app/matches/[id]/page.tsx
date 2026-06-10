@@ -1,6 +1,6 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { matches, teams, students, matchReactions, watchInvites, venues, predictions, connections, watchRsvps } from "@/db/schema";
+import { matches, teams, students, matchReactions, watchInvites, venues, predictions, connections, watchRsvps, predictionHistory } from "@/db/schema";
 import { eq, and, asc, inArray, or } from "drizzle-orm";
 import { notFound } from "next/navigation";
 import { formatMatchDate, formatKickoff, stageLabel } from "@/lib/utils";
@@ -69,6 +69,22 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
 
   const myPredictionList = session?.user?.id
     ? await db.select().from(predictions).where(and(eq(predictions.studentId, session.user.id), eq(predictions.matchId, id))).limit(1)
+    : [];
+
+  const myPredictionHistory = session?.user?.id
+    ? await db
+        .select({
+          id: predictionHistory.id,
+          oldScore1: predictionHistory.oldScore1,
+          oldScore2: predictionHistory.oldScore2,
+          newScore1: predictionHistory.newScore1,
+          newScore2: predictionHistory.newScore2,
+          createdAt: predictionHistory.createdAt,
+        })
+        .from(predictionHistory)
+        .where(and(eq(predictionHistory.studentId, session.user.id), eq(predictionHistory.matchId, id)))
+        .orderBy(asc(predictionHistory.createdAt))
+        .limit(10)
     : [];
 
   const allRsvps = await db.select({ inviteId: watchRsvps.inviteId, studentId: watchRsvps.studentId, studentName: students.name })
@@ -189,6 +205,14 @@ export default async function MatchDetailPage({ params }: { params: Promise<{ id
                 ? { predictedScore1: existingPrediction.predictedScore1, predictedScore2: existingPrediction.predictedScore2 }
                 : null
             }
+            editHistory={myPredictionHistory.map((h) => ({
+              id: h.id,
+              oldScore1: h.oldScore1,
+              oldScore2: h.oldScore2,
+              newScore1: h.newScore1,
+              newScore2: h.newScore2,
+              createdAt: h.createdAt.toISOString(),
+            }))}
           />
           <OpenBetModal
             matchId={id}

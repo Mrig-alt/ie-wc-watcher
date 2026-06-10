@@ -165,8 +165,8 @@ export async function settleBetsForMatch(matchId: string) {
         // The transaction runs sequentially, we don't await the push but we can fire it after the tx completes. 
         // We'll queue it here. Note: inside the transaction is fine for a fire-and-forget promise, but it might execute even if tx fails.
         // Given this is a simple tx that should succeed, it's generally okay.
-        sendBetSettledNotification(winnerId, "won", payoutAmount);
-        sendBetSettledNotification(loserId, "lost", bet.stakeTokens);
+        sendBetSettledNotification(winnerId, "won", payoutAmount).catch(console.error);
+        sendBetSettledNotification(loserId, "lost", bet.stakeTokens).catch(console.error);
       } else if (payoutType === "half" && winnerId) {
         // Closest wins half, the other half is returned to the loser
         const winnerRefund = Math.round(bet.stakeTokens * 1.5);
@@ -206,8 +206,8 @@ export async function settleBetsForMatch(matchId: string) {
           });
         }
 
-        sendBetSettledNotification(winnerId, "half_win", winnerRefund);
-        sendBetSettledNotification(loserId, "half_loss", bet.stakeTokens - loserRefund);
+        sendBetSettledNotification(winnerId, "half_win", winnerRefund).catch(console.error);
+        sendBetSettledNotification(loserId, "half_loss", bet.stakeTokens - loserRefund).catch(console.error);
       } else {
         // Refund both players their stakeTokens (draw/tie/both exact match)
         if (bet.groupId) {
@@ -242,9 +242,9 @@ export async function settleBetsForMatch(matchId: string) {
             matchId,
           });
         }
-        sendBetSettledNotification(bet.student1Id, "draw", bet.stakeTokens);
+        sendBetSettledNotification(bet.student1Id, "draw", bet.stakeTokens).catch(console.error);
         if (bet.student2Id) {
-          sendBetSettledNotification(bet.student2Id, "draw", bet.stakeTokens);
+          sendBetSettledNotification(bet.student2Id, "draw", bet.stakeTokens).catch(console.error);
         }
       }
     });
@@ -347,7 +347,7 @@ export async function settlePredictionsForMatch(matchId: string) {
         });
       }
       
-      sendPredictionSettledNotification(pred.studentId, earned, actualStake);
+      sendPredictionSettledNotification(pred.studentId, earned, actualStake).catch(console.error);
     });
   }
 }

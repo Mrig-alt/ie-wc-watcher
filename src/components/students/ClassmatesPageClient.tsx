@@ -319,22 +319,25 @@ export default function ClassmatesPageClient({
                     <span className="shrink-0 whitespace-nowrap">🪙 {s.tokenBalance} tokens</span>
                     <div className="flex flex-wrap items-center justify-end gap-2">
                       {currentUserId && s.id !== currentUserId && (
-                        <ConnectionButton 
-                          targetUserId={s.id} 
+                        <ConnectionButton
+                          targetUserId={s.id}
+                          connectionId={
+                            userConnections.find((c) =>
+                              c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending"
+                            )?.id
+                          }
                           initialStatus={
-                            userConnections.find((c) => 
-                              (c.requesterId === currentUserId && c.requesteeId === s.id && c.status === "pending")
+                            userConnections.find((c) =>
+                              c.requesterId === currentUserId && c.requesteeId === s.id && c.status === "pending"
                             ) ? "pending_sent" :
-                            userConnections.find((c) => 
-                              (c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending")
+                            userConnections.find((c) =>
+                              c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending"
                             ) ? "pending_received" :
-                            userConnections.find((c) => 
+                            userConnections.find((c) =>
                               (c.requesterId === s.id || c.requesteeId === s.id) && c.status === "accepted"
                             ) ? "accepted" : "none"
                           }
-                          onStatusChange={(status) => {
-                            if (status === "accepted") fetchUserConnections();
-                          }}
+                          onStatusChange={() => fetchUserConnections()}
                         />
                       )}
                       {currentUserId && s.id !== currentUserId && upcomingMatches.length > 0 && (

@@ -66,15 +66,19 @@ export async function POST(req: Request) {
           existingPrediction.predictedScore2 !== predictedScore2 ||
           existingPrediction.stakeTokens !== stakeTokens);
 
-      if (stakeDelta > 0) {
+      if (stakeDelta !== 0) {
         const [liveStudent] = await tx
-          .select({ tokenBalance: students.tokenBalance })
+          .select({ tokenBalance: students.tokenBalance, escrowTokens: students.escrowTokens })
           .from(students)
           .where(eq(students.id, session.user.id))
           .for("update")
           .limit(1);
-        if (!liveStudent || liveStudent.tokenBalance < stakeDelta) {
+        if (!liveStudent) throw new Error("INSUFFICIENT_FUNDS");
+        if (stakeDelta > 0 && liveStudent.tokenBalance < stakeDelta) {
           throw new Error("INSUFFICIENT_FUNDS");
+        }
+        if (stakeDelta < 0 && liveStudent.escrowTokens + stakeDelta < 0) {
+          throw new Error("INVALID_STAKE_REDUCTION");
         }
       }
 
@@ -154,6 +158,9 @@ export async function POST(req: Request) {
     }
     if (e.message === "TOO_MANY_EDITS") {
       return NextResponse.json({ error: "Too many edits for this match. Limit is 10 edits." }, { status: 429 });
+    }
+    if (e.message === "INVALID_STAKE_REDUCTION") {
+      return NextResponse.json({ error: "Cannot reduce stake below current escrow amount" }, { status: 400 });
     }
     throw e;
   }

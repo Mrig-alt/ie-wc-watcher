@@ -21,11 +21,13 @@ type OpenBet = {
 
 export default function MarketClient({
   initialBets,
+  initialHasMore = false,
   currentUserId,
   isGuest,
   tokenBalance,
 }: {
   initialBets: OpenBet[];
+  initialHasMore?: boolean;
   currentUserId?: string;
   isGuest: boolean;
   tokenBalance: number;
@@ -34,6 +36,9 @@ export default function MarketClient({
   const [bets, setBets] = useState(initialBets);
   const [takingId, setTakingId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [page, setPage] = useState(1);
+  const [hasMore, setHasMore] = useState(initialHasMore);
+  const [loadingMore, setLoadingMore] = useState(false);
 
   const handleTakeBet = async (bet: OpenBet) => {
     if (isGuest) {
@@ -44,7 +49,7 @@ export default function MarketClient({
       setError(`You need ${bet.stakeTokens} tokens to take this bet.`);
       return;
     }
-    
+
     setError(null);
     setTakingId(bet.id);
     try {
@@ -54,11 +59,8 @@ export default function MarketClient({
         body: JSON.stringify({ betId: bet.id }),
       });
       const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to take bet");
-      }
-      
-      // Remove it from the list
+      if (!res.ok) throw new Error(data.error || "Failed to take bet");
+
       setBets((prev) => prev.filter((b) => b.id !== bet.id));
       router.refresh();
       window.dispatchEvent(new Event("token-refresh"));
@@ -69,10 +71,33 @@ export default function MarketClient({
     }
   };
 
+  const loadMore = async () => {
+    if (loadingMore) return;
+    setLoadingMore(true);
+    try {
+      const nextPage = page + 1;
+      const res = await fetch(`/api/market?page=${nextPage}`);
+      const data = await res.json();
+      if (data.openBets) {
+        setBets((prev) => {
+          const existingIds = new Set(prev.map((b) => b.id));
+          const newBets = data.openBets.filter((b: OpenBet) => !existingIds.has(b.id));
+          return [...prev, ...newBets];
+        });
+        setHasMore(data.hasMore ?? false);
+        setPage(nextPage);
+      }
+    } catch (e) {
+      console.error(e);
+    } finally {
+      setLoadingMore(false);
+    }
+  };
+
   if (bets.length === 0) {
     return (
       <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
-        <div className="text-4xl mb-4">\uD83C\uDF2C\uFE0F</div>
+        <div className="text-4xl mb-4">🌪️</div>
         <h3 className="text-lg font-bold text-gray-900">The market is quiet</h3>
         <p className="text-gray-500 mt-2">No open bets right now. You can post an open bet from any Match page!</p>
       </div>
@@ -86,7 +111,7 @@ export default function MarketClient({
           {error}
         </div>
       )}
-      
+
       <div className="grid gap-4">
         {bets.map((bet) => {
           const isScore = bet.student1Score1 !== null && bet.student1Score2 !== null;
@@ -104,20 +129,20 @@ export default function MarketClient({
                 <div className="flex items-center gap-2 mb-1">
                   <span className="font-bold text-gray-900">{bet.challengerName}</span>
                   <span className="text-gray-400 text-sm">is betting</span>
-                  <span className="font-bold text-[#1e3a8a]">\uD83E\uDE99 {bet.stakeTokens}</span>
+                  <span className="font-bold text-[#1e3a8a]">🪙 {bet.stakeTokens}</span>
                 </div>
-                
+
                 <div className="text-gray-900 font-medium bg-gray-50 inline-block px-3 py-1.5 rounded-lg border border-gray-200">
                   {betDescription}
                 </div>
-                
+
                 <div className="text-xs text-gray-500 mt-3 font-medium">
                   {bet.team1?.flagEmoji} {bet.team1?.name} vs {bet.team2?.name} {bet.team2?.flagEmoji}
                   <span className="mx-2">•</span>
                   {format(new Date(bet.matchDatetime), "MMM d, HH:mm")}
                 </div>
               </div>
-              
+
               <div className="flex-shrink-0">
                 {bet.isMine ? (
                   <button disabled className="w-full md:w-auto px-6 py-2.5 bg-gray-100 text-gray-400 font-bold rounded-xl cursor-not-allowed">
@@ -137,6 +162,18 @@ export default function MarketClient({
           );
         })}
       </div>
+
+      {hasMore && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={loadMore}
+            disabled={loadingMore}
+            className="px-6 py-2 rounded-xl border border-gray-200 text-sm font-medium text-gray-600 hover:bg-gray-50 disabled:opacity-50 transition-colors"
+          >
+            {loadingMore ? "Loading..." : "Load more bets"}
+          </button>
+        </div>
+      )}
     </div>
   );
 }

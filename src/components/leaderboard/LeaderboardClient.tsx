@@ -32,6 +32,7 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
   const [page, setPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(initialHasNextPage);
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(search), 300);
@@ -49,6 +50,7 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
 
     const fetchSearch = async () => {
       setLoading(true);
+      setSearchLoading(true);
       try {
         const res = await fetch(`/api/leaderboard?search=${encodeURIComponent(debouncedSearch)}&page=1`);
         const data = await res.json();
@@ -61,6 +63,7 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
         console.error(e);
       }
       setLoading(false);
+      setSearchLoading(false);
     };
 
     fetchSearch();
@@ -146,16 +149,33 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
         </div>
       </div>
 
+      {searchLoading && (
+        <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex items-center gap-3 px-4 py-3 border-b border-gray-50 last:border-0 animate-pulse">
+              <div className="w-8 h-4 bg-gray-200 rounded" />
+              <div className="w-6 h-6 bg-gray-200 rounded-full" />
+              <div className="flex-1 space-y-1.5">
+                <div className="w-32 h-3.5 bg-gray-200 rounded" />
+                <div className="w-20 h-3 bg-gray-100 rounded" />
+              </div>
+              <div className="w-16 h-4 bg-gray-200 rounded" />
+            </div>
+          ))}
+        </div>
+      )}
+
       <div className="rounded-xl border border-gray-100 bg-white shadow-sm overflow-hidden">
         <div className="divide-y divide-gray-50">
           {processedRows.map((s, idx) => {
-            const status = userConnections.find((c) => 
-              (c.requesterId === currentUserId && c.requesteeId === s.id && c.status === "pending")
+            const pendingReceivedConn = userConnections.find((c) =>
+              c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending"
+            );
+            const status = userConnections.find((c) =>
+              c.requesterId === currentUserId && c.requesteeId === s.id && c.status === "pending"
             ) ? "pending_sent" :
-            userConnections.find((c) => 
-              (c.requesteeId === currentUserId && c.requesterId === s.id && c.status === "pending")
-            ) ? "pending_received" :
-            userConnections.find((c) => 
+            pendingReceivedConn ? "pending_received" :
+            userConnections.find((c) =>
               (c.requesterId === s.id || c.requesteeId === s.id) && c.status === "accepted"
             ) ? "accepted" : "none";
 
@@ -175,6 +195,7 @@ export default function LeaderboardClient({ initialRows, hasNextPage: initialHas
                 isCurrentUser={s.isCurrentUser}
                 currentUserId={currentUserId}
                 connectionStatus={status}
+                connectionId={pendingReceivedConn?.id}
                 onConnectionChange={() => fetchUserConnections()}
               />
             );

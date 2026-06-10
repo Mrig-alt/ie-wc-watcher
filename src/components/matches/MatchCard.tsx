@@ -134,12 +134,12 @@ export default function MatchCard({
         {canPredict && (
           <div className="mt-3">
             {currentUserIsGuest ? (
-              <button
-                onClick={() => alert("Verification Required: Upgrade your account in your Account Page settings using the class PIN to make predictions and bets!")}
-                className="flex items-center gap-1.5 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-sm font-medium text-gray-500 hover:bg-gray-100 transition-colors w-full justify-center cursor-pointer"
+              <Link
+                href="/account"
+                className="flex items-center gap-1.5 rounded-lg bg-amber-50 border border-amber-200 px-3 py-2 text-sm font-medium text-amber-700 hover:bg-amber-100 transition-colors w-full justify-center"
               >
-                🔒 Verify PIN to Predict
-              </button>
+                🔒 Verify your class PIN to predict →
+              </Link>
             ) : prediction && !showPredict ? (
               // Already predicted — show summary chip, tap to edit
               <button

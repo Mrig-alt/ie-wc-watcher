@@ -14,17 +14,19 @@ interface LeaderboardRowProps {
   isCurrentUser?: boolean;
   currentUserId?: string | null;
   connectionStatus?: "none" | "pending_sent" | "pending_received" | "accepted";
+  connectionId?: string;
   onConnectionChange?: () => void;
 }
 
 const medals: Record<number, string> = { 1: "🥇", 2: "🥈", 3: "🥉" };
 
-export default function LeaderboardRow({ 
-  rank, 
-  student, 
+export default function LeaderboardRow({
+  rank,
+  student,
   isCurrentUser,
   currentUserId,
   connectionStatus = "none",
+  connectionId,
   onConnectionChange
 }: LeaderboardRowProps) {
   return (
@@ -62,9 +64,8 @@ export default function LeaderboardRow({
             <ConnectionButton
               targetUserId={student.id}
               initialStatus={connectionStatus}
-              onStatusChange={(status) => {
-                if (status === "accepted") onConnectionChange?.();
-              }}
+              connectionId={connectionId}
+              onStatusChange={() => onConnectionChange?.()}
             />
           </div>
         )}

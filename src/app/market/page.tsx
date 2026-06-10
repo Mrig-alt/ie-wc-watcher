@@ -38,12 +38,14 @@ export default async function MarketPage() {
         gte(matches.matchDatetime, new Date())
       )
     )
-    .orderBy(desc(bets.id));
+    .orderBy(desc(bets.id))
+    .limit(51);
 
   const allTeams = await db.select().from(teams);
   const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
-  const initialBets = openBetsRaw.map((bet) => {
+  const hasMore = openBetsRaw.length > 50;
+  const initialBets = openBetsRaw.slice(0, 50).map((bet) => {
     const t1 = bet.team1Id ? teamMap.get(bet.team1Id) : null;
     const t2 = bet.team2Id ? teamMap.get(bet.team2Id) : null;
     return {
@@ -81,10 +83,11 @@ export default async function MarketPage() {
         </p>
       </div>
       
-      <MarketClient 
-        initialBets={initialBets} 
-        currentUserId={session?.user?.id} 
-        isGuest={!!session?.user?.isGuest} 
+      <MarketClient
+        initialBets={initialBets}
+        initialHasMore={hasMore}
+        currentUserId={session?.user?.id}
+        isGuest={!!session?.user?.isGuest}
         tokenBalance={session?.user?.tokenBalance ?? 0}
       />
     </div>

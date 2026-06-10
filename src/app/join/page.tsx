@@ -132,6 +132,7 @@ function JoinPageInner() {
   const handleRegister = async () => {
     setLoading(true);
     setError("");
+    let navigating = false;
     try {
       const res = await fetch("/api/register", {
         method: "POST",
@@ -157,12 +158,12 @@ function JoinPageInner() {
         pin: isGuest ? "" : (pin || ""),
         redirect: false,
       });
-      if (result?.ok) router.push(next);
+      if (result?.ok) { navigating = true; router.push(next); }
       else setError("Registered! But auto-login failed \u2014 try signing in again.");
     } catch {
       setError("Network error \u2014 please try again");
     } finally {
-      setLoading(false);
+      if (!navigating) setLoading(false);
     }
   };
 

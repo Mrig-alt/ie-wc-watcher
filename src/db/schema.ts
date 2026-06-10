@@ -93,7 +93,7 @@ export const students = pgTable("students", {
   lastSeenAt: timestamp("last_seen_at"),
   pushSubscription: text("push_subscription"),
   deviceId: varchar("device_id", { length: 255 }), // Anti-cheat persistent cookie identifier
-  referredBy: uuid("referred_by"), // Self-referential UUID but Drizzle sometimes struggles with self-refs in pgTable without complex aliases, so keeping it simple UUID
+  referredBy: uuid("referred_by"), // FK enforced at DB level via migration 0018 (self-ref causes circular TS inference in Drizzle)
   referralTokensEarned: integer("referral_tokens_earned").notNull().default(0),
   notificationsOnboarded: boolean("notifications_onboarded").notNull().default(false),
   pushEnabled: boolean("push_enabled").notNull().default(false),
@@ -101,6 +101,7 @@ export const students = pgTable("students", {
 
   deletedAt: timestamp("deleted_at"),
   lastFloorReplenishedAt: timestamp("last_floor_replenished_at"),
+  lastWeeklyRefillAt: timestamp("last_weekly_refill_at"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 }, (t) => [
   check("token_balance_check", sql`${t.tokenBalance} >= 0`),
@@ -159,7 +160,8 @@ export const groupMembers = pgTable(
   (t) => [
     unique().on(t.groupId, t.studentId),
     index("group_members_student_idx").on(t.studentId),
-    check("group_escrow_tokens_check", sql`${t.escrowTokens} >= 0`)
+    check("group_token_balance_check", sql`${t.tokenBalance} >= 0`),
+    check("group_escrow_tokens_check", sql`${t.escrowTokens} >= 0`),
   ]
 );
 

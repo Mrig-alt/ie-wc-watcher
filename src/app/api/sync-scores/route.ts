@@ -78,8 +78,11 @@ export async function GET(req: Request) {
           .set({ status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByExtId.id));
 
+        // Always settle when completed with scores — settlement functions are
+        // idempotent (they filter settled=false) so re-running is safe and
+        // ensures recovery if a previous run failed after the status update.
         let settledNow = 0;
-        if ((!wasCompleted && resolvedStatus === "completed") || scoresNowAvailable) {
+        if (resolvedStatus === "completed" && score1 !== null && score2 !== null) {
           await settleBetsForMatch(existingByExtId.id);
           await settlePredictionsForMatch(existingByExtId.id);
           settledNow = 1;
@@ -121,19 +124,13 @@ export async function GET(req: Request) {
                            
         if (!hasChanged) continue;
 
-        const wasCompleted = existingByTeams.status === "completed";
-        const scoresNowAvailable =
-          wasCompleted &&
-          (existingByTeams.team1Score === null || existingByTeams.team2Score === null) &&
-          score1 !== null && score2 !== null;
-
         await db
           .update(matches)
           .set({ externalId: am.id, status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByTeams.id));
 
         let settledNow = 0;
-        if ((!wasCompleted && resolvedStatus === "completed") || scoresNowAvailable) {
+        if (resolvedStatus === "completed" && score1 !== null && score2 !== null) {
           await settleBetsForMatch(existingByTeams.id);
           await settlePredictionsForMatch(existingByTeams.id);
           settledNow = 1;

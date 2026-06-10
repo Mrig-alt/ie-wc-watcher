@@ -3,7 +3,7 @@ import { db } from "@/db";
 import { bets, friendGroups, groupMembers, matches, students, teams } from "@/db/schema";
 import { eq, and, desc, sql } from "drizzle-orm";
 import { alias } from "drizzle-orm/pg-core";
-import { redirect } from "next/navigation";
+import { redirect, notFound } from "next/navigation";
 import GroupDetailClient from "@/components/students/GroupDetailClient";
 
 export const dynamic = "force-dynamic";
@@ -19,22 +19,10 @@ export default async function GroupDetailPage({ params }: { params: Promise<{ id
     .from(groupMembers)
     .where(and(eq(groupMembers.groupId, id), eq(groupMembers.studentId, session.user.id)));
 
-  if (!membership) {
-    return (
-      <div className="rounded-xl border border-red-100 bg-red-50 p-6 text-center text-sm text-red-600 m-4">
-        You are not a member of this group.
-      </div>
-    );
-  }
+  if (!membership) notFound();
 
   const [group] = await db.select().from(friendGroups).where(eq(friendGroups.id, id));
-  if (!group) {
-    return (
-      <div className="rounded-xl border border-gray-100 bg-gray-50 p-6 text-center text-sm text-gray-500 m-4">
-        Group not found.
-      </div>
-    );
-  }
+  if (!group) notFound();
 
   const profitSql = sql<number>`${groupMembers.tokenBalance} + ${groupMembers.escrowTokens} - ${groupMembers.totalTokensReceived}`;
   const members = await db

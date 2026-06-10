@@ -35,3 +35,6 @@ tsconfig.tsbuildinfo
 # pnpm
 .pnpm-store/
 scripts/ad-hoc/
+
+# claude code agent worktrees
+.claude/

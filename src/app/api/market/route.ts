@@ -6,9 +6,14 @@ import { auth } from "@/lib/auth";
 
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+const PAGE_SIZE = 50;
+
+export async function GET(req: Request) {
   try {
     const session = await auth();
+    const { searchParams } = new URL(req.url);
+    const page = Math.max(1, parseInt(searchParams.get("page") ?? "1"));
+    const offset = (page - 1) * PAGE_SIZE;
 
     // Fetch open market bets that are pending, not null opponent, and match is still upcoming
     const openBetsRaw = await db
@@ -36,13 +41,18 @@ export async function GET() {
           gte(matches.matchDatetime, new Date())
         )
       )
-      .orderBy(desc(bets.id));
+      .orderBy(desc(bets.id))
+      .limit(PAGE_SIZE + 1)
+      .offset(offset);
+
+    const hasMore = openBetsRaw.length > PAGE_SIZE;
+    const page_bets = openBetsRaw.slice(0, PAGE_SIZE);
 
     // Fetch teams for the matches
     const allTeams = await db.select().from(teams);
     const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
-    const openBets = openBetsRaw.map((bet) => {
+    const openBets = page_bets.map((bet) => {
       const t1 = bet.team1Id ? teamMap.get(bet.team1Id) : null;
       const t2 = bet.team2Id ? teamMap.get(bet.team2Id) : null;
       return {
@@ -61,7 +71,7 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json({ openBets });
+    return NextResponse.json({ openBets, hasMore });
   } catch (e) {
     console.error("[market api] error", e);
     return NextResponse.json({ error: "Internal error" }, { status: 500 });

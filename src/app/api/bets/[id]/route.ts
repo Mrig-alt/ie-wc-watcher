@@ -245,8 +245,8 @@ export async function DELETE(
 
       // Deduce challenger ID
       const isScore = bet.student1Score1 !== null;
-      const challengerId = isScore 
-        ? bet.student1Id 
+      const challengerId = isScore
+        ? bet.student1Id
         : (bet.challengerTeamSide === 1 ? bet.student1Id : bet.student2Id!);
 
       // Only the challenger can cancel
@@ -257,7 +257,7 @@ export async function DELETE(
       if (bet.groupId) {
         await tx
           .update(groupMembers)
-          .set({ 
+          .set({
             tokenBalance: sql`${groupMembers.tokenBalance} + ${bet.stakeTokens}`,
             escrowTokens: sql`${groupMembers.escrowTokens} - ${bet.stakeTokens}`
           })
@@ -265,7 +265,7 @@ export async function DELETE(
       } else {
         await tx
           .update(students)
-          .set({ 
+          .set({
             tokenBalance: sql`${students.tokenBalance} + ${bet.stakeTokens}`,
             escrowTokens: sql`${students.escrowTokens} - ${bet.stakeTokens}`
           })
@@ -279,7 +279,13 @@ export async function DELETE(
         });
       }
 
-      await tx.delete(bets).where(eq(bets.id, id));
+      // Atomic delete — only succeeds if still pending, guarding against a
+      // concurrent accept arriving between our SELECT FOR UPDATE and this delete.
+      const [deleted] = await tx
+        .delete(bets)
+        .where(and(eq(bets.id, id), eq(bets.status, "pending")))
+        .returning({ id: bets.id });
+      if (!deleted) throw new Error("NOT_PENDING");
     });
   } catch (e: unknown) {
     if (e instanceof Error) {
