@@ -57,20 +57,21 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     return NextResponse.json({ error: "Invalid player selection" }, { status: 400 });
   }
 
-  // Delete existing picks for this match and re-insert
-  await db.delete(lineupPredictions).where(
-    and(eq(lineupPredictions.studentId, session.user.id), eq(lineupPredictions.matchId, matchId))
-  );
-
-  await db.insert(lineupPredictions).values(
-    playerRows.map((p) => ({
-      studentId: session.user.id,
-      matchId,
-      playerId: p.id,
-      playerName: p.name,
-      position: p.position,
-    }))
-  );
+  // Delete existing picks and re-insert atomically
+  await db.transaction(async (tx) => {
+    await tx.delete(lineupPredictions).where(
+      and(eq(lineupPredictions.studentId, session.user.id), eq(lineupPredictions.matchId, matchId))
+    );
+    await tx.insert(lineupPredictions).values(
+      playerRows.map((p) => ({
+        studentId: session.user.id,
+        matchId,
+        playerId: p.id,
+        playerName: p.name,
+        position: p.position,
+      }))
+    );
+  });
 
   return NextResponse.json({ success: true });
 }

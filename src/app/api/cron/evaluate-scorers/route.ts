@@ -90,24 +90,33 @@ export async function GET(req: Request) {
     const matchScorerPreds = unprocessedScorers.filter((p) => p.matchId === match.id);
     if (matchScorerPreds.length > 0 && serpApiKey) {
       const actualScorers = await fetchScorersSerpApi(t1Name, t2Name, serpApiKey);
-      for (const pred of matchScorerPreds) {
-        const isCorrect = actualScorers.length > 0 && actualScorers.some((s) =>
-          normalise(s).includes(normalise(pred.playerName)) ||
-          normalise(pred.playerName).includes(normalise(s))
-        );
-        const position = positionMap.get(pred.playerId) ?? "FWD";
-        const reward = isCorrect ? (SCORER_REWARDS[position] ?? 100) : 0;
+      // If SerpAPI returned no scorers, skip — don't mark as processed; retry next cron run.
+      // This prevents permanently marking predictions incorrect on a transient API failure.
+      if (actualScorers.length > 0) {
+        await db.transaction(async (tx) => {
+          for (const pred of matchScorerPreds) {
+            const isCorrect = actualScorers.some((s) =>
+              normalise(s).includes(normalise(pred.playerName)) ||
+              normalise(pred.playerName).includes(normalise(s))
+            );
+            const position = positionMap.get(pred.playerId) ?? "FWD";
+            const reward = isCorrect ? (SCORER_REWARDS[position] ?? 100) : 0;
 
-        await db.update(scorerPredictions)
-          .set({ isProcessed: true, isCorrect: actualScorers.length > 0 ? isCorrect : false })
-          .where(eq(scorerPredictions.id, pred.predId));
+            await tx.update(scorerPredictions)
+              .set({ isProcessed: true, isCorrect })
+              .where(eq(scorerPredictions.id, pred.predId));
 
-        if (isCorrect) {
-          await db.update(students)
-            .set({ tokenBalance: sql`${students.tokenBalance} + ${reward}` })
-            .where(eq(students.id, pred.studentId));
-        }
-        scorerEvaluated++;
+            if (isCorrect) {
+              await tx.update(students)
+                .set({
+                  tokenBalance: sql`${students.tokenBalance} + ${reward}`,
+                  totalTokensReceived: sql`${students.totalTokensReceived} + ${reward}`,
+                })
+                .where(eq(students.id, pred.studentId));
+            }
+            scorerEvaluated++;
+          }
+        });
       }
     }
 
@@ -126,25 +135,30 @@ export async function GET(req: Request) {
     }
 
     for (const [studentId, preds] of byStudent) {
-      let correct = 0;
-      for (const pred of preds) {
-        const isCorrect = actualStarters.some((s) =>
-          normalise(s).includes(normalise(pred.playerName)) ||
-          normalise(pred.playerName).includes(normalise(s))
-        );
-        await db.update(lineupPredictions)
-          .set({ isProcessed: true, isCorrect })
-          .where(eq(lineupPredictions.id, pred.predId));
-        if (isCorrect) correct++;
-        lineupEvaluated++;
-      }
+      await db.transaction(async (tx) => {
+        let correct = 0;
+        for (const pred of preds) {
+          const isCorrect = actualStarters.some((s) =>
+            normalise(s).includes(normalise(pred.playerName)) ||
+            normalise(pred.playerName).includes(normalise(s))
+          );
+          await tx.update(lineupPredictions)
+            .set({ isProcessed: true, isCorrect })
+            .where(eq(lineupPredictions.id, pred.predId));
+          if (isCorrect) correct++;
+          lineupEvaluated++;
+        }
 
-      const reward = correct * LINEUP_PER_PLAYER + (correct === 11 ? LINEUP_PERFECT_BONUS : 0);
-      if (reward > 0) {
-        await db.update(students)
-          .set({ tokenBalance: sql`${students.tokenBalance} + ${reward}` })
-          .where(eq(students.id, studentId));
-      }
+        const reward = correct * LINEUP_PER_PLAYER + (correct === 11 ? LINEUP_PERFECT_BONUS : 0);
+        if (reward > 0) {
+          await tx.update(students)
+            .set({
+              tokenBalance: sql`${students.tokenBalance} + ${reward}`,
+              totalTokensReceived: sql`${students.totalTokensReceived} + ${reward}`,
+            })
+            .where(eq(students.id, studentId));
+        }
+      });
     }
   }
 

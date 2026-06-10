@@ -34,16 +34,21 @@ export async function POST(req: Request) {
   if (!matchId || !playerId || !playerName) return NextResponse.json({ error: "Missing fields" }, { status: 400 });
 
   // Verify match is still upcoming and cutoff hasn't passed
-  const [match] = await db.select({ status: matches.status, matchDatetime: matches.matchDatetime })
+  const [match] = await db
+    .select({ status: matches.status, matchDatetime: matches.matchDatetime, team1Id: matches.team1Id, team2Id: matches.team2Id })
     .from(matches).where(eq(matches.id, matchId)).limit(1);
   if (!match || match.status !== "upcoming") return NextResponse.json({ error: "Match not available" }, { status: 400 });
 
   const cutoff = new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000);
   if (new Date() >= cutoff) return NextResponse.json({ error: "Prediction window closed" }, { status: 400 });
 
-  // Verify player exists
-  const [player] = await db.select({ id: players.id }).from(players).where(eq(players.id, playerId)).limit(1);
+  // Verify player exists and belongs to one of the two teams in this match
+  const [player] = await db.select({ id: players.id, teamId: players.teamId }).from(players).where(eq(players.id, playerId)).limit(1);
   if (!player) return NextResponse.json({ error: "Player not found" }, { status: 400 });
+  const validTeamIds = [match.team1Id, match.team2Id].filter(Boolean) as string[];
+  if (!validTeamIds.includes(player.teamId)) {
+    return NextResponse.json({ error: "Player is not in this match" }, { status: 400 });
+  }
 
   await db.insert(scorerPredictions)
     .values({ studentId: session.user.id, matchId, playerId, playerName })

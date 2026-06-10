@@ -37,6 +37,8 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         value: "mailto:admin@ie.edu"
+      - key: SERPAPI_KEY
+        sync: false
 
   # Syncs live scores + settles bets/predictions every 3 minutes
   - type: cron
