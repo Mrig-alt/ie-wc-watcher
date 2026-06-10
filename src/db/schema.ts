@@ -210,6 +210,7 @@ export const matches = pgTable("matches", {
   team2Odds: real("team2_odds"),
   drawOdds: real("draw_odds"),
   startNotificationSent: boolean("start_notification_sent").notNull().default(false),
+  watchReminderSent: boolean("watch_reminder_sent").notNull().default(false),
 }, (t) => [
   index("matches_match_datetime_idx").on(t.matchDatetime),
   index("matches_status_idx").on(t.status),

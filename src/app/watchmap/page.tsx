@@ -1,13 +1,14 @@
 import { db } from "@/db";
 import { watchInvites, venues, matches, teams, students, connections } from "@/db/schema";
-import { eq, asc, and, or } from "drizzle-orm";
+import { eq, asc, and, or, gte } from "drizzle-orm";
 import { auth } from "@/lib/auth";
 import WatchMapClient from "@/components/watchmap/WatchMapClient";
 
 export const dynamic = "force-dynamic";
 
-export default async function WatchMapPage() {
+export default async function WatchMapPage({ searchParams }: { searchParams: { match?: string } }) {
   const session = await auth();
+  const defaultMatchId = searchParams?.match ?? null;
 
   let friendIds = new Set<string>();
   if (session?.user?.id) {
@@ -29,7 +30,7 @@ export default async function WatchMapPage() {
     }
   }
 
-  // Scope to upcoming/live matches only and filter flagged inviters — prevents full table scan
+  // Scope to upcoming/live matches only and filter flagged inviters
   const allInvitesRaw = await db
     .select({
       id: watchInvites.id,
@@ -71,6 +72,7 @@ export default async function WatchMapPage() {
       team2Odds: matches.team2Odds,
     })
     .from(matches)
+    .where(gte(matches.matchDatetime, new Date()))
     .orderBy(asc(matches.matchDatetime));
 
   const allTeams = await db
@@ -78,10 +80,10 @@ export default async function WatchMapPage() {
     .from(teams);
   const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
-  const allVenues = await db
-    .select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl })
+  const allVenuesRaw = await db
+    .select({ id: venues.id, name: venues.name, area: venues.area, mapsUrl: venues.mapsUrl, isCustom: venues.isCustom })
     .from(venues);
-  const venueMap = new Map(allVenues.map((v) => [v.id, v]));
+  const venueMap = new Map(allVenuesRaw.map((v) => [v.id, v]));
   const matchMap = new Map(allMatches.map((m) => [m.id, m]));
 
   // My existing watch plans (for logged-in user)
@@ -96,15 +98,22 @@ export default async function WatchMapPage() {
         .where(eq(watchInvites.inviterId, session.user.id))
     : [];
 
-  // ── Hottest matches
+  // ── Hottest matches (include upcoming next 48h even with 0 invites)
   const invitesByMatch = new Map<string, typeof allInvites>();
   for (const inv of allInvites) {
     if (!invitesByMatch.has(inv.matchId)) invitesByMatch.set(inv.matchId, []);
     invitesByMatch.get(inv.matchId)!.push(inv);
   }
 
+  const now = new Date();
+  const fortyEightHoursFromNow = new Date(now.getTime() + 48 * 60 * 60 * 1000);
+
   const hottestMatches = allMatches
-    .filter((m) => (invitesByMatch.get(m.id)?.length ?? 0) > 0)
+    .filter((m) => {
+      const hasInvites = (invitesByMatch.get(m.id)?.length ?? 0) > 0;
+      const isSoon = new Date(m.matchDatetime) <= fortyEightHoursFromNow;
+      return hasInvites || isSoon;
+    })
     .map((m) => {
       const invites = invitesByMatch.get(m.id) ?? [];
       const t1 = m.team1Id ? teamMap.get(m.team1Id) : null;
@@ -135,8 +144,11 @@ export default async function WatchMapPage() {
         venueBreakdown: Object.values(venueCounts).sort((a, b) => b.count - a.count),
       };
     })
-    .sort((a, b) => b.totalPeople - a.totalPeople)
-    .slice(0, 15);
+    .sort((a, b) =>
+      b.totalPeople - a.totalPeople ||
+      new Date(a.matchDatetime).getTime() - new Date(b.matchDatetime).getTime()
+    )
+    .slice(0, 20);
 
   // ── Top bars
   const barCounts: Record<string, {
@@ -179,6 +191,17 @@ export default async function WatchMapPage() {
     .slice(0, 15)
     .map((bar) => ({ ...bar, byMatch: bar.byMatch.sort((a, b) => b.people.length - a.people.length) }));
 
+  // ── Popular pre-seeded venues (for suggestion when a match has 0 invites)
+  const venueInviteCount = new Map<string, number>();
+  for (const inv of allInvitesRaw) {
+    if (inv.venueId) venueInviteCount.set(inv.venueId, (venueInviteCount.get(inv.venueId) ?? 0) + 1);
+  }
+  const popularVenues = allVenuesRaw
+    .filter((v) => !v.isCustom)
+    .sort((a, b) => (venueInviteCount.get(b.id) ?? 0) - (venueInviteCount.get(a.id) ?? 0))
+    .slice(0, 6)
+    .map((v) => ({ id: v.id, name: v.name, area: v.area, mapsUrl: v.mapsUrl }));
+
   // Shape matches for the update sheet
   const matchesForSheet = allMatches
     .filter((m) => m.status === "upcoming" || m.status === "live")
@@ -195,14 +218,18 @@ export default async function WatchMapPage() {
       };
     });
 
+  const venuesForSheet = allVenuesRaw.map((v) => ({ id: v.id, name: v.name, area: v.area, mapsUrl: v.mapsUrl }));
+
   return (
     <WatchMapClient
       hottestMatches={hottestMatches}
       topBars={topBars}
       currentUserId={session?.user?.id ?? null}
       matchesForSheet={matchesForSheet}
-      venuesForSheet={allVenues}
+      venuesForSheet={venuesForSheet}
       myPlans={myPlans}
+      popularVenues={popularVenues}
+      defaultMatchId={defaultMatchId}
     />
   );
 }

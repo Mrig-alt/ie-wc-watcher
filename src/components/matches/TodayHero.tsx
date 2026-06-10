@@ -15,9 +15,10 @@ interface TodayHeroProps {
   myTeam?: { name: string; flagEmoji: string; countryCode: string } | null;
   tokenBalance?: number;
   isLoggedIn?: boolean;
+  watchingCount?: number;
 }
 
-export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam, tokenBalance, isLoggedIn }: TodayHeroProps) {
+export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam, tokenBalance, isLoggedIn, watchingCount }: TodayHeroProps) {
   return (
     <div className="rounded-2xl bg-gradient-to-br from-green-600 to-green-800 p-6 text-white shadow-lg">
       <div className="flex items-start justify-between">
@@ -50,7 +51,7 @@ export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam,
       </div>
 
 
-      <div className="mt-4 flex items-center gap-4">
+      <div className="mt-4 flex items-center gap-4 flex-wrap">
         {liveCount > 0 && (
           <div className="flex items-center gap-1.5">
             <span className="h-2 w-2 animate-pulse rounded-full bg-red-400" />
@@ -59,6 +60,12 @@ export default function TodayHero({ upcomingCount, liveCount, nextMatch, myTeam,
         )}
         {upcomingCount > 0 && (
           <span className="text-sm text-green-200">{upcomingCount} upcoming today</span>
+        )}
+        {(watchingCount ?? 0) > 0 && (
+          <Link href="/watchmap" className="flex items-center gap-1 text-sm text-green-200 hover:text-white transition-colors">
+            <span>📍</span>
+            <span>{watchingCount} watching tonight</span>
+          </Link>
         )}
         {tokenBalance !== undefined && (
           <span className="ml-auto text-sm font-medium">🪙 {tokenBalance}</span>

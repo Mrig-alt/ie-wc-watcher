@@ -13,6 +13,7 @@ import DevicePushPrompt from "@/components/home/DevicePushPrompt";
 import TournamentPickBanner from "@/components/home/TournamentPickBanner";
 import GuestConversionPrompt from "@/components/home/GuestConversionPrompt";
 import HowToPlayButton from "@/components/home/HowToPlayButton";
+import WatchReminderBanner from "@/components/home/WatchReminderBanner";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
 
@@ -86,7 +87,13 @@ export default async function HomePage() {
 
     // Round 2: todayInvites and group names need results from round 1
     const groupIdsNeeded = [...new Set((pendingChallengesRaw as Array<{ groupId: string | null }>).filter((c) => c.groupId).map((c) => c.groupId as string))];
-    const [todayInvites, groupRows] = await Promise.all([
+
+    const myTeamIdEarly = validSession?.user.teamId ?? null;
+    const now = new Date();
+    const in18h = new Date(now.getTime() + 18 * 60 * 60 * 1000);
+    const in30h = new Date(now.getTime() + 30 * 60 * 60 * 1000);
+
+    const [todayInvites, groupRows, tomorrowTeamMatchRaw] = await Promise.all([
       todayMatchIds.length > 0
         ? db.select({
             inviterId: watchInvites.inviterId, matchId: watchInvites.matchId,
@@ -95,6 +102,20 @@ export default async function HomePage() {
         : Promise.resolve([]),
       groupIdsNeeded.length > 0
         ? db.select({ id: friendGroups.id, name: friendGroups.name }).from(friendGroups).where(inArray(friendGroups.id, groupIdsNeeded))
+        : Promise.resolve([]),
+      myTeamIdEarly
+        ? db.select({
+            id: matches.id, matchDatetime: matches.matchDatetime,
+            team1Id: matches.team1Id, team2Id: matches.team2Id,
+            team1Placeholder: matches.team1Placeholder, team2Placeholder: matches.team2Placeholder,
+          }).from(matches)
+            .where(and(
+              gte(matches.matchDatetime, in18h),
+              lte(matches.matchDatetime, in30h),
+              eq(matches.status, "upcoming"),
+              or(eq(matches.team1Id, myTeamIdEarly), eq(matches.team2Id, myTeamIdEarly))
+            ))
+            .limit(1)
         : Promise.resolve([]),
     ]);
 
@@ -134,6 +155,27 @@ export default async function HomePage() {
       };
     });
 
+    const watchingCount = new Set(todayInvites.map((i) => i.inviterId)).size;
+
+    // Build tomorrow team match nudge (only if user hasn't already posted a watch invite for it)
+    const tomorrowRaw = (tomorrowTeamMatchRaw as Array<{ id: string; matchDatetime: Date; team1Id: string | null; team2Id: string | null; team1Placeholder: string | null; team2Placeholder: string | null }>)[0] ?? null;
+    let tomorrowTeamMatch: { matchId: string; matchDatetime: string; team1Name: string; team1Flag: string; team2Name: string; team2Flag: string } | null = null;
+    if (tomorrowRaw && validSession) {
+      const alreadyPosted = todayInvites.some((i) => i.matchId === tomorrowRaw.id && i.inviterId === validSession.user.id);
+      if (!alreadyPosted) {
+        const tt1 = tomorrowRaw.team1Id ? teamMap.get(tomorrowRaw.team1Id) : null;
+        const tt2 = tomorrowRaw.team2Id ? teamMap.get(tomorrowRaw.team2Id) : null;
+        tomorrowTeamMatch = {
+          matchId: tomorrowRaw.id,
+          matchDatetime: tomorrowRaw.matchDatetime.toISOString(),
+          team1Name: tt1?.name ?? tomorrowRaw.team1Placeholder ?? "TBD",
+          team1Flag: tt1?.flagEmoji ?? "🏳️",
+          team2Name: tt2?.name ?? tomorrowRaw.team2Placeholder ?? "TBD",
+          team2Flag: tt2?.flagEmoji ?? "🏳️",
+        };
+      }
+    }
+
     const liveCount = todayMatches.filter((m) => m.status === "live").length;
     const upcomingCount = todayMatches.filter((m) => m.status === "upcoming").length;
     const nextMatchRawItem = nextMatchRaw[0] ?? null;
@@ -160,11 +202,16 @@ export default async function HomePage() {
           )}
           <HowToPlayButton />
         </div>
-        <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatchObj} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
+        <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatchObj} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} watchingCount={watchingCount} />
 
         {/* Tournament winner pick — only for logged-in non-guests */}
         {validSession && !validSession.user.isGuest && (
           <TournamentPickBanner />
+        )}
+
+        {/* Day-before watch location nudge */}
+        {tomorrowTeamMatch && validSession && !validSession.user.isGuest && (
+          <WatchReminderBanner match={tomorrowTeamMatch} />
         )}
 
         {/* Client component — uses useSession() so it always reflects true auth state */}
