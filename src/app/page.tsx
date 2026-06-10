@@ -12,6 +12,7 @@ import NotificationOnboardingModal from "@/components/home/NotificationOnboardin
 import DevicePushPrompt from "@/components/home/DevicePushPrompt";
 import TournamentPickBanner from "@/components/home/TournamentPickBanner";
 import GuestConversionPrompt from "@/components/home/GuestConversionPrompt";
+import HowToPlayButton from "@/components/home/HowToPlayButton";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
 
@@ -153,36 +154,18 @@ export default async function HomePage() {
     return (
       <div className="space-y-6">
         <GuestConversionPrompt />
-        {pendingChallengeProps.length > 0 && (
-          <PendingChallengesModal challenges={pendingChallengeProps} />
-        )}
+        <div className="flex flex-wrap gap-2">
+          {pendingChallengeProps.length > 0 && (
+            <PendingChallengesModal challenges={pendingChallengeProps} />
+          )}
+          <HowToPlayButton />
+        </div>
         <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatchObj} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
 
         {/* Tournament winner pick — only for logged-in non-guests */}
         {validSession && !validSession.user.isGuest && (
           <TournamentPickBanner />
         )}
-
-        {/* HOW TO PLAY ONBOARDING */}
-        <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm text-sm">
-          <h3 className="font-bold text-gray-900 mb-2 flex items-center gap-1.5">
-            <span>⚽</span> How to Play
-          </h3>
-          <ul className="space-y-2 text-gray-600">
-            <li className="flex items-start gap-2">
-              <span className="font-bold text-green-600">1.</span>
-              <span><strong>Predict:</strong> Guess the exact score to win 10x your stake, or just the correct winner for 2x.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="font-bold text-green-600">2.</span>
-              <span><strong>Challenge:</strong> Bet your tokens against specific classmates, or hit the Open Market to take public bets.</span>
-            </li>
-            <li className="flex items-start gap-2">
-              <span className="font-bold text-green-600">3.</span>
-              <span><strong>Watch:</strong> RSVP to watch parties on the Watchmap to earn bonus tokens!</span>
-            </li>
-          </ul>
-        </div>
 
         {/* Client component — uses useSession() so it always reflects true auth state */}
         <JoinBanner />
