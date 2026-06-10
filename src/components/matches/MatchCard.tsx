@@ -105,7 +105,7 @@ export default function MatchCard({
             {isLive && <Badge variant="live">LIVE</Badge>}
             {isFriendly && <Badge variant="friendly">Practice</Badge>}
           </div>
-          <span className="text-xs text-gray-400"><LocalTime datetime={match.matchDatetime} /></span>
+          <span className="text-xs text-gray-400"><LocalTime datetime={match.matchDatetime} mode={isFriendly ? "full" : "time"} /></span>
         </div>
 
         {/* Scoreline / teams */}
