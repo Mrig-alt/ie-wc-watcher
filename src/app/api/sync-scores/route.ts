@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { matches, teams } from "@/db/schema";
-import { eq, and, sql } from "drizzle-orm";
+import { eq, and, sql, lt } from "drizzle-orm";
 import { fetchWCMatches, fetchGlobalMatches, mapApiStatus } from "@/lib/football-api";
 import { settleBetsForMatch, settlePredictionsForMatch } from "@/lib/tokens";
 
@@ -27,6 +27,14 @@ export async function GET(req: Request) {
   // In a robust production environment, use Redis or a system_config table.
   // Serverless environments generally prevent overlapping cron executions anyway.
   try {
+    // Sweep: any match still "upcoming" but kicked off 2+ hours ago → mark completed.
+    // Covers friendlies and other matches the API doesn't return.
+    const twoHoursAgo = new Date(Date.now() - 2 * 60 * 60 * 1000);
+    await db
+      .update(matches)
+      .set({ status: "completed" })
+      .where(and(eq(matches.status, "upcoming"), lt(matches.matchDatetime, twoHoursAgo)));
+
     const apiMatchesWC = await fetchWCMatches();
     const apiMatchesGlobal = await fetchGlobalMatches();
     const apiMatches = [...apiMatchesWC, ...apiMatchesGlobal];
