@@ -11,11 +11,13 @@ jobs:
     steps:
       - name: Ping health endpoint (keep-alive)
         run: |
-          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 https://wc-syeo.onrender.com/api/health)
-          echo "Health check status: $STATUS"
-          if [ "$STATUS" != "200" ]; then
-            echo "Warning: health check returned $STATUS"
-          fi
+          for URL in https://wc-syeo.onrender.com/api/health https://ie-wc-watcher.onrender.com/api/health; do
+            STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 "$URL")
+            echo "Health check $URL: $STATUS"
+            if [ "$STATUS" != "200" ]; then
+              echo "Warning: health check returned $STATUS for $URL"
+            fi
+          done
 
       - name: Sync match scores from football-data.org
         run: |
