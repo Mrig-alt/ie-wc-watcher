@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import ShareButton from "./ShareButton";
 import ScorerPrediction from "./ScorerPrediction";
+import LineupPrediction from "./LineupPrediction";
 import WatchTogetherButton from "./WatchTogetherButton";
 import WatchTogetherCard from "./WatchTogetherCard";
 import PredictionForm from "./PredictionForm";
@@ -179,14 +180,22 @@ export default function MatchCard({
           </div>
         )}
 
-        {/* Goalscorer prediction */}
+        {/* Goalscorer + lineup predictions — side by side, wraps on small screens */}
         {canPredict && !currentUserIsGuest && (
-          <div className="mt-2">
-            <ScorerPrediction
-              matchId={match.id}
-              existing={scorerPrediction}
-              cutoffTime={new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000).toISOString()}
-            />
+          <div className="mt-2 flex flex-wrap gap-2">
+            <div className="flex-1 min-w-[140px]">
+              <ScorerPrediction
+                matchId={match.id}
+                existing={scorerPrediction}
+                cutoffTime={new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000).toISOString()}
+              />
+            </div>
+            <div className="flex-1 min-w-[140px]">
+              <LineupPrediction
+                matchId={match.id}
+                cutoffTime={new Date(new Date(match.matchDatetime).getTime() - 30 * 60 * 1000).toISOString()}
+              />
+            </div>
           </div>
         )}
 

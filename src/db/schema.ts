@@ -211,6 +211,7 @@ export const matches = pgTable("matches", {
   drawOdds: real("draw_odds"),
   startNotificationSent: boolean("start_notification_sent").notNull().default(false),
   watchReminderSent: boolean("watch_reminder_sent").notNull().default(false),
+  apiFootballFixtureId: integer("api_football_fixture_id"),
 }, (t) => [
   index("matches_match_datetime_idx").on(t.matchDatetime),
   index("matches_status_idx").on(t.status),
@@ -442,6 +443,27 @@ export const players = pgTable("players", {
   index("players_position_idx").on(t.position),
 ]);
 
+// ─── Lineup Predictions ───────────────────────────────────────────────────────
+
+export const lineupPredictions = pgTable(
+  "lineup_predictions",
+  {
+    id: uuid("id").primaryKey().defaultRandom(),
+    studentId: uuid("student_id").notNull().references(() => students.id, { onDelete: "cascade" }),
+    matchId: uuid("match_id").notNull().references(() => matches.id, { onDelete: "cascade" }),
+    playerId: uuid("player_id").notNull().references(() => players.id, { onDelete: "cascade" }),
+    playerName: varchar("player_name", { length: 100 }).notNull(),
+    position: varchar("position", { length: 3 }).notNull(),
+    isCorrect: boolean("is_correct"),
+    isProcessed: boolean("is_processed").notNull().default(false),
+    createdAt: timestamp("created_at").notNull().defaultNow(),
+  },
+  (t) => [
+    index("lineup_predictions_match_student_idx").on(t.matchId, t.studentId),
+    index("lineup_predictions_student_idx").on(t.studentId),
+  ]
+);
+
 // ─── Scorer Predictions ───────────────────────────────────────────────────────
 
 export const scorerPredictions = pgTable(
@@ -483,6 +505,7 @@ export type PredictionHistoryEntry = typeof predictionHistory.$inferSelect;
 export type LiveReportStatus = (typeof liveReportStatusEnum.enumValues)[number];
 export type Player = typeof players.$inferSelect;
 export type ScorerPrediction = typeof scorerPredictions.$inferSelect;
+export type LineupPrediction = typeof lineupPredictions.$inferSelect;
 
 export type MatchStatus = (typeof matchStatusEnum.enumValues)[number];
 export type MatchStage = (typeof matchStageEnum.enumValues)[number];
