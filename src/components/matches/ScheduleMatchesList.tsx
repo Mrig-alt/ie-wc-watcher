@@ -14,6 +14,7 @@ interface ScheduleMatchesListProps {
   allTeams: any[];
   validSession: any;
   myPredictions: any[];
+  myScorerPredictions?: Array<{ matchId: string; playerId: string; playerName: string }>;
   allInvites: any[];
   initialGrouped: { day: string; matches: Match[] }[];
 }
@@ -24,6 +25,7 @@ export default function ScheduleMatchesList({
   allTeams,
   validSession,
   myPredictions,
+  myScorerPredictions = [],
   allInvites,
   initialGrouped,
 }: ScheduleMatchesListProps) {
@@ -95,6 +97,7 @@ export default function ScheduleMatchesList({
                 ? allInvites.find((i) => i.matchId === match.id && i.inviterId === validSession.user.id)
                 : null;
               const myPred = myPredictions.find((p) => p.matchId === match.id);
+              const myScorerPred = myScorerPredictions.find((p) => p.matchId === match.id);
 
               const opponentTeamSupporters = isOnTeam1 ? team2Supporters : isOnTeam2 ? team1Supporters : [];
               const opponentInviteRaw = allInvites.find(
@@ -122,6 +125,7 @@ export default function ScheduleMatchesList({
                   currentUserTeamId={validSession?.user.teamId}
                   currentUserIsGuest={validSession?.user.isGuest}
                   prediction={myPred ? { predictedScore1: myPred.predictedScore1, predictedScore2: myPred.predictedScore2 } : null}
+                  scorerPrediction={myScorerPred ? { playerId: myScorerPred.playerId, playerName: myScorerPred.playerName } : null}
                   myWatchInvite={myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null}
                   opponentWatchInvite={
                     opponentInviteRaw && opponentInviter

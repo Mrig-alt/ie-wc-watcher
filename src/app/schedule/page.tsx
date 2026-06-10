@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { matches, teams, students, predictions, watchInvites } from "@/db/schema";
+import { matches, teams, students, predictions, watchInvites, scorerPredictions } from "@/db/schema";
 import { eq, asc, inArray, gte, or, and } from "drizzle-orm";
 import { stageLabel, formatMatchDate, getMadridTodayRange } from "@/lib/utils";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
@@ -49,11 +49,18 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
     const allTeams = await getCachedTeams();
     const teamMap = new Map(allTeams.map((t) => [t.id, t]));
 
-    const myPredictions = validSession
-      ? await db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
-      : [];
-
     const allMatchIds = allMatches.map((m) => m.id);
+
+    const [myPredictions, myScorerPredictions] = await Promise.all([
+      validSession
+        ? db.select().from(predictions).where(eq(predictions.studentId, validSession.user.id))
+        : Promise.resolve([]),
+      validSession && allMatchIds.length > 0
+        ? db.select({ matchId: scorerPredictions.matchId, playerId: scorerPredictions.playerId, playerName: scorerPredictions.playerName })
+            .from(scorerPredictions)
+            .where(and(eq(scorerPredictions.studentId, validSession.user.id), inArray(scorerPredictions.matchId, allMatchIds)))
+        : Promise.resolve([]),
+    ]);
     const allInvites =
       allMatchIds.length > 0
         ? await db
@@ -112,6 +119,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
             allTeams={allTeams}
             validSession={validSession}
             myPredictions={myPredictions}
+            myScorerPredictions={myScorerPredictions}
             allInvites={allInvites}
             initialGrouped={initialGrouped}
           />

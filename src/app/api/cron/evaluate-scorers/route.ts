@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
-import { scorerPredictions, lineupPredictions, matches, students, teams, players } from "@/db/schema";
+import { scorerPredictions, lineupPredictions, matches, students, teams, players, tokenLedger } from "@/db/schema";
 import { eq, and, inArray, sql } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
@@ -113,6 +113,12 @@ export async function GET(req: Request) {
                   totalTokensReceived: sql`${students.totalTokensReceived} + ${reward}`,
                 })
                 .where(eq(students.id, pred.studentId));
+              await tx.insert(tokenLedger).values({
+                studentId: pred.studentId,
+                amount: reward,
+                reason: "scorer_prediction_correct",
+                matchId: match.id,
+              });
             }
             scorerEvaluated++;
           }
@@ -157,6 +163,12 @@ export async function GET(req: Request) {
               totalTokensReceived: sql`${students.totalTokensReceived} + ${reward}`,
             })
             .where(eq(students.id, studentId));
+          await tx.insert(tokenLedger).values({
+            studentId,
+            amount: reward,
+            reason: "lineup_prediction_reward",
+            matchId: match.id,
+          });
         }
       });
     }

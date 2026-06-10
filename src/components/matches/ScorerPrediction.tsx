@@ -66,15 +66,17 @@ export default function ScorerPrediction({ matchId, existing, cutoffTime }: Prop
 
   async function handleSelect(id: string, name: string) {
     setSaving(true);
-    await fetch("/api/scorer-predictions", {
+    const res = await fetch("/api/scorer-predictions", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ matchId, playerId: id, playerName: name }),
     });
-    setSelected({ id, name });
-    setSaved(true);
     setSaving(false);
-    setOpen(false);
+    if (res.ok) {
+      setSelected({ id, name });
+      setSaved(true);
+      setOpen(false);
+    }
   }
 
   if (isPast && !selected) return null;
