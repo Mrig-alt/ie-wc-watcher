@@ -90,7 +90,7 @@ export async function GET(req: Request) {
 
         await db
           .update(matches)
-          .set({ status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
+          .set({ status: resolvedStatus, matchDatetime: new Date(am.utcDate), team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByExtId.id));
 
         // Always settle when completed with scores — settlement functions are
@@ -144,7 +144,7 @@ export async function GET(req: Request) {
 
         await db
           .update(matches)
-          .set({ externalId: am.id, status: resolvedStatus, team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
+          .set({ externalId: am.id, status: resolvedStatus, matchDatetime: new Date(am.utcDate), team1Score: score1, team2Score: score2, team1Penalties: pen1, team2Penalties: pen2 })
           .where(eq(matches.id, existingByTeams.id));
 
         let settledNow = 0;
