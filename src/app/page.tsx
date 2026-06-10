@@ -247,6 +247,15 @@ export default async function HomePage() {
               const opponentInviteRaw = todayInvites.find((i) => i.matchId === match.id && opponentIds.includes(i.inviterId));
               const opponentInviter = opponentInviteRaw ? allStudents.find((s) => s.id === opponentInviteRaw.inviterId) : null;
 
+              const myTeamSupporters = isOnTeam1 ? team1Supporters : isOnTeam2 ? team2Supporters : [];
+              const otherSupporters = myTeamSupporters.filter((s) => s.id !== validSession?.user.id);
+              const teammateInviteRaw = todayInvites.find(
+                (i) => i.matchId === match.id
+                  && i.inviterId !== validSession?.user.id
+                  && otherSupporters.some((s) => s.id === i.inviterId)
+              );
+              const teammateInviter = teammateInviteRaw ? allStudents.find((s) => s.id === teammateInviteRaw.inviterId) : null;
+
               const fullMatch = {
                 ...match,
                 matchDatetime: match.matchDatetime.toISOString(),
@@ -263,6 +272,10 @@ export default async function HomePage() {
                 opponentWatchInvite: opponentInviteRaw && opponentInviter
                   ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
                   : null,
+                teammateWatchInvite: teammateInviteRaw && teammateInviter
+                  ? { locationName: teammateInviteRaw.locationName ?? "", locationUrl: teammateInviteRaw.locationUrl, inviterName: teammateInviter.name }
+                  : null,
+                otherSupporterNames: otherSupporters.map((s) => s.name.split(" ")[0]),
                 watchCount: todayInvites.filter((i) => i.matchId === match.id).length,
               };
             });

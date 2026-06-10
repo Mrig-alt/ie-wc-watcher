@@ -48,6 +48,8 @@ interface MatchCardProps {
   prediction?: { predictedScore1: number; predictedScore2: number } | null;
   myWatchInvite?: { locationName: string; locationUrl: string | null } | null;
   opponentWatchInvite?: { locationName: string; locationUrl: string | null; inviterName: string } | null;
+  teammateWatchInvite?: { locationName: string; locationUrl: string | null; inviterName: string } | null;
+  otherSupporterNames?: string[];
   watchCount?: number;
 }
 
@@ -62,6 +64,8 @@ export default function MatchCard({
   prediction,
   myWatchInvite,
   opponentWatchInvite,
+  teammateWatchInvite,
+  otherSupporterNames = [],
   watchCount = 0,
 }: MatchCardProps) {
   const isLive = match.status === "live";
@@ -170,6 +174,41 @@ export default function MatchCard({
               />
             )}
           </div>
+        )}
+
+        {/* Teammate watch nudge — someone on your team has pinned a bar */}
+        {isUpcoming && myTeamSide && teammateWatchInvite && (
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800">
+            <MapPin className="h-4 w-4 shrink-0 text-green-600" />
+            <span className="flex-1">
+              <span className="font-medium">{teammateWatchInvite.inviterName}</span> ({myTeamSide === "team1" ? t1Flag : t2Flag}) is watching at{" "}
+              {teammateWatchInvite.locationUrl ? (
+                <a href={teammateWatchInvite.locationUrl} target="_blank" rel="noopener noreferrer" className="underline font-medium">
+                  {teammateWatchInvite.locationName}
+                </a>
+              ) : (
+                <span className="font-medium">{teammateWatchInvite.locationName}</span>
+              )}
+              {" "}— join them?
+            </span>
+          </div>
+        )}
+
+        {/* Teammate watch nudge — others support your team but no bar pinned yet */}
+        {isUpcoming && myTeamSide && !teammateWatchInvite && otherSupporterNames.length > 0 && (
+          <Link
+            href={`/watchmap?match=${match.id}`}
+            className="mt-3 flex items-center gap-2 rounded-lg bg-green-50 border border-green-200 px-3 py-2 text-sm text-green-800 hover:bg-green-100 transition-colors"
+          >
+            <span className="text-base">{myTeamSide === "team1" ? t1Flag : t2Flag}</span>
+            <span className="flex-1">
+              <span className="font-medium">
+                {otherSupporterNames.slice(0, 2).join(" & ")}
+                {otherSupporterNames.length > 2 ? ` +${otherSupporterNames.length - 2} more` : ""}
+              </span>
+              {" "}also support {myTeamSide === "team1" ? t1Name : t2Name} — plan where to watch?
+            </span>
+          </Link>
         )}
 
         {/* Watch together nudge from opponent */}
