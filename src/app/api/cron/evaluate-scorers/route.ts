@@ -7,10 +7,10 @@ export const dynamic = "force-dynamic";
 
 // Position-based scorer rewards — rarer = more tokens
 const SCORER_REWARDS: Record<string, number> = {
-  FWD: 100,
-  MID: 200,
-  DEF: 350,
-  GK: 500,
+  FWD: 50,
+  MID: 100,
+  DEF: 175,
+  GK: 250,
 };
 
 // Lineup: 20 tokens per correct starter, 100 bonus for all 11 correct
@@ -25,7 +25,8 @@ export async function GET(req: Request) {
   }
 
   const serpApiKey = process.env.SERPAPI_KEY;
-  const apiFootballKey = process.env.API_FOOTBALL_KEY;
+  // TheSportsDB free key is "1"; set SPORTSDB_API_KEY to a Patreon key if lineup endpoint requires it
+  const sportsDbKey = process.env.SPORTSDB_API_KEY ?? "1";
 
   // Find completed matches with unprocessed predictions
   const [unprocessedScorers, unprocessedLineups] = await Promise.all([
@@ -111,25 +112,25 @@ export async function GET(req: Request) {
       }
     }
 
-    // ── Lineup evaluation (API-Football) ────────────────────────────────────
+    // ── Lineup evaluation (TheSportsDB) ─────────────────────────────────────
     const matchLineupPreds = unprocessedLineups.filter((p) => p.matchId === match.id);
-    if (matchLineupPreds.length === 0 || !apiFootballKey) continue;
+    if (matchLineupPreds.length === 0) continue;
 
-    // Resolve API-Football fixture ID
-    let fixtureId = match.apiFootballFixtureId;
-    if (!fixtureId) {
-      fixtureId = await resolveApiFootballFixtureId(match.matchDatetime, t1Name, t2Name, apiFootballKey);
-      if (fixtureId) {
-        await db.update(matches).set({ apiFootballFixtureId: fixtureId }).where(eq(matches.id, match.id));
+    // Resolve TheSportsDB event ID (cached in apiFootballFixtureId column)
+    let eventId = match.apiFootballFixtureId;
+    if (!eventId) {
+      eventId = await resolveSportsDbEventId(match.matchDatetime, t1Name, t2Name, sportsDbKey);
+      if (eventId) {
+        await db.update(matches).set({ apiFootballFixtureId: eventId }).where(eq(matches.id, match.id));
       }
     }
 
-    if (!fixtureId) {
+    if (!eventId) {
       // Can't evaluate lineup — skip, will retry next cron run
       continue;
     }
 
-    const actualStarters = await fetchStartingXI(fixtureId, apiFootballKey);
+    const actualStarters = await fetchStartingXI(eventId, sportsDbKey);
     if (actualStarters.length === 0) continue;
 
     // Group lineup preds by student
@@ -202,30 +203,28 @@ function extractScorers(data: any): string[] {
   return [...new Set(scorers)];
 }
 
-async function resolveApiFootballFixtureId(
+async function resolveSportsDbEventId(
   matchDatetime: Date,
   t1Name: string,
   t2Name: string,
-  key: string
+  apiKey: string
 ): Promise<number | null> {
   try {
     const date = matchDatetime.toISOString().slice(0, 10);
-    // WC 2026 league ID is 1 in API-Football
-    const url = `https://v3.football.api-sports.io/fixtures?league=1&season=2026&date=${date}`;
-    const res = await fetch(url, {
-      headers: { "x-apisports-key": key },
-      signal: AbortSignal.timeout(15000),
-    });
+    const url = `https://www.thesportsdb.com/api/v1/json/${apiKey}/eventsday.php?d=${date}&s=Soccer`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return null;
     const data = await res.json();
-    for (const f of data?.response ?? []) {
-      const home = normalise(f?.teams?.home?.name ?? "");
-      const away = normalise(f?.teams?.away?.name ?? "");
+    const t1 = normalise(t1Name);
+    const t2 = normalise(t2Name);
+    for (const event of data?.events ?? []) {
+      const home = normalise(event?.strHomeTeam ?? "");
+      const away = normalise(event?.strAwayTeam ?? "");
       if (
-        (home.includes(normalise(t1Name)) || normalise(t1Name).includes(home)) &&
-        (away.includes(normalise(t2Name)) || normalise(t2Name).includes(away))
+        (home.includes(t1) || t1.includes(home)) &&
+        (away.includes(t2) || t2.includes(away))
       ) {
-        return f.fixture?.id ?? null;
+        return Number(event.idEvent) || null;
       }
     }
     return null;
@@ -234,23 +233,16 @@ async function resolveApiFootballFixtureId(
   }
 }
 
-async function fetchStartingXI(fixtureId: number, key: string): Promise<string[]> {
+async function fetchStartingXI(eventId: number, apiKey: string): Promise<string[]> {
   try {
-    const url = `https://v3.football.api-sports.io/fixtures/lineups?fixture=${fixtureId}`;
-    const res = await fetch(url, {
-      headers: { "x-apisports-key": key },
-      signal: AbortSignal.timeout(15000),
-    });
+    const url = `https://www.thesportsdb.com/api/v1/json/${apiKey}/lookupeventlineup.php?id=${eventId}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(15000) });
     if (!res.ok) return [];
     const data = await res.json();
-    const starters: string[] = [];
-    for (const team of data?.response ?? []) {
-      for (const entry of team?.startXI ?? []) {
-        const name = entry?.player?.name;
-        if (name) starters.push(name);
-      }
-    }
-    return starters;
+    return (data?.lineup ?? [])
+      .filter((p: any) => p?.strSubstitute === "No")
+      .map((p: any) => String(p?.strPlayer ?? ""))
+      .filter(Boolean);
   } catch {
     return [];
   }
