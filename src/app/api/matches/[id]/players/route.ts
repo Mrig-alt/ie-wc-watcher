@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/db";
 import { matches, players, teams } from "@/db/schema";
-import { eq, inArray, asc } from "drizzle-orm";
+import { eq, and, inArray, asc } from "drizzle-orm";
 
 export const dynamic = "force-dynamic";
 
@@ -22,7 +22,7 @@ export async function GET(_req: Request, { params }: { params: Promise<{ id: str
       .from(teams).where(inArray(teams.id, teamIds)),
     db.select({ id: players.id, name: players.name, position: players.position, teamId: players.teamId })
       .from(players)
-      .where(inArray(players.teamId, teamIds))
+      .where(and(inArray(players.teamId, teamIds), eq(players.isActive, true)))
       .orderBy(asc(players.position), asc(players.name)),
   ]);
 

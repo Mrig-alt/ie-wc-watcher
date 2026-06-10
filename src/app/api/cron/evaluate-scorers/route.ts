@@ -234,5 +234,11 @@ async function fetchStartingXI(externalId: number, apiKey: string): Promise<stri
 }
 
 function normalise(s: string): string {
-  return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").trim();
+  return s.toLowerCase()
+    .normalize("NFD")
+    .replace(/[̀-ͯ]/g, "")  // strip diacritics
+    .replace(/\bjr\.?\b/g, "junior")   // "Jr" / "Jr." → "junior"
+    .replace(/\bst\.\s*/g, "saint ")   // "St." → "saint "
+    .replace(/\s+/g, " ")
+    .trim();
 }

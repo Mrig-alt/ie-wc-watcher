@@ -1,0 +1,15 @@
+name: Keep Render awake (every minute)
+
+on:
+  schedule:
+    - cron: "* * * * *"   # every minute — prevents Render free tier 15-min spin-down
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping production health endpoint
+        run: |
+          STATUS=$(curl -s -o /dev/null -w "%{http_code}" --max-time 10 https://wc-syeo.onrender.com/api/health)
+          echo "Health: $STATUS"
