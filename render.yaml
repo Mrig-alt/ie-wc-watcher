@@ -37,3 +37,51 @@ services:
         sync: false
       - key: VAPID_SUBJECT
         value: "mailto:admin@ie.edu"
+
+  # Syncs live scores + settles bets/predictions every 3 minutes
+  - type: cron
+    name: sync-scores
+    runtime: node
+    schedule: "*/3 * * * *"
+    buildCommand: echo "no build"
+    startCommand: >
+      curl -sf -X GET "$APP_URL/api/sync-scores"
+      -H "Authorization: Bearer $CRON_SECRET"
+      && echo "sync-scores ok" || echo "sync-scores failed"
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  # Refills every student's tokens on Monday mornings (UTC)
+  - type: cron
+    name: weekly-token-refill
+    runtime: node
+    schedule: "0 8 * * 1"
+    buildCommand: echo "no build"
+    startCommand: >
+      curl -sf -X GET "$APP_URL/api/cron/weekly-refill"
+      -H "Authorization: Bearer $CRON_SECRET"
+      && echo "weekly-refill ok" || echo "weekly-refill failed"
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
+
+  # Sends push notification reminders 30 min before each match (runs hourly)
+  - type: cron
+    name: match-reminders
+    runtime: node
+    schedule: "0 * * * *"
+    buildCommand: echo "no build"
+    startCommand: >
+      curl -sf -X GET "$APP_URL/api/cron/match-reminders"
+      -H "Authorization: Bearer $CRON_SECRET"
+      && echo "match-reminders ok" || echo "match-reminders failed"
+    envVars:
+      - key: APP_URL
+        sync: false
+      - key: CRON_SECRET
+        sync: false
