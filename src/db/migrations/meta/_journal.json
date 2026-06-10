@@ -134,6 +134,27 @@
       "when": 1781049320258,
       "tag": "0018_token_economy_guards",
       "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1781049400000,
+      "tag": "0019_performance_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "7",
+      "when": 1781049500000,
+      "tag": "0020_tournament_pick_match_notify",
+      "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "7",
+      "when": 1781049600000,
+      "tag": "0021_prediction_tables",
+      "breakpoints": true
     }
   ]
 }

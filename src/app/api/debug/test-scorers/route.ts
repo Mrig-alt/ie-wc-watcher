@@ -2,11 +2,16 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
-// Test endpoint: GET /api/debug/test-scorers?t1=England&t2=Costa+Rica
-// Returns raw SerpAPI response + extracted scorer names. No DB writes.
-// Remove or gate behind auth before going to production.
+// Debug endpoint: GET /api/debug/test-scorers?t1=England&t2=Costa+Rica
+// Requires CRON_SECRET bearer token. No DB writes.
 
 export async function GET(req: Request) {
+  const cronSecret = process.env.CRON_SECRET;
+  if (!cronSecret) return NextResponse.json({ error: "CRON_SECRET not configured" }, { status: 503 });
+  if (req.headers.get("authorization") !== `Bearer ${cronSecret}`) {
+    return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+  }
+
   const { searchParams } = new URL(req.url);
   const t1 = searchParams.get("t1") ?? "England";
   const t2 = searchParams.get("t2") ?? "Costa Rica";

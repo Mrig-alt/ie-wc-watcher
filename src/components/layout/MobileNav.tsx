@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Home, Calendar, Trophy, Users, MapPin } from "lucide-react";
+import { Home, Calendar, Trophy, Users, MapPin, Swords } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 const navItems = [
   { href: "/", icon: Home, label: "Home" },
   { href: "/schedule", icon: Calendar, label: "Schedule" },
   { href: "/watchmap", icon: MapPin, label: "Watch" },
+  { href: "/market", icon: Swords, label: "Market" },
   { href: "/students", icon: Users, label: "Classmates" },
   { href: "/leaderboard", icon: Trophy, label: "Tokens" },
 ];
@@ -26,7 +27,7 @@ export default function MobileNav() {
               key={href}
               href={href}
               className={cn(
-                "flex flex-col items-center gap-0.5 px-3 py-1.5 text-xs font-medium transition-colors",
+                "flex flex-col items-center gap-0.5 px-2 py-1.5 text-xs font-medium transition-colors",
                 active ? "text-green-600" : "text-gray-500 hover:text-gray-700"
               )}
             >

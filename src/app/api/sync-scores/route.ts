@@ -30,14 +30,23 @@ export async function GET(req: Request) {
     // Sweep: mark as completed any match still "upcoming" or "live" but kicked off 3+ hours ago.
     // Covers friendlies not in the API and matches stuck in "live" if the API stops updating.
     const threeHoursAgo = new Date(Date.now() - 3 * 60 * 60 * 1000);
-    await db
-      .update(matches)
-      .set({ status: "completed" })
-      .where(and(lt(matches.matchDatetime, threeHoursAgo), eq(matches.status, "upcoming")));
-    await db
-      .update(matches)
-      .set({ status: "completed" })
-      .where(and(lt(matches.matchDatetime, threeHoursAgo), eq(matches.status, "live")));
+    const [sweptUpcoming, sweptLive] = await Promise.all([
+      db.update(matches)
+        .set({ status: "completed" })
+        .where(and(lt(matches.matchDatetime, threeHoursAgo), eq(matches.status, "upcoming")))
+        .returning({ id: matches.id }),
+      db.update(matches)
+        .set({ status: "completed" })
+        .where(and(lt(matches.matchDatetime, threeHoursAgo), eq(matches.status, "live")))
+        .returning({ id: matches.id }),
+    ]);
+    // Settle bets/predictions for time-swept matches (friendlies and stuck-live matches
+    // never go through the API update path, so we must settle them here).
+    // settleBetsForMatch / settlePredictionsForMatch are idempotent (filter settled=false).
+    for (const { id } of [...sweptUpcoming, ...sweptLive]) {
+      await settleBetsForMatch(id);
+      await settlePredictionsForMatch(id);
+    }
 
     const apiMatchesWC = await fetchWCMatches();
     const apiMatchesGlobal = await fetchGlobalMatches();
