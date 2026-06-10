@@ -11,6 +11,7 @@ interface Props {
     prediction: any;
     myWatchInvite: any;
     opponentWatchInvite: any;
+    watchCount?: number;
   }>;
 }
 
@@ -50,7 +51,7 @@ export default function HomeTabsClient({ matches }: Props) {
         </p>
       ) : (
         <div className="space-y-3">
-          {displayedMatches.map(({ match, team1Supporters, team2Supporters, prediction, myWatchInvite, opponentWatchInvite }) => (
+          {displayedMatches.map(({ match, team1Supporters, team2Supporters, prediction, myWatchInvite, opponentWatchInvite, watchCount }) => (
             <MatchCardClient
               key={match.id}
               match={match}
@@ -59,6 +60,7 @@ export default function HomeTabsClient({ matches }: Props) {
               prediction={prediction}
               myWatchInvite={myWatchInvite}
               opponentWatchInvite={opponentWatchInvite}
+              watchCount={watchCount}
             />
           ))}
         </div>

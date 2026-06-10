@@ -110,6 +110,8 @@ export default function ScheduleMatchesList({
                 team2: t2 ? { id: t2.id, name: t2.name, flagEmoji: t2.flagEmoji } : null,
               };
 
+              const watchCount = allInvites.filter((i) => i.matchId === match.id).length;
+
               return (
                 <MatchCard
                   key={match.id}
@@ -126,6 +128,7 @@ export default function ScheduleMatchesList({
                       ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
                       : null
                   }
+                  watchCount={watchCount}
                 />
               );
             })}

@@ -39,6 +39,16 @@ function JoinPageInner() {
   const searchParams = useSearchParams();
   const next = searchParams.get("next") ?? "/";
   const { data: session, status } = useSession();
+  const refId = searchParams.get("ref");
+  const [referrerName, setReferrerName] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (!refId) return;
+    fetch(`/api/referrer?id=${encodeURIComponent(refId)}`)
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => { if (d?.name) setReferrerName(d.name); })
+      .catch(() => {});
+  }, [refId]);
 
   // If already logged in, skip the join form entirely
   useEffect(() => {
@@ -185,6 +195,14 @@ function JoinPageInner() {
           <p className="mt-1 text-sm text-gray-500">\uD83C\uDF0D {studentCount} classmates already joined</p>
         )}
       </div>
+
+      {referrerName && (
+        <div className="rounded-xl border border-green-100 bg-green-50 px-4 py-3 text-center">
+          <p className="text-sm font-medium text-green-800">
+            \uD83D\uDC4B <span className="font-semibold">{referrerName}</span> invited you to join!
+          </p>
+        </div>
+      )}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-4">
         <div className="grid gap-1.5">

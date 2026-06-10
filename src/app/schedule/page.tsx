@@ -55,7 +55,7 @@ export default async function SchedulePage({ searchParams }: { searchParams: Pro
 
     const allMatchIds = allMatches.map((m) => m.id);
     const allInvites =
-      validSession && allMatchIds.length > 0
+      allMatchIds.length > 0
         ? await db
             .select({
               id: watchInvites.id,

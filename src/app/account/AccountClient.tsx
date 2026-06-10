@@ -10,6 +10,7 @@ import BetsHistory from "@/components/profile/BetsHistory";
 import TokenLedger from "@/components/profile/TokenLedger";
 import TeamGrid from "@/components/teams/TeamGrid";
 import ShareButton from "@/components/ui/ShareButton";
+import TournamentPickBanner from "@/components/home/TournamentPickBanner";
 
 type Visibility = "public" | "friends" | "stealth";
 
@@ -116,6 +117,7 @@ export default function AccountClient({ children, dbUser }: { children?: React.R
   return (
     <div className="mx-auto max-w-xl space-y-6">
       <h1 className="text-2xl font-bold text-gray-900">My Account</h1>
+      {!isGuest && <TournamentPickBanner />}
 
       <div className="rounded-xl border border-gray-100 bg-white p-6 shadow-sm space-y-3">
         <div className="flex items-center justify-between">

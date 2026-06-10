@@ -95,6 +95,7 @@ export const students = pgTable("students", {
   deviceId: varchar("device_id", { length: 255 }), // Anti-cheat persistent cookie identifier
   referredBy: uuid("referred_by"), // FK enforced at DB level via migration 0018 (self-ref causes circular TS inference in Drizzle)
   referralTokensEarned: integer("referral_tokens_earned").notNull().default(0),
+  tournamentPickTeamId: uuid("tournament_pick_team_id").references(() => teams.id, { onDelete: "set null" }),
   notificationsOnboarded: boolean("notifications_onboarded").notNull().default(false),
   pushEnabled: boolean("push_enabled").notNull().default(false),
   emailEnabled: boolean("email_enabled").notNull().default(false),
@@ -208,6 +209,7 @@ export const matches = pgTable("matches", {
   team1Odds: real("team1_odds"),
   team2Odds: real("team2_odds"),
   drawOdds: real("draw_odds"),
+  startNotificationSent: boolean("start_notification_sent").notNull().default(false),
 }, (t) => [
   index("matches_match_datetime_idx").on(t.matchDatetime),
   index("matches_status_idx").on(t.status),

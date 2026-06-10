@@ -48,6 +48,7 @@ interface MatchCardProps {
   prediction?: { predictedScore1: number; predictedScore2: number } | null;
   myWatchInvite?: { locationName: string; locationUrl: string | null } | null;
   opponentWatchInvite?: { locationName: string; locationUrl: string | null; inviterName: string } | null;
+  watchCount?: number;
 }
 
 export default function MatchCard({
@@ -61,6 +62,7 @@ export default function MatchCard({
   prediction,
   myWatchInvite,
   opponentWatchInvite,
+  watchCount = 0,
 }: MatchCardProps) {
   const isLive = match.status === "live";
   const isCompleted = match.status === "completed";
@@ -195,7 +197,9 @@ export default function MatchCard({
               className="flex items-center justify-center w-full gap-2 rounded-lg bg-indigo-50 border border-indigo-200 px-3 py-2 text-sm font-medium text-indigo-700 hover:bg-indigo-100 transition-colors"
             >
               <MapPin className="h-4 w-4 shrink-0 text-indigo-500" />
-              Wanna watch the match together? Find a group!
+              {watchCount > 0
+                ? `👀 ${watchCount} ${watchCount === 1 ? "person" : "people"} watching — join them!`
+                : "Wanna watch the match together? Find a group!"}
               {showWatchCard ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
             </button>
             {showWatchCard && (

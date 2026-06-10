@@ -10,6 +10,8 @@ import JoinBanner from "@/components/home/JoinBanner";
 import PendingChallengesModal from "@/components/home/PendingChallengesModal";
 import NotificationOnboardingModal from "@/components/home/NotificationOnboardingModal";
 import DevicePushPrompt from "@/components/home/DevicePushPrompt";
+import TournamentPickBanner from "@/components/home/TournamentPickBanner";
+import GuestConversionPrompt from "@/components/home/GuestConversionPrompt";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
 
@@ -150,10 +152,16 @@ export default async function HomePage() {
 
     return (
       <div className="space-y-6">
+        <GuestConversionPrompt />
         {pendingChallengeProps.length > 0 && (
           <PendingChallengesModal challenges={pendingChallengeProps} />
         )}
         <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatchObj} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} />
+
+        {/* Tournament winner pick — only for logged-in non-guests */}
+        {validSession && !validSession.user.isGuest && (
+          <TournamentPickBanner />
+        )}
 
         {/* HOW TO PLAY ONBOARDING */}
         <div className="rounded-xl border border-gray-100 bg-white p-4 shadow-sm text-sm">
@@ -224,7 +232,8 @@ export default async function HomePage() {
                 myWatchInvite: myInvite ? { locationName: myInvite.locationName ?? "", locationUrl: myInvite.locationUrl } : null,
                 opponentWatchInvite: opponentInviteRaw && opponentInviter
                   ? { locationName: opponentInviteRaw.locationName ?? "", locationUrl: opponentInviteRaw.locationUrl, inviterName: opponentInviter.name }
-                  : null
+                  : null,
+                watchCount: todayInvites.filter((i) => i.matchId === match.id).length,
               };
             });
             return <HomeTabsClient matches={compiledMatches} />;
