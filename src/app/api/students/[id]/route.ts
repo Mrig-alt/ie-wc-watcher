@@ -76,7 +76,7 @@ export async function PATCH(
         .from(students)
         .where(eq(students.isGuest, false));
 
-      let tokenBalance = 100;
+      let tokenBalance = 1000;
       const effectiveVisibility = visibility !== undefined ? visibility : currentStudent.visibility;
       if (effectiveVisibility === "public") tokenBalance += PUBLIC_BONUS_TOKENS;
       const earlyBirdAwarded = totalActiveStudents < EARLY_BIRD_LIMIT;

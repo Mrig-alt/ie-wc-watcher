@@ -13,6 +13,7 @@ import DevicePushPrompt from "@/components/home/DevicePushPrompt";
 import TournamentPickBanner from "@/components/home/TournamentPickBanner";
 import GuestConversionPrompt from "@/components/home/GuestConversionPrompt";
 import HowToPlayButton from "@/components/home/HowToPlayButton";
+import OpenMarketButton from "@/components/home/OpenMarketButton";
 import WatchReminderBanner from "@/components/home/WatchReminderBanner";
 import { getCachedTeams, getCachedActiveStudents } from "@/db/queries";
 import { getMadridTodayRange } from "@/lib/utils";
@@ -206,6 +207,7 @@ export default async function HomePage() {
             <PendingChallengesModal challenges={pendingChallengeProps} />
           )}
           <HowToPlayButton />
+          <OpenMarketButton />
         </div>
         <TodayHero liveCount={liveCount} upcomingCount={upcomingCount} nextMatch={nextMatchObj} tokenBalance={validSession?.user.tokenBalance} myTeam={myTeam} isLoggedIn={!!validSession} watchingCount={watchingCount} />
 

@@ -1,7 +1,7 @@
 import { auth } from "@/lib/auth";
 import { db } from "@/db";
-import { students, teams, connections } from "@/db/schema";
-import { eq, desc, and, or, isNull, sql } from "drizzle-orm";
+import { students, teams } from "@/db/schema";
+import { eq, desc, and, isNull, sql } from "drizzle-orm";
 import LeaderboardClient from "@/components/leaderboard/LeaderboardClient";
 import LeaderboardInfoModal from "@/components/leaderboard/LeaderboardInfoModal";
 import ScoringLogicModal from "@/components/leaderboard/ScoringLogicModal";
@@ -13,35 +13,16 @@ export default async function LeaderboardPage() {
   try {
     const session = await auth();
 
-    let currentUserRow = null;
-    let friendIds = new Set<string>();
-    if (session?.user?.id) {
-      const [u] = await db
-        .select({ isGuest: students.isGuest, hasBoughtIn: students.hasBoughtIn })
-        .from(students)
-        .where(eq(students.id, session.user.id))
-        .limit(1);
-      currentUserRow = u;
-
-      const myConnections = await db
-        .select({ requesterId: connections.requesterId, requesteeId: connections.requesteeId })
-        .from(connections)
-        .where(
-          and(
-            eq(connections.status, "accepted"),
-            or(
-              eq(connections.requesterId, session.user.id),
-              eq(connections.requesteeId, session.user.id)
-            )
-          )
-        );
-      for (const c of myConnections) {
-        if (c.requesterId !== session.user.id) friendIds.add(c.requesterId);
-        if (c.requesteeId !== session.user.id) friendIds.add(c.requesteeId);
-      }
-    }
-
-    const rows = await db
+    const [currentUserRow, rows] = await Promise.all([
+      session?.user?.id
+        ? db
+            .select({ isGuest: students.isGuest, hasBoughtIn: students.hasBoughtIn })
+            .from(students)
+            .where(eq(students.id, session.user.id))
+            .limit(1)
+            .then((r) => r[0] ?? null)
+        : Promise.resolve(null),
+      db
       .select({
         id: students.id,
         name: students.name,
@@ -65,7 +46,8 @@ export default async function LeaderboardPage() {
         eq(students.leaderboardVisibility, true)
       ))
       .orderBy(desc(sql`${students.tokenBalance} + ${students.escrowTokens} - ${students.totalTokensReceived}`))
-      .limit(51);
+      .limit(51),
+    ]);
 
     const hasNextPage = rows.length > 50;
     const paginatedRows = hasNextPage ? rows.slice(0, 50) : rows;

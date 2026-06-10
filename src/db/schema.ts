@@ -84,7 +84,7 @@ export const students = pgTable("students", {
   isHonoraryFan: boolean("is_honorary_fan").notNull().default(false),
   visibility: visibilityEnum("visibility").notNull().default("public"),
   leaderboardVisibility: boolean("leaderboard_visibility").notNull().default(true),
-  tokenBalance: integer("token_balance").notNull().default(100),
+  tokenBalance: integer("token_balance").notNull().default(1000),
   flagged: boolean("flagged").notNull().default(false),
   isGuest: boolean("is_guest").notNull().default(false),
   hasBoughtIn: boolean("has_bought_in").notNull().default(false),
