@@ -10,12 +10,12 @@ const isLocalhost =
 
 const sslMode = isLocalhost ? false : "require";
 
-// max:3 allows Promise.all to run queries in parallel without serialising
-// them through a single connection (which caused 8s statement timeouts).
-// Supabase free tier allows 15 direct connections so 3 is safe.
+// max:10 with PgBouncer transaction pooler — pooler handles up to 200
+// concurrent clients on Supabase Nano, so 10 server-side connections
+// is safe and eliminates the queue buildup under high load.
 const client = postgres(connectionString, {
   prepare: false,
-  max: 3,
+  max: 10,
   ssl: sslMode,
   connect_timeout: 15,
   idle_timeout: 10,
